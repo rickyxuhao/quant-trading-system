@@ -161,7 +161,10 @@ class MLStrategy(BaseStrategy):
 
             features = self.feature_engineer.create_features(df)
 
-            # 只取最新的一行用于预测
+            # 保存特征历史供LSTM使用
+            self.feature_history = features.copy()
+
+            # 只取最新的一行用于预测 (XGBoost使用)
             if len(features) > 0:
                 return features.iloc[[-1]]
 
@@ -182,12 +185,13 @@ class MLStrategy(BaseStrategy):
 
         try:
             if isinstance(self.model, XGBoostModel):
-                # XGBoost预测
+                # XGBoost预测 - 只需要单行特征
                 if self.ml_config.target_type == 'direction':
                     proba = self.model.predict(features, return_proba=True)
                     if proba is not None and len(proba[0]) == 3:
-                        # 三分类: 跌, 平, 涨
-                        prediction = np.argmax(proba[0]) - 1  # -1, 0, 1
+                        # 三分类: 跌, 平, 涨 (注意: XGBoost输出是映射后的标签 0,1,2)
+                        pred_class = np.argmax(proba[0])  # 0, 1, 2
+                        prediction = pred_class - 1  # 映射回 -1, 0, 1
                         confidence = np.max(proba[0])
                     else:
                         prediction = self.model.predict(features)[0]
@@ -197,18 +201,30 @@ class MLStrategy(BaseStrategy):
                     confidence = 0.5
 
             elif isinstance(self.model, LSTMModel):
-                # LSTM预测
-                prediction = self.model.predict(features)[0]
-
-                # 对于分类任务获取置信度
-                if self.ml_config.target_type == 'direction':
-                    proba = self.model.predict(features, return_confidence=True)
-                    if proba is not None:
-                        confidence = np.max(proba[0])
+                # LSTM预测 - 需要序列数据
+                # features 只包含最新一行，但LSTM需要 sequence_length 行历史
+                # 从 feature_history 获取最后 sequence_length 行
+                seq_len = self.model.config.sequence_length
+                if self.feature_history is not None and len(self.feature_history) >= seq_len:
+                    # 使用最后 seq_len 行特征进行预测
+                    lstm_features = self.feature_history.iloc[-seq_len:]
+                    predictions = self.model.predict(lstm_features)
+                    if len(predictions) > 0:
+                        prediction = predictions[-1]  # 取最后一个预测值
+                        # 对于分类任务
+                        if self.ml_config.target_type == 'direction':
+                            proba = self.model.predict(lstm_features, return_confidence=True)
+                            if proba is not None and len(proba) > 0:
+                                confidence = np.max(proba[-1])
+                            else:
+                                confidence = 0.5
+                        else:
+                            confidence = abs(prediction) if prediction != 0 else 0.5
                     else:
-                        confidence = abs(prediction)
+                        return None, 0
                 else:
-                    confidence = abs(prediction)
+                    # 数据不足，无法预测
+                    return None, 0
 
             else:
                 return None, 0
