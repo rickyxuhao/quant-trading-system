@@ -2,8 +2,12 @@
 学术论文解析命令行工具
 
 Usage:
+    # 解析PDF论文
     python -m research_articles.cli parse <pdf_path> [--output <output_path>]
     python -m research_articles.cli batch <pdf_dir> [--output <output_dir>]
+
+    # 从Markdown提取策略（人工总结的论文）
+    python -m research_articles.cli from-md <markdown_path> [--output <output_path>] [--yaml]
 """
 
 import sys
@@ -203,6 +207,72 @@ def batch(pdf_dir: str, output: str):
     results = batch_extractor.extract_batch(pdf_dir)
 
     logger.info(f"批量解析完成: {len(results)} 个文件")
+
+
+@cli.command()
+@click.argument("markdown_path", type=click.Path(exists=True))
+@click.option("--output", "-o", type=click.Path(), help="输出实现计划路径")
+@click.option("--yaml", is_flag=True, help="同时输出YAML格式")
+def from_md(markdown_path: str, output: str, yaml: bool):
+    """从人工总结的Markdown文档提取策略蓝图
+
+    适用于用户先人工阅读论文，手动总结成Markdown后，再提取策略要素的场景。
+
+    Example:
+        python -m research_articles.cli from-md paper_summary.md -o implementation_plan.md --yaml
+    """
+    from .markdown_strategy_extractor import MarkdownStrategyExtractor
+
+    md_path = Path(markdown_path)
+    logger.info(f"从Markdown提取策略蓝图: {md_path}")
+
+    extractor = MarkdownStrategyExtractor()
+    blueprint = extractor.extract(markdown_path)
+
+    # 打印摘要
+    click.echo("\n" + "=" * 60)
+    click.echo(f"策略蓝图: {blueprint.strategy_name or '未命名'}")
+    click.echo("=" * 60)
+    click.echo(f"类型: {blueprint.strategy_type or '未指定'}")
+    click.echo(f"模型: {blueprint.model_type or '未指定'}")
+    click.echo(f"特征数: {len(blueprint.features)}")
+    click.echo(f"入场条件: {len(blueprint.entry_conditions)}条")
+    click.echo(f"出场条件: {len(blueprint.exit_conditions)}条")
+
+    # 生成实现计划
+    if not output:
+        output = md_path.parent / f"{md_path.stem}_implementation_plan.md"
+
+    plan = extractor.generate_implementation_plan(output)
+    click.echo(f"\n实现计划已保存: {output}")
+
+    # 输出YAML
+    if yaml:
+        import yaml as yaml_lib
+        yaml_path = Path(output).with_suffix('.yaml')
+        blueprint_dict = {
+            'strategy_name': blueprint.strategy_name,
+            'strategy_type': blueprint.strategy_type,
+            'description': blueprint.description,
+            'entry_conditions': blueprint.entry_conditions,
+            'exit_conditions': blueprint.exit_conditions,
+            'features': blueprint.features,
+            'model': {
+                'type': blueprint.model_type,
+                'params': blueprint.model_params
+            },
+            'backtest': {
+                'period': blueprint.backtest_period,
+                'rebalance_frequency': blueprint.rebalance_frequency,
+                'trading_costs': blueprint.trading_costs
+            },
+            'china_adaptations': blueprint.china_adaptations
+        }
+        with open(yaml_path, 'w', encoding='utf-8') as f:
+            yaml_lib.dump(blueprint_dict, f, allow_unicode=True, sort_keys=False)
+        click.echo(f"YAML配置已保存: {yaml_path}")
+
+    logger.info(f"Markdown策略提取完成: {blueprint.strategy_name}")
 
 
 if __name__ == "__main__":
