@@ -1,0 +1,21 @@
+# 数据访问
+pymysql>=1.1.0
+tushare>=1.2.89
+pandas>=2.0.0
+numpy>=1.24.0
+
+# 数据库连接池
+DBUtils>=3.0.0
+
+# API 重试机制
+tenacity>=8.2.0
+
+# 技术指标
+TA-Lib>=0.4.28
+
+# 配置和工具
+pyyaml>=6.0
+python-dotenv>=1.0.0
+
+# 日志
+loguru>=0.7.0

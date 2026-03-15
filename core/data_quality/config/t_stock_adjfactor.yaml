@@ -1,0 +1,52 @@
+# t_stock_adjfactor 复权因子数据质量检查规则配置
+table: t_stock_adjfactor
+database: tushare_biz
+
+rules:
+  # ========== 非空检查 ==========
+  - name: ts_code_not_null
+    type: not_null
+    column: ts_code
+    severity: error
+
+  - name: trade_date_not_null
+    type: not_null
+    column: trade_date
+    severity: error
+
+  - name: adj_factor_not_null
+    type: not_null
+    column: adj_factor
+    severity: error
+
+  # ========== 唯一性检查 ==========
+  - name: ts_code_trade_date_unique
+    type: unique
+    column: ts_code,trade_date
+    severity: error
+
+  # ========== 数值范围检查 ==========
+  - name: adj_factor_positive
+    type: custom_sql
+    sql: "SELECT ts_code, trade_date, adj_factor FROM t_stock_adjfactor WHERE adj_factor IS NOT NULL AND adj_factor <= 0"
+    severity: error
+
+  # ========== 连续性检查 ==========
+  # 同一股票的复权因子应该连续变化（相邻交易日变化不超过20%）
+  - name: adj_factor_continuity
+    type: custom_sql
+    sql: "SELECT a.ts_code, a.trade_date, a.adj_factor as curr_factor, b.adj_factor as prev_factor, ABS(a.adj_factor - b.adj_factor) / b.adj_factor as change_rate FROM t_stock_adjfactor a INNER JOIN t_stock_adjfactor b ON a.ts_code = b.ts_code AND a.trade_date = DATE_ADD(b.trade_date, INTERVAL 1 DAY) WHERE ABS(a.adj_factor - b.adj_factor) / b.adj_factor > 0.20"
+    severity: warning
+
+  # ========== 格式检查 ==========
+  - name: trade_date_format
+    type: format
+    column: trade_date
+    pattern: "^\\d{8}$"
+    severity: error
+
+  - name: ts_code_format
+    type: format
+    column: ts_code
+    pattern: "^\\d{6}\\.(SH|SZ|BJ)$"
+    severity: error

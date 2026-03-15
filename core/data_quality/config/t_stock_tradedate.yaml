@@ -1,0 +1,64 @@
+# t_stock_tradedate 交易日历数据质量检查规则配置
+table: t_stock_tradedate
+database: tushare_biz
+
+rules:
+  # ========== 非空检查 ==========
+  - name: exchange_not_null
+    type: not_null
+    column: exchange
+    severity: error
+
+  - name: cal_date_not_null
+    type: not_null
+    column: cal_date
+    severity: error
+
+  - name: is_open_not_null
+    type: not_null
+    column: is_open
+    severity: error
+
+  # ========== 唯一性检查 ==========
+  - name: exchange_cal_date_unique
+    type: unique
+    column: exchange,cal_date
+    severity: error
+
+  # ========== 枚举值检查 ==========
+  - name: exchange_enum
+    type: enum
+    column: exchange
+    values:
+      - "SSE"
+      - "SZSE"
+      - "BSE"
+    severity: error
+
+  - name: is_open_enum
+    type: enum
+    column: is_open
+    values:
+      - "0"
+      - "1"
+    severity: error
+
+  # ========== 格式检查 ==========
+  - name: cal_date_format
+    type: format
+    column: cal_date
+    pattern: "^\\d{8}$"
+    severity: error
+
+  # ========== 连续性检查 ==========
+  # 同一交易所的日期应该连续（无跳过的日期）
+  - name: date_continuity
+    type: custom_sql
+    sql: "SELECT exchange, cal_date FROM t_stock_tradedate t1 WHERE NOT EXISTS (SELECT 1 FROM t_stock_tradedate t2 WHERE t2.exchange = t1.exchange AND t2.cal_date = DATE_SUB(t1.cal_date, INTERVAL 1 DAY)) AND t1.cal_date != (SELECT MIN(cal_date) FROM t_stock_tradedate WHERE exchange = t1.exchange)"
+    severity: warning
+
+  # 检查pretrade_date是否正确指向上一交易日
+  - name: pretrade_date_consistency
+    type: custom_sql
+    sql: "SELECT exchange, cal_date, pretrade_date FROM t_stock_tradedate WHERE is_open = '1' AND pretrade_date IS NOT NULL AND pretrade_date != '' AND pretrade_date NOT IN (SELECT cal_date FROM t_stock_tradedate t2 WHERE t2.is_open = '1')"
+    severity: warning

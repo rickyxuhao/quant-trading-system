@@ -1,0 +1,18 @@
+[Unit]
+Description=Quant Trading Data Sync Scheduler
+After=network.target mysql.service
+
+[Service]
+Type=simple
+User=%I
+WorkingDirectory=/Users/xuhaoricky/ClawProject/Stock-trading-project
+Environment=PYTHONPATH=/Users/xuhaoricky/ClawProject/Stock-trading-project
+EnvironmentFile=/Users/xuhaoricky/ClawProject/Stock-trading-project/.env
+ExecStart=/Users/xuhaoricky/ClawProject/Stock-trading-project/.venv/bin/python -m core.scheduler.daily_sync_scheduler
+Restart=always
+RestartSec=10
+StandardOutput=append:/var/log/quant-scheduler.log
+StandardError=append:/var/log/quant-scheduler.log
+
+[Install]
+WantedBy=multi-user.target

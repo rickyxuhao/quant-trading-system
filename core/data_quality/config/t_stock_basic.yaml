@@ -1,0 +1,113 @@
+# t_stock_basic 数据质量检查规则配置
+table: t_stock_basic
+database: tushare_biz
+
+rules:
+  # ========== 非空检查 ==========
+  - name: ts_code_not_null
+    type: not_null
+    column: ts_code
+    severity: error
+    
+  - name: symbol_not_null
+    type: not_null
+    column: symbol
+    severity: error
+    
+  - name: name_not_null
+    type: not_null
+    column: name
+    severity: error
+    
+  - name: list_date_not_null
+    type: not_null
+    column: list_date
+    severity: error
+
+  # ========== 唯一性检查 ==========
+  - name: ts_code_unique
+    type: unique
+    column: ts_code
+    severity: error
+
+  # ========== 格式检查 ==========
+  - name: ts_code_format
+    type: format
+    column: ts_code
+    pattern: "^\\d{6}\\.(SH|SZ|BJ)$"
+    severity: error
+
+  - name: list_date_format
+    type: format
+    column: list_date
+    pattern: "^\\d{8}$"
+    severity: error
+
+  - name: delist_date_format
+    type: format
+    column: delist_date
+    pattern: "^\\d{8}$"
+    severity: warning
+
+  # ========== 枚举值检查 ==========
+  - name: market_enum
+    type: enum
+    column: market
+    values: 
+      - "主板"
+      - "创业板"
+      - "科创板"
+      - "北交所"
+      - "CDR"
+    severity: warning
+    
+  - name: list_status_enum
+    type: enum
+    column: list_status
+    values:
+      - "L"
+      - "D"
+      - "P"
+      - "G"
+    severity: error
+    
+  - name: exchange_enum
+    type: enum
+    column: exchange
+    values:
+      - "SSE"
+      - "SZSE"
+      - "BSE"
+    severity: warning
+    
+  - name: is_hs_enum
+    type: enum
+    column: is_hs
+    values:
+      - "N"
+      - "H"
+      - "S"
+      - ""
+    severity: info
+
+  # ========== 自定义 SQL 检查 ==========
+  - name: delist_date_consistency_for_delisted
+    type: custom_sql
+    sql: "SELECT ts_code, name, list_status, delist_date FROM t_stock_basic WHERE list_status='D' AND (delist_date IS NULL OR delist_date='')"
+    severity: warning
+    
+  - name: delist_date_should_empty_for_listed
+    type: custom_sql
+    sql: "SELECT ts_code, name, list_status, delist_date FROM t_stock_basic WHERE list_status='L' AND delist_date IS NOT NULL AND delist_date!=''"
+    severity: warning
+    
+  - name: ts_code_exchange_match
+    type: custom_sql
+    sql: "SELECT ts_code, name, exchange FROM t_stock_basic WHERE (ts_code LIKE '%.SH' AND exchange != 'SSE') OR (ts_code LIKE '%.SZ' AND exchange != 'SZSE')"
+    severity: warning
+
+  # list_date <= delist_date（如果delist_date不为空）
+  - name: list_delist_date_consistency
+    type: custom_sql
+    sql: "SELECT ts_code, name, list_date, delist_date FROM t_stock_basic WHERE delist_date IS NOT NULL AND delist_date != '' AND list_date > delist_date"
+    severity: error

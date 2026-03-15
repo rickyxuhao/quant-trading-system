@@ -1,0 +1,94 @@
+# 券商金股监控分析系统配置
+
+# 数据同步配置
+sync:
+  # 同步月份范围（默认最近3个月）
+  default_months: 3
+  # 批量插入批次大小
+  batch_size: 1000
+  # 重试次数
+  retry_count: 3
+
+# 分析配置
+analysis:
+  # 评分权重
+  weights:
+    technical: 0.30    # 技术分析权重
+    financial: 0.30    # 财务分析权重
+    quant: 0.30        # 量化因子权重
+    sentiment: 0.10    # 市场情绪权重
+
+  # 技术参数
+  technical:
+    ma_periods: [5, 10, 20, 60]
+    rsi_period: 14
+    macd_fast: 12
+    macd_slow: 26
+    macd_signal: 9
+    bb_period: 20
+    bb_std: 2
+
+  # 财务评分阈值
+  financial:
+    pe_low: 15
+    pe_high: 40
+    pb_low: 1.5
+    pb_high: 6
+    roe_excellent: 20
+    roe_good: 15
+    roe_poor: 5
+
+# 异动检测配置
+anomaly:
+  # 价格异动阈值 (%)
+  price_change_threshold: 5.0
+  # 严重价格异动阈值 (%)
+  severe_price_change: 7.0
+  # 量比阈值
+  volume_ratio_threshold: 2.0
+  # 涨停/跌停检测
+  limit_up_threshold: 9.5
+  limit_down_threshold: -9.5
+  # 检测天数
+  detect_days: 5
+
+# 新闻分析配置
+news:
+  # 获取新闻天数
+  fetch_days: 7
+  # 每只股票新闻数量
+  news_limit: 10
+  # 情感分析阈值
+  sentiment_threshold: 0.3
+
+# 报告配置
+report:
+  # 生成时间 (HH:MM)
+  generate_time: "08:00"
+  # 展示金股数量
+  top_stocks_limit: 20
+  # 输出格式
+  formats:
+    - markdown
+    # - pdf  # 需要安装额外依赖
+  # 报告输出目录
+  output_dir: "report/output"
+
+# AI配置
+ai:
+  # 使用的模型
+  model: "claude-sonnet-4-6"
+  # 最大token数
+  max_tokens: 2000
+  # 温度参数
+  temperature: 0.3
+  # 是否启用AI分析
+  enabled: true
+
+# 调度配置
+scheduler:
+  # 定时任务表达式 (cron)
+  # 默认：工作日早上8点
+  cron: "0 8 * * 1-5"
+  # 时区
+  timezone: "Asia/Shanghai"

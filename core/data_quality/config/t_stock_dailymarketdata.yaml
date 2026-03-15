@@ -1,0 +1,210 @@
+# t_stock_dailymarketdata 日线行情数据质量检查规则配置
+table: t_stock_dailymarketdata
+database: tushare_biz
+
+rules:
+  # ========== 非空检查 ==========
+  - name: ts_code_not_null
+    type: not_null
+    column: ts_code
+    severity: error
+
+  - name: trade_date_not_null
+    type: not_null
+    column: trade_date
+    severity: error
+
+  - name: open_not_null
+    type: not_null
+    column: open
+    severity: error
+
+  - name: high_not_null
+    type: not_null
+    column: high
+    severity: error
+
+  - name: low_not_null
+    type: not_null
+    column: low
+    severity: error
+
+  - name: close_not_null
+    type: not_null
+    column: close
+    severity: error
+
+  - name: pre_close_not_null
+    type: not_null
+    column: pre_close
+    severity: error
+
+  # ========== 唯一性检查 ==========
+  - name: ts_code_trade_date_unique
+    type: unique
+    column: ts_code,trade_date
+    severity: error
+
+  # ========== 数值范围检查 ==========
+  - name: open_positive
+    type: custom_sql
+    sql: "SELECT ts_code, trade_date, open FROM t_stock_dailymarketdata WHERE open IS NOT NULL AND open <= 0"
+    severity: error
+
+  - name: high_positive
+    type: custom_sql
+    sql: "SELECT ts_code, trade_date, high FROM t_stock_dailymarketdata WHERE high IS NOT NULL AND high <= 0"
+    severity: error
+
+  - name: low_positive
+    type: custom_sql
+    sql: "SELECT ts_code, trade_date, low FROM t_stock_dailymarketdata WHERE low IS NOT NULL AND low <= 0"
+    severity: error
+
+  - name: close_positive
+    type: custom_sql
+    sql: "SELECT ts_code, trade_date, close FROM t_stock_dailymarketdata WHERE close IS NOT NULL AND close <= 0"
+    severity: error
+
+  - name: pre_close_positive
+    type: custom_sql
+    sql: "SELECT ts_code, trade_date, pre_close FROM t_stock_dailymarketdata WHERE pre_close IS NOT NULL AND pre_close <= 0"
+    severity: error
+
+  # high >= max(open, close, low)
+  - name: high_should_be_highest
+    type: custom_sql
+    sql: "SELECT ts_code, trade_date, open, high, low, close FROM t_stock_dailymarketdata WHERE high < open OR high < close OR high < low"
+    severity: error
+
+  # low <= min(open, close, high)
+  - name: low_should_be_lowest
+    type: custom_sql
+    sql: "SELECT ts_code, trade_date, open, high, low, close FROM t_stock_dailymarketdata WHERE low > open OR low > close OR low > high"
+    severity: error
+
+  # abs(t_change) <= high - low（价格变动不超过当日振幅）
+  - name: change_within_range
+    type: custom_sql
+    sql: "SELECT ts_code, trade_date, t_change, high, low, (high - low) as range_val FROM t_stock_dailymarketdata WHERE ABS(t_change) > (high - low)"
+    severity: warning
+
+  # abs(pct_chg) < 21（涨跌幅不超过20%，科创板/创业板放宽到40%）
+  - name: pct_chg_normal_range
+    type: custom_sql
+    sql: "SELECT ts_code, trade_date, pct_chg FROM t_stock_dailymarketdata WHERE (ts_code LIKE '688%.SH' OR ts_code LIKE '300%.SZ' OR ts_code LIKE '301%.SZ') AND ABS(pct_chg) >= 41"
+    severity: warning
+
+  - name: pct_chg_kcb_cyb_range
+    type: custom_sql
+    sql: "SELECT ts_code, trade_date, pct_chg FROM t_stock_dailymarketdata WHERE NOT (ts_code LIKE '688%.SH' OR ts_code LIKE '300%.SZ' OR ts_code LIKE '301%.SZ') AND ABS(pct_chg) >= 21"
+    severity: warning
+
+  # ========== 交叉验证检查 ==========
+  # close ≈ pre_close * (1 + pct_chg/100)（允许0.01误差）
+  - name: close_pct_chg_consistency
+    type: custom_sql
+    sql: "SELECT ts_code, trade_date, close, pre_close, pct_chg FROM t_stock_dailymarketdata WHERE ABS(close - pre_close * (1 + pct_chg/100)) > 0.01"
+    severity: warning
+
+  # vol >= 0
+  - name: vol_non_negative
+    type: custom_sql
+    sql: "SELECT ts_code, trade_date, vol FROM t_stock_dailymarketdata WHERE vol IS NOT NULL AND vol < 0"
+    severity: error
+
+  # amount >= 0
+  - name: amount_non_negative
+    type: custom_sql
+    sql: "SELECT ts_code, trade_date, amount FROM t_stock_dailymarketdata WHERE amount IS NOT NULL AND amount < 0"
+    severity: error
+
+  # ========== 格式检查 ==========
+  - name: trade_date_format
+    type: format
+    column: trade_date
+    pattern: "^\\d{8}$"
+    severity: error
+
+  - name: ts_code_format
+    type: format
+    column: ts_code
+    pattern: "^\\d{6}\\.(SH|SZ|BJ)$"
+    severity: error
+
+  # ========== 价格连续性检查 ==========
+  # 检查是否存在缺失的交易日数据
+  - name: price_continuity_check
+    type: custom_sql
+    sql: |
+      SELECT
+        d.ts_code,
+        d.trade_date,
+        t.pretrade_date as expected_prev_date,
+        LAG(d.trade_date) OVER (PARTITION BY d.ts_code ORDER BY d.trade_date) as actual_prev_date
+      FROM t_stock_dailymarketdata d
+      JOIN t_stock_tradedate t ON d.trade_date = t.cal_date AND t.exchange = IF(d.ts_code LIKE '%.SH', 'SSE', 'SZSE')
+      WHERE d.trade_date >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 30 DAY), '%Y%m%d')
+      HAVING actual_prev_date IS NOT NULL AND actual_prev_date != expected_prev_date
+    severity: warning
+
+  # ========== 价格变动合理性检查（普通股票 ±10%） ==========
+  - name: price_change_normal_limit
+    type: custom_sql
+    sql: |
+      SELECT ts_code, trade_date, pct_chg, '主板/中小板' as market_type
+      FROM t_stock_dailymarketdata d
+      WHERE trade_date >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 7 DAY), '%Y%m%d')
+        AND NOT (ts_code LIKE '688%.SH' OR ts_code LIKE '300%.SZ' OR ts_code LIKE '301%.SZ' OR ts_code LIKE '8%.BJ' OR ts_code LIKE '9%.BJ')
+        AND ABS(pct_chg) > 10.5
+        AND pre_close > 0
+        AND NOT EXISTS (
+          SELECT 1 FROM t_stock_st_list s
+          WHERE s.ts_code = d.ts_code AND s.trade_date = d.trade_date
+        )
+    severity: error
+
+  # ========== 价格变动合理性检查（ST股票 ±5%） ==========
+  - name: price_change_st_limit
+    type: custom_sql
+    sql: |
+      SELECT d.ts_code, d.trade_date, d.pct_chg, 'ST股票' as market_type
+      FROM t_stock_dailymarketdata d
+      JOIN t_stock_st_list s ON d.ts_code = s.ts_code AND d.trade_date = s.trade_date
+      WHERE d.trade_date >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 7 DAY), '%Y%m%d')
+        AND ABS(d.pct_chg) > 5.5
+        AND d.pre_close > 0
+    severity: error
+
+  # ========== 价格变动合理性检查（科创板/创业板 ±20%） ==========
+  - name: price_change_kcb_cyb_limit
+    type: custom_sql
+    sql: |
+      SELECT ts_code, trade_date, pct_chg,
+        CASE
+          WHEN ts_code LIKE '688%.SH' THEN '科创板'
+          WHEN ts_code LIKE '30%.SZ' THEN '创业板'
+          ELSE '其他'
+        END as market_type
+      FROM t_stock_dailymarketdata d
+      WHERE trade_date >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 7 DAY), '%Y%m%d')
+        AND (ts_code LIKE '688%.SH' OR ts_code LIKE '300%.SZ' OR ts_code LIKE '301%.SZ')
+        AND ABS(pct_chg) > 20.5
+        AND pre_close > 0
+        AND NOT EXISTS (
+          SELECT 1 FROM t_stock_st_list s
+          WHERE s.ts_code = d.ts_code AND s.trade_date = d.trade_date
+        )
+    severity: error
+
+  # ========== 价格变动合理性检查（北交所 ±30%） ==========
+  - name: price_change_bjx_limit
+    type: custom_sql
+    sql: |
+      SELECT ts_code, trade_date, pct_chg, '北交所' as market_type
+      FROM t_stock_dailymarketdata
+      WHERE trade_date >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 7 DAY), '%Y%m%d')
+        AND (ts_code LIKE '8%.BJ' OR ts_code LIKE '9%.BJ')
+        AND ABS(pct_chg) > 30.5
+        AND pre_close > 0
+    severity: error

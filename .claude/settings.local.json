@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:tushare.pro)",
+      "Bash(python cli.py sync)",
+      "Bash(bash scripts/setup_cron.sh)",
+      "Bash(poetry run:*)"
+    ]
+  }
+}

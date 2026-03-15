@@ -1,0 +1,56 @@
+# t_stock_st_list ST股票列表数据质量检查规则配置
+table: t_stock_st_list
+database: tushare_biz
+
+rules:
+  # ========== 非空检查 ==========
+  - name: ts_code_not_null
+    type: not_null
+    column: ts_code
+    severity: error
+
+  - name: trade_date_not_null
+    type: not_null
+    column: trade_date
+    severity: error
+
+  # ========== 唯一性检查 ==========
+  - name: ts_code_trade_date_unique
+    type: unique
+    column: ts_code,trade_date
+    severity: error
+
+  # ========== 外键检查 ==========
+  # ts_code 应该在 t_stock_basic 中存在
+  - name: ts_code_foreign_key
+    type: referential
+    column: ts_code
+    ref_table: t_stock_basic
+    ref_column: ts_code
+    severity: error
+
+  # ========== 格式检查 ==========
+  - name: trade_date_format
+    type: format
+    column: trade_date
+    pattern: "^\\d{8}$"
+    severity: error
+
+  - name: ts_code_format
+    type: format
+    column: ts_code
+    pattern: "^\\d{6}\\.(SH|SZ|BJ)$"
+    severity: error
+
+  # ========== 日期检查 ==========
+  # trade_date 应该是交易日
+  - name: trade_date_is_trading_day
+    type: custom_sql
+    sql: "SELECT s.ts_code, s.trade_date FROM t_stock_st_list s LEFT JOIN t_stock_tradedate t ON s.trade_date = t.cal_date AND (CASE WHEN s.ts_code LIKE '%.SH' THEN 'SSE' WHEN s.ts_code LIKE '%.SZ' THEN 'SZSE' WHEN s.ts_code LIKE '%.BJ' THEN 'BSE' END) = t.exchange WHERE t.is_open IS NULL OR t.is_open != '1'"
+    severity: warning
+
+  # 检查重复的ST状态（同一股票连续多天的相同ST状态）
+  - name: st_status_duplication
+    type: custom_sql
+    sql: "SELECT ts_code, trade_date, name FROM t_stock_st_list s1 WHERE EXISTS (SELECT 1 FROM t_stock_st_list s2 WHERE s2.ts_code = s1.ts_code AND s2.trade_date = DATE_SUB(s1.trade_date, INTERVAL 1 DAY) AND s2.name = s1.name)"
+    severity: info

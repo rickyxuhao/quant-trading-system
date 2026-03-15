@@ -1,0 +1,80 @@
+# 数据同步任务配置
+# 
+# 任务类型说明:
+# - task_type: tushare_stock_basic - 股票基础信息同步
+#              tushare_trade_date - 交易日历同步
+# - sync_type: full(全量) / incremental(增量)
+# - schedule: cron 表达式（可选，用于定时调度）
+# - check_after_sync: 同步后是否运行数据检查（默认true）
+# - depends_on: 依赖的任务列表
+# 
+# 速率限制:
+# - batch_size: 单次请求记录数（0表示不限制，由Tushare决定）
+# - max_requests_per_minute: 每分钟最大接口调用次数
+
+tasks:
+  # 股票基础信息 - 每天早上9点全量同步
+  - name: stock_basic
+    task_type: tushare_stock_basic
+    table: t_stock_basic
+    db: tushare_biz
+    sync_type: full
+    schedule: "0 9 * * *"
+    check_after_sync: true
+    # 速率限制
+    batch_size: 0           # 0表示不分批，一次获取全部
+    max_requests_per_minute: 500
+
+  # 交易日历 - 每年1月1号全量同步（只同步SSE上交所数据）
+  # 注意：需要同步当年及未来3年的日历数据
+  - name: trade_date
+    task_type: tushare_trade_date
+    table: t_stock_tradedate
+    db: tushare_biz
+    sync_type: full
+    schedule: "0 9 1 1 *"   # 每年1月1号9点
+    check_after_sync: true
+    # 速率限制: trade_cal接口每年365条日历数据(含交易日和非交易日)
+    batch_size: 0           # 0表示按年获取
+    max_requests_per_minute: 500
+
+  # 股票日线行情 - 每天16:00增量同步(首次全量2005年起)
+  # 按交易日逐日获取，每次6000条，每分钟最多500次
+  - name: stock_daily_market_data
+    task_type: tushare_stock_dailymarketdata
+    table: t_stock_dailymarketdata
+    db: tushare_biz
+    sync_type: incremental
+    schedule: "0 16 * * *"  # 每天16点
+    check_after_sync: true
+    # 速率限制: daily接口每次最多6000条
+    batch_size: 6000
+    max_requests_per_minute: 500
+
+  # ST股票列表 - 每天收盘后16:30增量同步
+  # 依赖日线行情，在其完成后执行
+  # 数据从20160101开始，接口每次最大返回1000行
+  - name: stock_st_list
+    task_type: tushare_stock_st_list
+    table: t_stock_st_list
+    db: tushare_biz
+    sync_type: incremental
+    schedule: "30 16 * * *"  # 每天16:30
+    check_after_sync: true
+    depends_on: [stock_daily_market_data]  # 依赖日线行情
+    # 速率限制: stock_st接口每次最多1000行，支持分页
+    batch_size: 1000        # 单次请求1000行
+    max_requests_per_minute: 500
+
+  # 复权因子 - 每天收盘后16:15增量同步(首次全量2005年起)
+  # 按交易日逐日获取，每次6000条，每分钟最多500次
+  - name: stock_adj_factor
+    task_type: tushare_stock_adjfactor
+    table: t_stock_adjfactor
+    db: tushare_biz
+    sync_type: incremental
+    schedule: "15 16 * * *"  # 每天16:15
+    check_after_sync: true
+    # 速率限制: adj_factor接口每次最多6000条
+    batch_size: 6000
+    max_requests_per_minute: 500
