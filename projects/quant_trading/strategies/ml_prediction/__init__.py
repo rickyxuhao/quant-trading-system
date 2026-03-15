@@ -12,7 +12,7 @@
 from .feature_engineering import FeatureEngineer, TechnicalFeatureConfig
 from .lstm_model import LSTMModel, LSTMConfig
 from .xgboost_model import XGBoostModel, XGBoostConfig
-from .ml_strategy import MLStrategy
+from .ml_strategy import MLStrategy, MLStrategyConfig
 
 __all__ = [
     "FeatureEngineer",
@@ -22,4 +22,5 @@ __all__ = [
     "XGBoostModel",
     "XGBoostConfig",
     "MLStrategy",
+    "MLStrategyConfig",
 ]

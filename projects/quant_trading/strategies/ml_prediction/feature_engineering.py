@@ -312,14 +312,15 @@ class FeatureEngineer:
         if target_type == 'direction':
             # 分类：1=涨, 0=平, -1=跌
             target = pd.cut(future_return, bins=[-np.inf, -0.005, 0.005, np.inf], labels=[-1, 0, 1])
-            target = target.astype(int)
+            # Convert to numeric, NaN will remain NaN
+            target = pd.to_numeric(target, errors='coerce')
         elif target_type == 'return':
             # 回归：未来收益率
             target = future_return
         elif target_type == 'quantile':
             # 分位数标签
             target = pd.qcut(future_return, q=5, labels=[0, 1, 2, 3, 4])
-            target = target.astype(int)
+            target = pd.to_numeric(target, errors='coerce')
 
         return target
 

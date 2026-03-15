@@ -70,6 +70,7 @@ def get_xgb_params(config: XGBoostConfig) -> Dict[str, Any]:
         'objective': config.objective,
         'random_state': 42,
         'n_jobs': -1,
+        'early_stopping_rounds': config.early_stopping_rounds,
     }
 
     if config.num_class > 1:
@@ -140,7 +141,6 @@ class XGBoostModel:
         self.model.fit(
             X_train, y_train,
             eval_set=eval_set,
-            early_stopping_rounds=self.config.early_stopping_rounds,
             verbose=verbose
         )
 
@@ -372,10 +372,7 @@ class XGBoostModel:
 
     def load(self, path: str) -> None:
         """加载模型"""
-        self.model = self._get_model()
-        self.model.load_model(path)
-
-        # 加载配置
+        # 先加载配置，以便创建正确类型的模型
         import json
         config_path = Path(path).with_suffix('.config.json')
         if config_path.exists():
@@ -386,5 +383,9 @@ class XGBoostModel:
                 for key, value in data['config'].items():
                     if hasattr(self.config, key):
                         setattr(self.config, key, value)
+
+        # 根据配置创建正确类型的模型，然后加载权重
+        self.model = self._get_model()
+        self.model.load_model(path)
 
         logger.info(f"模型已从{path}加载")

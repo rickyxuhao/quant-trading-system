@@ -111,6 +111,11 @@ def run_ml_backtest(
         val_mask = y_val.notna()
         X_val, y_val = X_val[val_mask], y_val[val_mask]
 
+        # 映射标签: -1->0, 0->1, 1->2 (XGBoost需要非负整数标签)
+        label_map = {-1: 0, 0: 1, 1: 2}
+        y_train = y_train.map(label_map)
+        y_val = y_val.map(label_map)
+
         logger.info(f"训练集: {len(X_train)}, 验证集: {len(X_val)}")
 
         if model_type == 'xgboost':
@@ -127,7 +132,10 @@ def run_ml_backtest(
         model.fit(X_train, y_train, X_val, y_val, verbose=True)
 
         # 保存模型
-        model_path = f"ml_model_{symbol.replace('.', '_')}_{model_type}.json"
+        if model_type == 'xgboost':
+            model_path = f"ml_model_{symbol.replace('.', '_')}_{model_type}.json"
+        else:
+            model_path = f"ml_model_{symbol.replace('.', '_')}_{model_type}.keras"
         model.save(model_path)
         logger.info(f"模型已保存: {model_path}")
 
@@ -138,6 +146,8 @@ def run_ml_backtest(
         X_test, y_test = X_test[test_mask], y_test[test_mask]
 
         if len(X_test) > 0:
+            # 同样映射测试集标签
+            y_test = y_test.map(label_map)
             metrics = model.evaluate(X_test, y_test)
             logger.info(f"测试集指标: {metrics}")
 

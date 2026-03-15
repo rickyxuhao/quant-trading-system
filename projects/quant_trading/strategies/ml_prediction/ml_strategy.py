@@ -339,7 +339,10 @@ class MLStrategy(BaseStrategy):
 
         # 保存模型
         if self.model and self.model.model is not None:
-            model_path = f'ml_model_{self.p.model_type}.json'
+            if self.p.model_type == 'xgboost':
+                model_path = f'ml_model_{self.p.model_type}.json'
+            else:
+                model_path = f'ml_model_{self.p.model_type}.keras'
             self.model.save(model_path)
 
         super().stop()
