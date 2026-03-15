@@ -1,0 +1,77 @@
+# 统计套利策略配置
+
+# 茅台-五粮液配对策略
+maotai_wuliang_pair:
+  symbols:
+    maotai: "600519.SH"
+    wuliangye: "000858.SZ"
+
+  # 数据配置
+  data:
+    start_date: "2019-01-01"
+    end_date: "2024-12-31"
+    frequency: "daily"
+
+  # 协整检验配置
+  cointegration:
+    lookback_window: 60
+    significance_level: 0.05
+    recalc_frequency: 20  # 每20天重新计算
+
+  # 信号生成配置
+  signal:
+    entry_threshold: 2.0      # Z-score开仓阈值
+    exit_threshold: 0.5       # Z-score平仓阈值
+    stop_threshold: 3.5       # Z-score止损阈值
+    lookback_window: 20       # Z-score计算窗口
+    adf_monitoring: true      # 动态监测协整关系
+    adf_pvalue_threshold: 0.1 # ADF检验p值阈值
+
+  # 仓位管理配置
+  position:
+    max_position_pct: 0.1     # 最大仓位占比
+    single_side_pct: 0.05     # 单边仓位占比
+    volatility_adjust: true   # 波动率调整
+    atr_window: 14
+
+  # 风险控制配置
+  risk_control:
+    stop_loss_pct: 0.05       # 止损比例
+    take_profit_pct: 0.1      # 止盈比例
+    trailing_stop: true       # 移动止盈
+    trailing_activation: 0.10 # 移动止盈启动盈利
+    trailing_drawdown: 0.05   # 移动止盈回撤触发
+    time_stop_days: 25        # 时间止损天数
+    max_drawdown_pct: 0.15    # 最大回撤
+
+  # 成本配置（中国市场）
+  costs:
+    commission_rate: 0.00025  # 佣金率 0.025%
+    stamp_duty_rate: 0.001    # 印花税 0.1%（仅卖出）
+    transfer_fee: 0.00002     # 过户费
+    min_commission: 5.0       # 最低佣金
+    slippage: 0.0005          # 滑点 0.05%
+
+  # 分级止盈配置
+  staged_exit:
+    enabled: true
+    first_stage_profit: 0.05  # 5%止盈
+    first_stage_pct: 0.3      # 平30%仓位
+    second_stage_profit: 0.10 # 10%止盈
+    second_stage_pct: 1.0     # 平全部仓位
+
+# 通用配对策略配置
+general_pair_trading:
+  # 配对筛选配置
+  pair_selection:
+    min_correlation: 0.8
+    max_distance: 2.0
+    min_common_days: 60
+    max_price_ratio: 5.0
+    min_market_cap: 1000000000  # 10亿
+
+  # 回测配置
+  backtest:
+    initial_capital: 1000000
+    rebalance_frequency: "daily"
+    position_limit: 10  # 最多持有10对
