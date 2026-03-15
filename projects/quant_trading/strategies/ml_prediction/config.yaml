@@ -1,0 +1,78 @@
+# 机器学习预测策略配置
+
+# 通用配置
+ml_strategy:
+  initial_capital: 1000000
+  position_size_pct: 0.1
+  max_positions: 5
+
+  # 信号阈值
+  confidence_threshold: 0.6
+  long_threshold: 0.55
+  short_threshold: 0.45
+
+  # 模型更新
+  retrain_frequency: 63  # 季度重新训练
+  min_train_samples: 252  # 最少1年数据
+
+  # 预测目标
+  prediction_horizon: 1
+  target_type: "direction"  # direction, return, quantile
+
+# XGBoost配置
+xgboost:
+  n_estimators: 100
+  max_depth: 6
+  learning_rate: 0.1
+  subsample: 0.8
+  colsample_bytree: 0.8
+  colsample_bylevel: 0.8
+  min_child_weight: 1
+  gamma: 0
+  reg_alpha: 0.1
+  reg_lambda: 1.0
+  early_stopping_rounds: 20
+  eval_metric: "logloss"  # 分类任务
+  objective: "multi:softprob"  # 或 reg:squarederror
+  num_class: 3  # 跌、平、涨
+
+# LSTM配置
+lstm:
+  sequence_length: 20
+  lstm_units: [64, 32]
+  num_layers: 2
+  dropout_rate: 0.2
+  use_bidirectional: false
+  use_attention: false
+  batch_size: 32
+  epochs: 100
+  learning_rate: 0.001
+  early_stopping_patience: 10
+  reduce_lr_patience: 5
+
+# 特征工程配置
+feature_engineering:
+  lookback_window: 20
+
+  technical_indicators:
+    use_sma: true
+    sma_periods: [5, 10, 20, 60]
+    use_ema: true
+    ema_periods: [12, 26]
+    use_rsi: true
+    rsi_period: 14
+    use_macd: true
+    use_stoch: true
+    use_bollinger: true
+    bb_period: 20
+    use_atr: true
+    atr_period: 14
+    use_obv: true
+    use_vwap: true
+    use_price_patterns: true
+
+  macro_features:
+    use_bond_yield: true
+    use_exchange_rate: false
+    use_market_index: true
+    use_sector_index: true
