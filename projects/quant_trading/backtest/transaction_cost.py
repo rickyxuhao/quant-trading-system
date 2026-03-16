@@ -58,6 +58,7 @@ class CostBreakdown:
         other_fees: 其他费用
         total: 总费用
         total_pct: 总费用占交易金额比例
+        metadata: 额外元数据
     """
     commission: float = 0.0
     tax: float = 0.0
@@ -66,13 +67,16 @@ class CostBreakdown:
     other_fees: float = 0.0
     total: float = 0.0
     total_pct: float = 0.0
+    metadata: Dict[str, Any] = None
 
     def __post_init__(self):
         """计算总费用"""
         self.total = self.commission + self.tax + self.transfer_fee + \
                      self.exchange_fee + self.other_fees
+        if self.metadata is None:
+            self.metadata = {}
 
-    def to_dict(self) -> Dict[str, float]:
+    def to_dict(self) -> Dict[str, Any]:
         """转换为字典"""
         return {
             'commission': self.commission,
@@ -81,7 +85,8 @@ class CostBreakdown:
             'exchange_fee': self.exchange_fee,
             'other_fees': self.other_fees,
             'total': self.total,
-            'total_pct': self.total_pct
+            'total_pct': self.total_pct,
+            'metadata': self.metadata
         }
 
 

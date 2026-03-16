@@ -293,7 +293,6 @@ def create_mean_reversion_config() -> EnhancedRiskConfig:
             'signal_reverse',
         ],
         max_drawdown_pct=0.10,
-        max_holding_days=5,
     )
 
 
