@@ -799,8 +799,8 @@ class DataManager:
         """
         try:
             df = self.get_stock_data(ts_code, start_date, end_date, adjust=False)
-            actual_dates = set(df.index.normalize())
-            expected_dates = set(d.normalize() for d in trade_dates)
+            actual_dates = set(pd.Timestamp(d).normalize() for d in df.index)
+            expected_dates = set(pd.Timestamp(d).normalize() for d in trade_dates)
             missing_dates = expected_dates - actual_dates
 
             if missing_dates:
@@ -866,8 +866,9 @@ class DataManager:
         if not self._trade_dates:
             return None
 
-        date_normalized = date.normalize()
-        valid_dates = [d for d in self._trade_dates if d < date_normalized]
+        # 支持 datetime 和 pd.Timestamp
+        date_normalized = pd.Timestamp(date).normalize()
+        valid_dates = [d for d in self._trade_dates if pd.Timestamp(d).normalize() < date_normalized]
 
         if len(valid_dates) >= n:
             return valid_dates[-n]
@@ -886,8 +887,9 @@ class DataManager:
         if not self._trade_dates:
             return None
 
-        date_normalized = date.normalize()
-        valid_dates = [d for d in self._trade_dates if d > date_normalized]
+        # 支持 datetime 和 pd.Timestamp
+        date_normalized = pd.Timestamp(date).normalize()
+        valid_dates = [d for d in self._trade_dates if pd.Timestamp(d).normalize() > date_normalized]
 
         if len(valid_dates) >= n:
             return valid_dates[n - 1]
