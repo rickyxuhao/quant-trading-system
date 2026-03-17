@@ -27,10 +27,7 @@ try:
         StockFilter,
         FilterPresets,
     )
-    from projects.quant_trading.backtest.portfolio import (
-        Portfolio,
-        TransactionCost,
-    )
+    from projects.quant_trading.backtest.portfolio import Portfolio
     from projects.quant_trading.backtest.strategy import BaseStrategy
     from projects.quant_trading.backtest.risk_manager import RiskManager, RiskConfig
     from projects.quant_trading.backtest.metrics import MetricsCalculator
@@ -66,7 +63,6 @@ class BacktestError(Exception):
     """回测引擎异常"""
 
 
-
 @dataclass
 class BacktestConfig:
     """回测配置"""
@@ -90,13 +86,13 @@ class BacktestConfig:
     def __post_init__(self) -> None:
         """验证配置"""
         if self.start_date >= self.end_date:
-            raise ValueError(f"start_date must be before end_date")
+            raise ValueError("start_date must be before end_date")
         if self.initial_cash <= 0:
-            raise ValueError(f"initial_cash must be positive")
+            raise ValueError("initial_cash must be positive")
         if self.max_positions < self.min_positions:
-            raise ValueError(f"max_positions must be >= min_positions")
+            raise ValueError("max_positions must be >= min_positions")
         if self.commission_rate < 0 or self.slippage_rate < 0:
-            raise ValueError(f"commission_rate and slippage_rate must be non-negative")
+            raise ValueError("commission_rate and slippage_rate must be non-negative")
 
     @property
     def rebalance_frequency(self) -> RebalanceFrequency:
@@ -193,9 +189,6 @@ class BacktestEngine:
         self.stock_filter = stock_filter or StockFilter(self.data_manager)
 
         # Initialize portfolio
-        tx_cost = TransactionCost(
-            commission_rate=config.commission_rate, slip_rate=config.slippage_rate
-        )
         self.portfolio = Portfolio(
             initial_cash=config.initial_cash,
             commission_rate=config.commission_rate,
@@ -765,7 +758,7 @@ if __name__ == "__main__":
         engine = BacktestEngine(config, strategy)
 
         results = engine.run()
-        print(f"\n回测结果摘要:")
+        print("\n回测结果摘要:")
         print(f"总收益率: {results['summary'].get('total_return', 0)*100:.2f}%")
         print(f"最终净值: {results['summary'].get('nav', 0):.4f}")
 

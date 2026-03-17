@@ -314,7 +314,6 @@ def render_ic_ir_analysis():
 
         # 生成IR数据（累积IC/累积IC标准差）
         cum_ic = np.cumsum(ic_values)
-        rolling_std = pd.Series(ic_values).rolling(window=12).std() * np.sqrt(12)
         ir_values = (
             cum_ic
             / (np.arange(1, len(ic_values) + 1))

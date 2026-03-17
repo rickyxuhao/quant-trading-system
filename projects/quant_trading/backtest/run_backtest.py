@@ -49,7 +49,7 @@ try:
     )
 except ImportError as e:
     print(f"[Error] Failed to import required modules: {e}")
-    print(f"Please run this script from the project root directory")
+    print("Please run this script from the project root directory")
     sys.exit(1)
 
 

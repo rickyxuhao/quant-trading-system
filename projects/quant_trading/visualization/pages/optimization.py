@@ -60,9 +60,7 @@ def render_parameter_controls():
 
     # 策略选择
     st.subheader("策略选择")
-    strategy = st.selectbox(
-        "选择策略", ["MA趋势策略", "均值回归策略", "ML预测策略"], key="opt_strategy"
-    )
+    st.selectbox("选择策略", ["MA趋势策略", "均值回归策略", "ML预测策略"], key="opt_strategy")
 
     # MA参数
     st.subheader("均线参数")

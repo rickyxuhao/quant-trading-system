@@ -133,7 +133,7 @@ def render_sidebar():
 
         # 基准选择
         st.subheader("基准对比")
-        benchmark = st.selectbox(
+        st.selectbox(
             "选择基准",
             ["000300.SH (沪深300)", "000905.SH (中证500)", "000001.SH (上证指数)"],
             index=0,

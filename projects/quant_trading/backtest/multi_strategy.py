@@ -484,8 +484,10 @@ def plot_comparison(
     x = np.arange(len(results))
     ax4_twin = ax4.twinx()
 
-    bars = ax4.bar(x - 0.2, win_rates, 0.4, label="Win Rate", color="steelblue")
-    bars2 = ax4_twin.bar(x + 0.2, total_trades, 0.4, label="Total Trades", color="coral")
+    _bars = ax4.bar(x - 0.2, win_rates, 0.4, label="Win Rate", color="steelblue")  # noqa: F841
+    _bars2 = ax4_twin.bar(  # noqa: F841
+        x + 0.2, total_trades, 0.4, label="Total Trades", color="coral"
+    )
 
     ax4.set_title("Trading Statistics")
     ax4.set_xlabel("Strategy")
