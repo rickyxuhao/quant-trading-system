@@ -463,33 +463,39 @@ class CrossSectionalFeatureEngineer:
             # 计算各行业平均收益
             sector_returns = {}
             for period in [20, 60]:
+                col_name = f"return_{period}d"
+                if col_name not in stock_returns.columns:
+                    continue
+
                 sector_returns[period] = {}
 
                 for industry in set(industries.values()):
                     industry_stocks = [s for s, ind in industries.items() if ind == industry]
                     if len(industry_stocks) > 0:
-                        avg_return = stock_returns.loc[industry_stocks, f"return_{period}d"].mean()
+                        avg_return = stock_returns.loc[industry_stocks, col_name].mean()
                         sector_returns[period][industry] = avg_return
 
             # 计算个股相对行业超额收益
             for stock in stock_pool:
                 industry = industries.get(stock)
-                if industry:
-                    for period in [20, 60]:
-                        stock_ret = stock_returns.loc[stock, f"return_{period}d"]
-                        sector_ret = sector_returns[period].get(industry, 0)
-                        features.loc[stock, f"sector_alpha_{period}d"] = stock_ret - sector_ret
+                if not industry:
+                    continue
 
-                        # 行业内排名
-                        industry_stocks = [s for s, ind in industries.items() if ind == industry]
-                        if len(industry_stocks) > 1:
-                            industry_returns = stock_returns.loc[
-                                industry_stocks, f"return_{period}d"
-                            ]
-                            rank = (industry_returns > stock_ret).sum() + 1
-                            features.loc[stock, f"sector_rank_{period}d"] = rank / len(
-                                industry_stocks
-                            )
+                for period in [20, 60]:
+                    col_name = f"return_{period}d"
+                    if col_name not in stock_returns.columns:
+                        continue
+
+                    stock_ret = stock_returns.loc[stock, col_name]
+                    sector_ret = sector_returns.get(period, {}).get(industry, 0)
+                    features.loc[stock, f"sector_alpha_{period}d"] = stock_ret - sector_ret
+
+                    # 行业内排名
+                    industry_stocks = [s for s, ind in industries.items() if ind == industry]
+                    if len(industry_stocks) > 1:
+                        industry_returns = stock_returns.loc[industry_stocks, col_name]
+                        rank = (industry_returns > stock_ret).sum() + 1
+                        features.loc[stock, f"sector_rank_{period}d"] = rank / len(industry_stocks)
 
         except Exception as e:
             logger.error(f"Error calculating sector relative features: {e}")
@@ -513,25 +519,31 @@ class CrossSectionalFeatureEngineer:
 
             # 计算相对强弱
             for period in [20, 60]:
+                col_name = f"return_{period}d"
+                if col_name not in stock_returns.columns:
+                    continue
+
                 market_ret = market_returns.get(f"return_{period}d", 0)
 
                 # 超额收益
                 features[f"market_alpha_{period}d"] = (
-                    stock_returns[f"return_{period}d"] - market_ret
+                    stock_returns[col_name] - market_ret
                 )
 
                 # 相对强弱（比率）
                 features[f"rs_{period}d_market"] = (
-                    1 + stock_returns[f"return_{period}d"]
+                    1 + stock_returns[col_name]
                 ) / (1 + market_ret) - 1
 
             # 波动率百分位
-            features["volatility_percentile"] = stock_returns["volatility_20d"].rank(
-                pct=True
-            )
+            if "volatility_20d" in stock_returns.columns:
+                features["volatility_percentile"] = stock_returns["volatility_20d"].rank(
+                    pct=True
+                )
 
             # 成交量百分位
-            features["volume_percentile"] = stock_returns["volume_ratio"].rank(pct=True)
+            if "volume_ratio" in stock_returns.columns:
+                features["volume_percentile"] = stock_returns["volume_ratio"].rank(pct=True)
 
         except Exception as e:
             logger.error(f"Error calculating market relative features: {e}")
@@ -582,23 +594,21 @@ class CrossSectionalFeatureEngineer:
                 if df.empty or "adj_close" not in df.columns:
                     continue
 
-                closes = df["adj_close"]
+                # Convert to float to handle MySQL DECIMAL types
+                closes = df["adj_close"].astype(float)
 
                 # 计算各周期收益
                 if len(closes) >= 20:
-                    returns_df.loc[ts_code, "return_20d"] = closes.iloc[-1] / closes.iloc[-20] - 1
-                    returns_df.loc[ts_code, "volatility_20d"] = closes.pct_change().std() * np.sqrt(
-                        252
-                    )
+                    returns_df.loc[ts_code, "return_20d"] = float(closes.iloc[-1] / closes.iloc[-20] - 1)
+                    returns_df.loc[ts_code, "volatility_20d"] = float(closes.pct_change().std() * np.sqrt(252))
 
                 if len(closes) >= 60:
-                    returns_df.loc[ts_code, "return_60d"] = closes.iloc[-1] / closes.iloc[-60] - 1
+                    returns_df.loc[ts_code, "return_60d"] = float(closes.iloc[-1] / closes.iloc[-60] - 1)
 
                 # 成交量比率
                 if "vol" in df.columns and len(df) >= 20:
-                    returns_df.loc[ts_code, "volume_ratio"] = (
-                        df["vol"].iloc[-5:].mean() / df["vol"].iloc[-20:].mean()
-                    )
+                    vol = df["vol"].astype(float)
+                    returns_df.loc[ts_code, "volume_ratio"] = float(vol.iloc[-5:].mean() / vol.iloc[-20:].mean())
 
         except Exception as e:
             logger.error(f"Error getting returns: {e}")
@@ -638,13 +648,13 @@ class CrossSectionalFeatureEngineer:
             closes = df["close"]
 
             if len(closes) >= 20:
-                returns["return_20d"] = closes.iloc[-1] / closes.iloc[-20] - 1
+                returns["return_20d"] = float(closes.iloc[-1] / closes.iloc[-20] - 1)
 
             if len(closes) >= 60:
-                returns["return_60d"] = closes.iloc[-1] / closes.iloc[-60] - 1
+                returns["return_60d"] = float(closes.iloc[-1] / closes.iloc[-60] - 1)
 
         except Exception as e:
-            logger.error(f"Error getting index returns: {e}")
+            logger.debug(f"Error getting index returns: {e}")
 
         return returns
 
