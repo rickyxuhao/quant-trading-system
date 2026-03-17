@@ -15,9 +15,11 @@ import backtrader as bt
 
 from core.logger import get_logger
 from projects.quant_trading.backtest.transaction_cost import (
-    CostModel, StockCostModel, CostBreakdown, TradeDirection
+    StockCostModel,
+    CostBreakdown,
+    TradeDirection,
 )
-from projects.quant_trading.backtest.slippage import SlippageModel, PercentageSlippage
+from projects.quant_trading.backtest.slippage import PercentageSlippage
 
 logger = get_logger(__name__)
 
@@ -43,12 +45,12 @@ class EnhancedChinaCommInfo(bt.CommInfoBase):
     """
 
     params = (
-        ('cost_model', None),       # CostModel实例
-        ('slippage_model', None),   # SlippageModel实例
-        ('commission', 0.00025),    # 默认佣金率（Backtrader兼容）
-        ('stamp_duty', 0.001),      # 印花税（仅卖出）
-        ('transfer_fee', 0.00001),  # 过户费
-        ('min_commission', 5.0),    # 最低佣金
+        ("cost_model", None),  # CostModel实例
+        ("slippage_model", None),  # SlippageModel实例
+        ("commission", 0.00025),  # 默认佣金率（Backtrader兼容）
+        ("stamp_duty", 0.001),  # 印花税（仅卖出）
+        ("transfer_fee", 0.00001),  # 过户费
+        ("min_commission", 5.0),  # 最低佣金
     )
 
     def __init__(self):
@@ -60,7 +62,7 @@ class EnhancedChinaCommInfo(bt.CommInfoBase):
                 commission_rate=self.p.commission,
                 min_commission=self.p.min_commission,
                 stamp_duty_rate=self.p.stamp_duty,
-                transfer_fee_rate=self.p.transfer_fee
+                transfer_fee_rate=self.p.transfer_fee,
             )
             logger.debug("[EnhancedChinaCommInfo] 使用默认A股成本模型")
 
@@ -79,9 +81,7 @@ class EnhancedChinaCommInfo(bt.CommInfoBase):
         if self.p.cost_model:
             direction = TradeDirection.BUY if size > 0 else TradeDirection.SELL
             breakdown = self.p.cost_model.calculate_cost(
-                price=price,
-                size=abs(size),
-                direction=direction
+                price=price, size=abs(size), direction=direction
             )
             return breakdown.total
 
@@ -103,7 +103,7 @@ class EnhancedChinaCommInfo(bt.CommInfoBase):
         direction: str,
         price: float,
         size: float = 0.0,
-        market_data: Optional[Dict[str, Any]] = None
+        market_data: Optional[Dict[str, Any]] = None,
     ) -> float:
         """
         获取包含滑点的价格
@@ -119,10 +119,7 @@ class EnhancedChinaCommInfo(bt.CommInfoBase):
         """
         if self.p.slippage_model:
             return self.p.slippage_model.get_execution_price(
-                direction=direction,
-                intended_price=price,
-                volume=abs(size),
-                market_data=market_data
+                direction=direction, intended_price=price, volume=abs(size), market_data=market_data
             )
         return price
 
@@ -141,9 +138,7 @@ class EnhancedChinaCommInfo(bt.CommInfoBase):
 
         if self.p.cost_model:
             return self.p.cost_model.calculate_cost(
-                price=price,
-                size=abs(size),
-                direction=direction
+                price=price, size=abs(size), direction=direction
             )
 
         # 基础成本明细
@@ -152,11 +147,7 @@ class EnhancedChinaCommInfo(bt.CommInfoBase):
         tax = value * self.p.stamp_duty if size < 0 else 0.0
         transfer = value * self.p.transfer_fee
 
-        return CostBreakdown(
-            commission=commission,
-            tax=tax,
-            transfer_fee=transfer
-        )
+        return CostBreakdown(commission=commission, tax=tax, transfer_fee=transfer)
 
 
 class CostModelCommInfo(bt.CommInfoBase):
@@ -166,9 +157,7 @@ class CostModelCommInfo(bt.CommInfoBase):
     支持任意CostModel的Backtrader佣金方案。
     """
 
-    params = (
-        ('cost_model', None),
-    )
+    params = (("cost_model", None),)
 
     def _getcommission(self, size: float, price: float, pseudoexec: bool = False) -> float:
         """计算佣金"""
@@ -177,9 +166,7 @@ class CostModelCommInfo(bt.CommInfoBase):
 
         direction = TradeDirection.BUY if size > 0 else TradeDirection.SELL
         breakdown = self.p.cost_model.calculate_cost(
-            price=price,
-            size=abs(size),
-            direction=direction
+            price=price, size=abs(size), direction=direction
         )
         return breakdown.total
 
@@ -192,9 +179,9 @@ class SlippageCommissionInfo(bt.CommInfoBase):
     """
 
     params = (
-        ('commission', 0.00025),
-        ('slippage_model', None),
-        ('slippage_pct', 0.0005),  # 默认百分比滑点
+        ("commission", 0.00025),
+        ("slippage_model", None),
+        ("slippage_pct", 0.0005),  # 默认百分比滑点
     )
 
     def __init__(self):
@@ -215,7 +202,7 @@ class SlippageCommissionInfo(bt.CommInfoBase):
 
         Backtrader会在订单执行时调用此方法。
         """
-        direction = 'BUY' if size > 0 else 'SELL'
+        direction = "BUY" if size > 0 else "SELL"
         return self.p.slippage_model.get_execution_price(direction, price, abs(size))
 
 
@@ -266,32 +253,25 @@ class MultiAssetCommInfo:
         manager = cls()
 
         # 股票（沪市）
-        stock_sh = EnhancedChinaCommInfo(
-            cost_model=StockCostModel(is_shanghai=True)
-        )
-        manager.register('stock_sh', stock_sh)
+        stock_sh = EnhancedChinaCommInfo(cost_model=StockCostModel(is_shanghai=True))
+        manager.register("stock_sh", stock_sh)
 
         # 股票（深市）
-        stock_sz = EnhancedChinaCommInfo(
-            cost_model=StockCostModel(is_shanghai=False)
-        )
-        manager.register('stock_sz', stock_sz)
+        stock_sz = EnhancedChinaCommInfo(cost_model=StockCostModel(is_shanghai=False))
+        manager.register("stock_sz", stock_sz)
 
         # ETF
         from projects.quant_trading.backtest.transaction_cost import ETFCostModel
-        etf = EnhancedChinaCommInfo(
-            cost_model=ETFCostModel()
-        )
-        manager.register('etf', etf)
+
+        etf = EnhancedChinaCommInfo(cost_model=ETFCostModel())
+        manager.register("etf", etf)
 
         return manager
 
 
 # 便捷函数
 def create_stock_commission(
-    commission_rate: float = 0.00025,
-    slippage_pct: float = 0.0005,
-    is_shanghai: bool = True
+    commission_rate: float = 0.00025, slippage_pct: float = 0.0005, is_shanghai: bool = True
 ) -> EnhancedChinaCommInfo:
     """
     创建股票佣金方案
@@ -304,21 +284,14 @@ def create_stock_commission(
     Returns:
         EnhancedChinaCommInfo
     """
-    cost_model = StockCostModel(
-        commission_rate=commission_rate,
-        is_shanghai=is_shanghai
-    )
+    cost_model = StockCostModel(commission_rate=commission_rate, is_shanghai=is_shanghai)
     slippage_model = PercentageSlippage(slippage_pct)
 
-    return EnhancedChinaCommInfo(
-        cost_model=cost_model,
-        slippage_model=slippage_model
-    )
+    return EnhancedChinaCommInfo(cost_model=cost_model, slippage_model=slippage_model)
 
 
 def create_etf_commission(
-    commission_rate: float = 0.00025,
-    slippage_pct: float = 0.0003
+    commission_rate: float = 0.00025, slippage_pct: float = 0.0003
 ) -> EnhancedChinaCommInfo:
     """
     创建ETF佣金方案
@@ -335,17 +308,14 @@ def create_etf_commission(
     cost_model = ETFCostModel(commission_rate=commission_rate)
     slippage_model = PercentageSlippage(slippage_pct)
 
-    return EnhancedChinaCommInfo(
-        cost_model=cost_model,
-        slippage_model=slippage_model
-    )
+    return EnhancedChinaCommInfo(cost_model=cost_model, slippage_model=slippage_model)
 
 
 def setup_china_stock_commission(
     cerebro: bt.Cerebro,
     initial_cash: float = 1_000_000.0,
     commission_rate: float = 0.00025,
-    slippage_pct: float = 0.0005
+    slippage_pct: float = 0.0005,
 ):
     """
     为Cerebro设置A股标准佣金方案
@@ -366,10 +336,12 @@ def setup_china_stock_commission(
     # 设置默认滑点
     cerebro.broker.set_slippage_perc(slippage_pct)
 
-    logger.info(f"[setup_china_stock_commission] "
-                f"初始资金={initial_cash:,.0f}, "
-                f"佣金率={commission_rate*10000:.2f}bp, "
-                f"滑点={slippage_pct*10000:.2f}bp")
+    logger.info(
+        f"[setup_china_stock_commission] "
+        f"初始资金={initial_cash:,.0f}, "
+        f"佣金率={commission_rate*10000:.2f}bp, "
+        f"滑点={slippage_pct*10000:.2f}bp"
+    )
 
 
 if __name__ == "__main__":
@@ -378,9 +350,7 @@ if __name__ == "__main__":
 
     # 创建佣金方案
     comminfo = create_stock_commission(
-        commission_rate=0.00025,
-        slippage_pct=0.0005,
-        is_shanghai=True
+        commission_rate=0.00025, slippage_pct=0.0005, is_shanghai=True
     )
 
     # 测试买入
@@ -408,10 +378,10 @@ if __name__ == "__main__":
     print()
 
     # 测试滑点
-    exec_price = comminfo.get_slippage_price('BUY', 100.0, 1000)
+    exec_price = comminfo.get_slippage_price("BUY", 100.0, 1000)
     print(f"买入滑点后价格: {exec_price:.4f}")
 
-    exec_price = comminfo.get_slippage_price('SELL', 110.0, 1000)
+    exec_price = comminfo.get_slippage_price("SELL", 110.0, 1000)
     print(f"卖出滑点后价格: {exec_price:.4f}")
 
     print("\n测试完成!")

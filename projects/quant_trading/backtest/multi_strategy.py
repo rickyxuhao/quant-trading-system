@@ -22,13 +22,11 @@ Example:
     ... )
 """
 
-import os
 import multiprocessing as mp
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from datetime import datetime
-from typing import List, Dict, Tuple, Optional, Any, Callable, Union
+from typing import List, Dict, Tuple, Optional, Any
 from pathlib import Path
-import json
 import hashlib
 
 import pandas as pd
@@ -52,6 +50,7 @@ class BacktestResult:
 
     统一的回测结果格式，便于对比分析。
     """
+
     strategy_name: str
     run_id: str
     start_date: datetime
@@ -103,31 +102,31 @@ class BacktestResult:
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典（用于序列化）"""
         result = {
-            'strategy_name': self.strategy_name,
-            'run_id': self.run_id,
-            'start_date': self.start_date.isoformat(),
-            'end_date': self.end_date.isoformat(),
-            'total_return': self.total_return,
-            'annual_return': self.annual_return,
-            'benchmark_return': self.benchmark_return,
-            'alpha': self.alpha,
-            'volatility': self.volatility,
-            'max_drawdown': self.max_drawdown,
-            'max_drawdown_duration': self.max_drawdown_duration,
-            'sharpe_ratio': self.sharpe_ratio,
-            'sortino_ratio': self.sortino_ratio,
-            'calmar_ratio': self.calmar_ratio,
-            'total_trades': self.total_trades,
-            'winning_trades': self.winning_trades,
-            'losing_trades': self.losing_trades,
-            'win_rate': self.win_rate,
-            'avg_profit': self.avg_profit,
-            'avg_loss': self.avg_loss,
-            'profit_factor': self.profit_factor,
-            'avg_holding_days': self.avg_holding_days,
-            'total_commission': self.total_commission,
-            'total_slippage': self.total_slippage,
-            'cost_pct': self.cost_pct,
+            "strategy_name": self.strategy_name,
+            "run_id": self.run_id,
+            "start_date": self.start_date.isoformat(),
+            "end_date": self.end_date.isoformat(),
+            "total_return": self.total_return,
+            "annual_return": self.annual_return,
+            "benchmark_return": self.benchmark_return,
+            "alpha": self.alpha,
+            "volatility": self.volatility,
+            "max_drawdown": self.max_drawdown,
+            "max_drawdown_duration": self.max_drawdown_duration,
+            "sharpe_ratio": self.sharpe_ratio,
+            "sortino_ratio": self.sortino_ratio,
+            "calmar_ratio": self.calmar_ratio,
+            "total_trades": self.total_trades,
+            "winning_trades": self.winning_trades,
+            "losing_trades": self.losing_trades,
+            "win_rate": self.win_rate,
+            "avg_profit": self.avg_profit,
+            "avg_loss": self.avg_loss,
+            "profit_factor": self.profit_factor,
+            "avg_holding_days": self.avg_holding_days,
+            "total_commission": self.total_commission,
+            "total_slippage": self.total_slippage,
+            "cost_pct": self.cost_pct,
         }
 
         # 添加元数据
@@ -169,21 +168,20 @@ class BacktestResult:
 @dataclass
 class BacktestConfig:
     """回测配置"""
+
     start_date: datetime
     end_date: datetime
     symbols: List[str]
     initial_cash: float = 1_000_000.0
     commission_rate: float = 0.00025
     slippage_pct: float = 0.0005
-    adj_type: str = 'qfq'
+    adj_type: str = "qfq"
     risk_config: Optional[EnhancedRiskConfig] = None
-    benchmark: str = '000300.SH'
+    benchmark: str = "000300.SH"
 
 
 def _run_single_backtest(
-    strategy_info: Tuple[str, bt.Strategy],
-    config: BacktestConfig,
-    data_feeds: List[MySQLDataFeed]
+    strategy_info: Tuple[str, bt.Strategy], config: BacktestConfig, data_feeds: List[MySQLDataFeed]
 ) -> BacktestResult:
     """
     执行单次回测（用于多进程）
@@ -215,7 +213,7 @@ def _run_single_backtest(
         cerebro,
         initial_cash=config.initial_cash,
         commission_rate=config.commission_rate,
-        slippage_pct=config.slippage_pct
+        slippage_pct=config.slippage_pct,
     )
 
     # 添加分析器
@@ -227,12 +225,12 @@ def _run_single_backtest(
         result = results[0]
 
         # 提取结果
-        backtest_result = _extract_result(
-            result, strategy_name, config
-        )
+        backtest_result = _extract_result(result, strategy_name, config)
 
-        logger.info(f"[_run_single_backtest] 完成回测: {strategy_name}, "
-                   f"收益率={backtest_result.total_return*100:.2f}%")
+        logger.info(
+            f"[_run_single_backtest] 完成回测: {strategy_name}, "
+            f"收益率={backtest_result.total_return*100:.2f}%"
+        )
 
         return backtest_result
 
@@ -244,15 +242,11 @@ def _run_single_backtest(
             run_id=_generate_run_id(strategy_name, config),
             start_date=config.start_date,
             end_date=config.end_date,
-            metadata={'error': str(e)}
+            metadata={"error": str(e)},
         )
 
 
-def _extract_result(
-    result,
-    strategy_name: str,
-    config: BacktestConfig
-) -> BacktestResult:
+def _extract_result(result, strategy_name: str, config: BacktestConfig) -> BacktestResult:
     """
     从Backtrader结果中提取数据
 
@@ -275,53 +269,53 @@ def _extract_result(
         run_id=run_id,
         start_date=config.start_date,
         end_date=config.end_date,
-        analyzer_results=analyzer_results
+        analyzer_results=analyzer_results,
     )
 
     # 提取收益指标
-    if 'returns' in analyzer_results:
-        ret = analyzer_results['returns']
-        backtest_result.total_return = ret.get('rtot', 0)
-        backtest_result.annual_return = ret.get('rnorm', 0)
+    if "returns" in analyzer_results:
+        ret = analyzer_results["returns"]
+        backtest_result.total_return = ret.get("rtot", 0)
+        backtest_result.annual_return = ret.get("rnorm", 0)
 
     # 提取风险指标
-    if 'drawdown' in analyzer_results:
-        dd = analyzer_results['drawdown']
-        backtest_result.max_drawdown = dd.get('max', {}).get('drawdown', 0)
-        backtest_result.max_drawdown_duration = dd.get('max', {}).get('len', 0)
+    if "drawdown" in analyzer_results:
+        dd = analyzer_results["drawdown"]
+        backtest_result.max_drawdown = dd.get("max", {}).get("drawdown", 0)
+        backtest_result.max_drawdown_duration = dd.get("max", {}).get("len", 0)
 
     # 提取风险调整收益
-    if 'sharpe' in analyzer_results:
-        backtest_result.sharpe_ratio = analyzer_results['sharpe'].get('sharperatio', 0)
+    if "sharpe" in analyzer_results:
+        backtest_result.sharpe_ratio = analyzer_results["sharpe"].get("sharperatio", 0)
 
-    if 'sortino' in analyzer_results:
-        backtest_result.sortino_ratio = analyzer_results['sortino'].get('sortino_ratio', 0)
+    if "sortino" in analyzer_results:
+        backtest_result.sortino_ratio = analyzer_results["sortino"].get("sortino_ratio", 0)
 
-    if 'calmar' in analyzer_results:
-        backtest_result.calmar_ratio = analyzer_results['calmar'].get('calmar_ratio', 0)
+    if "calmar" in analyzer_results:
+        backtest_result.calmar_ratio = analyzer_results["calmar"].get("calmar_ratio", 0)
 
     # 提取交易统计
-    if 'trades' in analyzer_results:
-        trades = analyzer_results['trades']
-        total = trades.get('total', {})
-        backtest_result.total_trades = total.get('total', 0)
-        backtest_result.winning_trades = total.get('won', 0)
-        backtest_result.losing_trades = total.get('lost', 0)
+    if "trades" in analyzer_results:
+        trades = analyzer_results["trades"]
+        total = trades.get("total", {})
+        backtest_result.total_trades = total.get("total", 0)
+        backtest_result.winning_trades = total.get("won", 0)
+        backtest_result.losing_trades = total.get("lost", 0)
 
         if backtest_result.total_trades > 0:
             backtest_result.win_rate = backtest_result.winning_trades / backtest_result.total_trades
 
     # 提取详细交易记录
-    if 'trade_details' in analyzer_results:
-        trade_df = analyzer_results['trade_details']
+    if "trade_details" in analyzer_results:
+        trade_df = analyzer_results["trade_details"]
         if isinstance(trade_df, pd.DataFrame) and not trade_df.empty:
             backtest_result.trades = trade_df
-            backtest_result.avg_holding_days = trade_df['holding_days'].mean()
+            backtest_result.avg_holding_days = trade_df["holding_days"].mean()
 
     # 提取增强交易分析
-    if 'enhanced_trades' in analyzer_results:
-        et = analyzer_results['enhanced_trades']
-        backtest_result.profit_factor = et.get('profit_factor', 0)
+    if "enhanced_trades" in analyzer_results:
+        et = analyzer_results["enhanced_trades"]
+        backtest_result.profit_factor = et.get("profit_factor", 0)
 
     return backtest_result
 
@@ -336,7 +330,7 @@ def run_multiple_strategies(
     strategies: List[Tuple[str, bt.Strategy]],
     config: BacktestConfig,
     parallel: bool = True,
-    max_workers: Optional[int] = None
+    max_workers: Optional[int] = None,
 ) -> List[BacktestResult]:
     """
     运行多策略回测
@@ -357,7 +351,7 @@ def run_multiple_strategies(
         symbols=config.symbols,
         fromdate=config.start_date,
         todate=config.end_date,
-        adj_type=config.adj_type
+        adj_type=config.adj_type,
     )
     data_feeds = data_manager.load_all()
 
@@ -375,10 +369,7 @@ def run_multiple_strategies(
         logger.info(f"[run_multiple_strategies] 使用 {max_workers} 个进程并行执行")
 
         with mp.Pool(processes=max_workers) as pool:
-            tasks = [
-                (strategy_info, config, data_feeds)
-                for strategy_info in strategies
-            ]
+            tasks = [(strategy_info, config, data_feeds) for strategy_info in strategies]
             results = pool.starmap(_run_single_backtest, tasks)
     else:
         # 串行执行
@@ -391,9 +382,7 @@ def run_multiple_strategies(
 
 
 def compare_strategies(
-    results: List[BacktestResult],
-    sort_by: str = 'sharpe_ratio',
-    ascending: bool = False
+    results: List[BacktestResult], sort_by: str = "sharpe_ratio", ascending: bool = False
 ) -> pd.DataFrame:
     """
     对比多个策略结果
@@ -414,7 +403,7 @@ def compare_strategies(
     df = pd.DataFrame(records)
 
     # 添加综合评分
-    df['composite_score'] = [r.calculate_score() for r in results]
+    df["composite_score"] = [r.calculate_score() for r in results]
 
     # 排序
     if sort_by in df.columns:
@@ -426,7 +415,7 @@ def compare_strategies(
 def plot_comparison(
     results: List[BacktestResult],
     save_path: Optional[str] = None,
-    figsize: Tuple[int, int] = (14, 10)
+    figsize: Tuple[int, int] = (14, 10),
 ):
     """
     可视化策略对比
@@ -449,28 +438,29 @@ def plot_comparison(
             dates = [d for d, _ in result.nav_history]
             navs = [nav for _, nav in result.nav_history]
             ax1.plot(dates, navs, label=result.strategy_name, linewidth=1.5)
-    ax1.set_title('NAV Comparison')
-    ax1.set_xlabel('Date')
-    ax1.set_ylabel('NAV')
+    ax1.set_title("NAV Comparison")
+    ax1.set_xlabel("Date")
+    ax1.set_ylabel("NAV")
     ax1.legend()
     ax1.grid(True, alpha=0.3)
 
     # 2. 风险收益散点图
     ax2 = axes[0, 1]
     for result in results:
-        ax2.scatter(result.volatility, result.annual_return,
-                   s=100, label=result.strategy_name, alpha=0.7)
-    ax2.set_title('Risk-Return Profile')
-    ax2.set_xlabel('Volatility')
-    ax2.set_ylabel('Annual Return')
+        ax2.scatter(
+            result.volatility, result.annual_return, s=100, label=result.strategy_name, alpha=0.7
+        )
+    ax2.set_title("Risk-Return Profile")
+    ax2.set_xlabel("Volatility")
+    ax2.set_ylabel("Annual Return")
     ax2.legend()
     ax2.grid(True, alpha=0.3)
-    ax2.axhline(y=0, color='gray', linestyle='--', alpha=0.5)
-    ax2.axvline(x=0, color='gray', linestyle='--', alpha=0.5)
+    ax2.axhline(y=0, color="gray", linestyle="--", alpha=0.5)
+    ax2.axvline(x=0, color="gray", linestyle="--", alpha=0.5)
 
     # 3. 风险调整收益对比
     ax3 = axes[1, 0]
-    metrics = ['sharpe_ratio', 'sortino_ratio', 'calmar_ratio']
+    metrics = ["sharpe_ratio", "sortino_ratio", "calmar_ratio"]
     x = np.arange(len(results))
     width = 0.25
 
@@ -478,13 +468,13 @@ def plot_comparison(
         values = [r.to_dict().get(metric, 0) for r in results]
         ax3.bar(x + i * width, values, width, label=metric)
 
-    ax3.set_title('Risk-Adjusted Returns')
-    ax3.set_xlabel('Strategy')
-    ax3.set_ylabel('Ratio')
+    ax3.set_title("Risk-Adjusted Returns")
+    ax3.set_xlabel("Strategy")
+    ax3.set_ylabel("Ratio")
     ax3.set_xticks(x + width)
     ax3.set_xticklabels([r.strategy_name for r in results], rotation=45)
     ax3.legend()
-    ax3.grid(True, alpha=0.3, axis='y')
+    ax3.grid(True, alpha=0.3, axis="y")
 
     # 4. 交易统计对比
     ax4 = axes[1, 1]
@@ -494,13 +484,13 @@ def plot_comparison(
     x = np.arange(len(results))
     ax4_twin = ax4.twinx()
 
-    bars = ax4.bar(x - 0.2, win_rates, 0.4, label='Win Rate', color='steelblue')
-    bars2 = ax4_twin.bar(x + 0.2, total_trades, 0.4, label='Total Trades', color='coral')
+    bars = ax4.bar(x - 0.2, win_rates, 0.4, label="Win Rate", color="steelblue")
+    bars2 = ax4_twin.bar(x + 0.2, total_trades, 0.4, label="Total Trades", color="coral")
 
-    ax4.set_title('Trading Statistics')
-    ax4.set_xlabel('Strategy')
-    ax4.set_ylabel('Win Rate', color='steelblue')
-    ax4_twin.set_ylabel('Total Trades', color='coral')
+    ax4.set_title("Trading Statistics")
+    ax4.set_xlabel("Strategy")
+    ax4.set_ylabel("Win Rate", color="steelblue")
+    ax4_twin.set_ylabel("Total Trades", color="coral")
     ax4.set_xticks(x)
     ax4.set_xticklabels([r.strategy_name for r in results], rotation=45)
 
@@ -512,17 +502,13 @@ def plot_comparison(
     plt.tight_layout()
 
     if save_path:
-        plt.savefig(save_path, dpi=150, bbox_inches='tight')
+        plt.savefig(save_path, dpi=150, bbox_inches="tight")
         logger.info(f"[plot_comparison] 图表已保存: {save_path}")
     else:
         plt.show()
 
 
-def save_results_to_csv(
-    results: List[BacktestResult],
-    output_dir: str,
-    prefix: str = "backtest"
-):
+def save_results_to_csv(results: List[BacktestResult], output_dir: str, prefix: str = "backtest"):
     """
     保存回测结果到CSV
 
@@ -544,7 +530,7 @@ def save_results_to_csv(
     for result in results:
         # 净值曲线
         if result.nav_history:
-            nav_df = pd.DataFrame(result.nav_history, columns=['date', 'nav'])
+            nav_df = pd.DataFrame(result.nav_history, columns=["date", "nav"])
             nav_file = output_path / f"{prefix}_{result.strategy_name}_nav.csv"
             nav_df.to_csv(nav_file, index=False)
 
@@ -555,9 +541,7 @@ def save_results_to_csv(
 
 
 def save_results_to_database(
-    results: List[BacktestResult],
-    db_connection: Any,
-    table_name: str = 'backtest_results'
+    results: List[BacktestResult], db_connection: Any, table_name: str = "backtest_results"
 ):
     """
     保存回测结果到数据库
@@ -571,14 +555,14 @@ def save_results_to_database(
     records = []
     for result in results:
         record = result.to_dict()
-        record['created_at'] = datetime.now().isoformat()
+        record["created_at"] = datetime.now().isoformat()
         records.append(record)
 
     df = pd.DataFrame(records)
 
     # 写入数据库（这里使用通用的pandas方法，实际使用时可能需要适配）
     try:
-        df.to_sql(table_name, db_connection, if_exists='append', index=False)
+        df.to_sql(table_name, db_connection, if_exists="append", index=False)
         logger.info(f"[save_results_to_database] 已保存 {len(results)} 条结果到 {table_name}")
     except Exception as e:
         logger.error(f"[save_results_to_database] 保存失败: {e}")
@@ -590,7 +574,7 @@ def quick_backtest_comparison(
     symbols: List[str],
     start_date: datetime,
     end_date: datetime,
-    output_dir: Optional[str] = None
+    output_dir: Optional[str] = None,
 ) -> pd.DataFrame:
     """
     快速策略对比
@@ -605,11 +589,7 @@ def quick_backtest_comparison(
     Returns:
         对比DataFrame
     """
-    config = BacktestConfig(
-        start_date=start_date,
-        end_date=end_date,
-        symbols=symbols
-    )
+    config = BacktestConfig(start_date=start_date, end_date=end_date, symbols=symbols)
 
     # 运行回测
     results = run_multiple_strategies(strategies, config)

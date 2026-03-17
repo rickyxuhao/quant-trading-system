@@ -20,7 +20,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -164,18 +164,14 @@ class BaseStrategy(ABC):
         Args:
             current_date: 当前日期
         """
-        pass
 
-    def on_after_trade(
-        self, current_date: datetime, executed_signals: List[Signal]
-    ) -> None:
+    def on_after_trade(self, current_date: datetime, executed_signals: List[Signal]) -> None:
         """每日交易后的回调
 
         Args:
             current_date: 当前日期
             executed_signals: 已执行的交易信号
         """
-        pass
 
     def get_name(self) -> str:
         """获取策略名称
@@ -400,10 +396,7 @@ if __name__ == "__main__":
             current_date: datetime,
             available_stocks: List[str],
         ) -> List[Signal]:
-            return [
-                Signal(ts_code=s, signal_type=SignalType.BUY)
-                for s in available_stocks[:5]
-            ]
+            return [Signal(ts_code=s, signal_type=SignalType.BUY) for s in available_stocks[:5]]
 
     strategy = TestStrategy()
     print(f"Strategy name: {strategy.get_name()}")

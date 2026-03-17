@@ -13,7 +13,6 @@
 - Sortino Ratio: https://en.wikipedia.org/wiki/Sortino_ratio
 """
 
-from dataclasses import dataclass, field
 from typing import List, Dict, Optional, Any
 from datetime import datetime
 from collections import defaultdict
@@ -47,10 +46,10 @@ class CalmarRatio(bt.Analyzer):
     """
 
     params = (
-        ('timeframe', bt.TimeFrame.Days),
-        ('compression', 1),
-        ('period', None),  # None表示使用全部数据
-        ('risk_free_rate', 0.02),  # 无风险利率
+        ("timeframe", bt.TimeFrame.Days),
+        ("compression", 1),
+        ("period", None),  # None表示使用全部数据
+        ("risk_free_rate", 0.02),  # 无风险利率
     )
 
     def __init__(self):
@@ -77,8 +76,11 @@ class CalmarRatio(bt.Analyzer):
 
         # 计算收益
         if self._values:
-            ret = (current_value - self._values[-1]) / self._values[-1] \
-                  if self._values[-1] != 0 else 0
+            ret = (
+                (current_value - self._values[-1]) / self._values[-1]
+                if self._values[-1] != 0
+                else 0
+            )
             self._returns.append(ret)
 
         self._values.append(current_value)
@@ -119,16 +121,16 @@ class CalmarRatio(bt.Analyzer):
         annual_return = self._calculate_annual_return()
 
         if self._max_drawdown <= 0:
-            return float('inf') if annual_return > 0 else 0.0
+            return float("inf") if annual_return > 0 else 0.0
 
         return annual_return / self._max_drawdown
 
     def get_analysis(self) -> Dict[str, float]:
         """获取分析结果"""
         return {
-            'calmar_ratio': self.rets._calmar_ratio,
-            'annual_return': self.rets._annual_return,
-            'max_drawdown': self.rets._max_drawdown,
+            "calmar_ratio": self.rets._calmar_ratio,
+            "annual_return": self.rets._annual_return,
+            "max_drawdown": self.rets._max_drawdown,
         }
 
 
@@ -152,10 +154,10 @@ class SortinoRatio(bt.Analyzer):
     """
 
     params = (
-        ('timeframe', bt.TimeFrame.Days),
-        ('compression', 1),
-        ('target_return', 0.0),  # 目标/最低可接受收益率
-        ('risk_free_rate', 0.02),
+        ("timeframe", bt.TimeFrame.Days),
+        ("compression", 1),
+        ("target_return", 0.0),  # 目标/最低可接受收益率
+        ("risk_free_rate", 0.02),
     )
 
     def __init__(self):
@@ -190,7 +192,7 @@ class SortinoRatio(bt.Analyzer):
         super().stop()
 
         # 从策略获取收益率数据（更准确）
-        if hasattr(self.strategy, '_rets'):
+        if hasattr(self.strategy, "_rets"):
             self._returns = list(self.strategy._rets)
 
         self.rets._sortino_ratio = self._calculate_sortino()
@@ -209,7 +211,9 @@ class SortinoRatio(bt.Analyzer):
             return 0.0
 
         # 计算下行标准差
-        downside_variance = sum((r - self.p.target_return) ** 2 for r in downside_returns) / len(downside_returns)
+        downside_variance = sum((r - self.p.target_return) ** 2 for r in downside_returns) / len(
+            downside_returns
+        )
         downside_std = np.sqrt(downside_variance)
 
         # 年化（假设日收益，乘以sqrt(252)）
@@ -240,17 +244,17 @@ class SortinoRatio(bt.Analyzer):
         downside_std = self._calculate_downside_std()
 
         if downside_std <= 0:
-            return float('inf') if annual_return > self.p.target_return else 0.0
+            return float("inf") if annual_return > self.p.target_return else 0.0
 
         return (annual_return - self.p.target_return) / downside_std
 
     def get_analysis(self) -> Dict[str, float]:
         """获取分析结果"""
         return {
-            'sortino_ratio': self.rets._sortino_ratio,
-            'annual_return': self.rets._annual_return,
-            'downside_std': self.rets._downside_std,
-            'target_return': self.p.target_return,
+            "sortino_ratio": self.rets._sortino_ratio,
+            "annual_return": self.rets._annual_return,
+            "downside_std": self.rets._downside_std,
+            "target_return": self.p.target_return,
         }
 
 
@@ -287,10 +291,10 @@ class TradeDetailAnalyzer(bt.Analyzer):
         if trade.justopened:
             # 新开仓
             self._open_trades[trade.ref] = {
-                'entry_date': self.strategy.datetime.datetime(),
-                'entry_price': trade.price,
-                'size': trade.size,
-                'data_name': trade.data._name,
+                "entry_date": self.strategy.datetime.datetime(),
+                "entry_price": trade.price,
+                "size": trade.size,
+                "data_name": trade.data._name,
             }
 
         elif trade.isclosed:
@@ -298,27 +302,30 @@ class TradeDetailAnalyzer(bt.Analyzer):
             open_trade = self._open_trades.pop(trade.ref, {})
 
             if open_trade:
-                entry_date = open_trade.get('entry_date')
+                entry_date = open_trade.get("entry_date")
                 exit_date = self.strategy.datetime.datetime()
 
                 holding_days = (exit_date - entry_date).days if entry_date else 0
 
                 pnl = trade.pnlcomm
-                entry_price = open_trade.get('entry_price', 0)
-                pnl_pct = (pnl / (entry_price * abs(open_trade.get('size', 0)))) \
-                          if entry_price and open_trade.get('size') else 0
+                entry_price = open_trade.get("entry_price", 0)
+                pnl_pct = (
+                    (pnl / (entry_price * abs(open_trade.get("size", 0))))
+                    if entry_price and open_trade.get("size")
+                    else 0
+                )
 
                 trade_detail = {
-                    'entry_date': entry_date,
-                    'exit_date': exit_date,
-                    'entry_price': entry_price,
-                    'exit_price': trade.price,
-                    'size': open_trade.get('size', 0),
-                    'pnl': pnl,
-                    'pnl_pct': pnl_pct,
-                    'holding_days': holding_days,
-                    'data_name': open_trade.get('data_name', ''),
-                    'exit_reason': getattr(trade, 'exit_reason', 'unknown'),
+                    "entry_date": entry_date,
+                    "exit_date": exit_date,
+                    "entry_price": entry_price,
+                    "exit_price": trade.price,
+                    "size": open_trade.get("size", 0),
+                    "pnl": pnl,
+                    "pnl_pct": pnl_pct,
+                    "holding_days": holding_days,
+                    "data_name": open_trade.get("data_name", ""),
+                    "exit_reason": getattr(trade, "exit_reason", "unknown"),
                 }
 
                 self._trades.append(trade_detail)
@@ -339,29 +346,29 @@ class TradeDetailAnalyzer(bt.Analyzer):
         """获取交易摘要统计"""
         if not self._trades:
             return {
-                'total_trades': 0,
-                'win_rate': 0.0,
-                'avg_pnl': 0.0,
-                'avg_holding_days': 0.0,
+                "total_trades": 0,
+                "win_rate": 0.0,
+                "avg_pnl": 0.0,
+                "avg_holding_days": 0.0,
             }
 
         df = self.get_analysis()
 
-        wins = df[df['pnl'] > 0]
-        losses = df[df['pnl'] <= 0]
+        wins = df[df["pnl"] > 0]
+        losses = df[df["pnl"] <= 0]
 
         return {
-            'total_trades': len(df),
-            'winning_trades': len(wins),
-            'losing_trades': len(losses),
-            'win_rate': len(wins) / len(df) if len(df) > 0 else 0.0,
-            'avg_pnl': df['pnl'].mean(),
-            'avg_win': wins['pnl'].mean() if len(wins) > 0 else 0.0,
-            'avg_loss': losses['pnl'].mean() if len(losses) > 0 else 0.0,
-            'total_pnl': df['pnl'].sum(),
-            'avg_holding_days': df['holding_days'].mean(),
-            'max_holding_days': df['holding_days'].max(),
-            'min_holding_days': df['holding_days'].min(),
+            "total_trades": len(df),
+            "winning_trades": len(wins),
+            "losing_trades": len(losses),
+            "win_rate": len(wins) / len(df) if len(df) > 0 else 0.0,
+            "avg_pnl": df["pnl"].mean(),
+            "avg_win": wins["pnl"].mean() if len(wins) > 0 else 0.0,
+            "avg_loss": losses["pnl"].mean() if len(losses) > 0 else 0.0,
+            "total_pnl": df["pnl"].sum(),
+            "avg_holding_days": df["holding_days"].mean(),
+            "max_holding_days": df["holding_days"].max(),
+            "min_holding_days": df["holding_days"].min(),
         }
 
 
@@ -399,9 +406,9 @@ class ModelPredictionAnalyzer(bt.Analyzer):
         self,
         predicted: float,
         actual: Optional[float] = None,
-        signal: str = '',
+        signal: str = "",
         confidence: float = 0.0,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
     ):
         """
         记录预测
@@ -416,12 +423,12 @@ class ModelPredictionAnalyzer(bt.Analyzer):
             metadata: 额外元数据
         """
         prediction = {
-            'date': self.strategy.datetime.datetime(),
-            'predicted': predicted,
-            'actual': actual,
-            'signal': signal,
-            'confidence': confidence,
-            'metadata': metadata or {},
+            "date": self.strategy.datetime.datetime(),
+            "predicted": predicted,
+            "actual": actual,
+            "signal": signal,
+            "confidence": confidence,
+            "metadata": metadata or {},
         }
         self._predictions.append(prediction)
 
@@ -437,13 +444,15 @@ class ModelPredictionAnalyzer(bt.Analyzer):
         if not self._predictions:
             return 0.0
 
-        valid_predictions = [p for p in self._predictions if p['actual'] is not None]
+        valid_predictions = [p for p in self._predictions if p["actual"] is not None]
 
         if not valid_predictions:
             return 0.0
 
         # 计算均方误差
-        mse = sum((p['predicted'] - p['actual']) ** 2 for p in valid_predictions) / len(valid_predictions)
+        mse = sum((p["predicted"] - p["actual"]) ** 2 for p in valid_predictions) / len(
+            valid_predictions
+        )
 
         # 归一化（简化处理）
         return 1 / (1 + mse)  # 越接近1表示越准确
@@ -453,7 +462,7 @@ class ModelPredictionAnalyzer(bt.Analyzer):
         if not self._predictions:
             return 0.0
 
-        valid_predictions = [p for p in self._predictions if p['actual'] is not None]
+        valid_predictions = [p for p in self._predictions if p["actual"] is not None]
 
         if len(valid_predictions) < 2:
             return 0.0
@@ -462,8 +471,14 @@ class ModelPredictionAnalyzer(bt.Analyzer):
         total = 0
 
         for i in range(1, len(valid_predictions)):
-            pred_direction = 1 if valid_predictions[i]['predicted'] > valid_predictions[i-1]['predicted'] else -1
-            actual_direction = 1 if valid_predictions[i]['actual'] > valid_predictions[i-1]['actual'] else -1
+            pred_direction = (
+                1
+                if valid_predictions[i]["predicted"] > valid_predictions[i - 1]["predicted"]
+                else -1
+            )
+            actual_direction = (
+                1 if valid_predictions[i]["actual"] > valid_predictions[i - 1]["actual"] else -1
+            )
 
             if pred_direction == actual_direction:
                 correct += 1
@@ -481,9 +496,9 @@ class ModelPredictionAnalyzer(bt.Analyzer):
     def get_summary(self) -> Dict[str, Any]:
         """获取预测摘要"""
         return {
-            'total_predictions': len(self._predictions),
-            'accuracy': self.rets._accuracy,
-            'directional_accuracy': self.rets._directional_accuracy,
+            "total_predictions": len(self._predictions),
+            "accuracy": self.rets._accuracy,
+            "directional_accuracy": self.rets._directional_accuracy,
         }
 
 
@@ -499,9 +514,7 @@ class ReturnAttribution(bt.Analyzer):
         >>> attribution = results[0].analyzers.attribution.get_analysis()
     """
 
-    params = (
-        ('factors', []),  # 因子名称列表
-    )
+    params = (("factors", []),)  # 因子名称列表
 
     def __init__(self):
         super().__init__()
@@ -555,17 +568,19 @@ class ReturnAttribution(bt.Analyzer):
             std_return = np.std(returns) if returns else 0.0
 
             attribution[source] = {
-                'total_return': total_return,
-                'avg_return': avg_return,
-                'std_return': std_return,
-                'contribution_pct': 0.0,  # 将在后续计算
+                "total_return": total_return,
+                "avg_return": avg_return,
+                "std_return": std_return,
+                "contribution_pct": 0.0,  # 将在后续计算
             }
 
         # 计算贡献比例
-        total = sum(a['total_return'] for a in attribution.values())
+        total = sum(a["total_return"] for a in attribution.values())
         if total != 0:
             for source in attribution:
-                attribution[source]['contribution_pct'] = attribution[source]['total_return'] / total
+                attribution[source]["contribution_pct"] = (
+                    attribution[source]["total_return"] / total
+                )
 
         return attribution
 
@@ -574,7 +589,7 @@ class ReturnAttribution(bt.Analyzer):
         if not self.rets._attribution:
             return pd.DataFrame()
 
-        return pd.DataFrame.from_dict(self.rets._attribution, orient='index')
+        return pd.DataFrame.from_dict(self.rets._attribution, orient="index")
 
 
 class EnhancedTradeAnalyzer(bt.Analyzer):
@@ -624,7 +639,7 @@ class EnhancedTradeAnalyzer(bt.Analyzer):
         # 盈亏比
         total_wins = sum(wins) if wins else 0
         total_losses = abs(sum(losses)) if losses else 0
-        profit_factor = total_wins / total_losses if total_losses > 0 else float('inf')
+        profit_factor = total_wins / total_losses if total_losses > 0 else float("inf")
 
         # 期望值
         win_rate = len(wins) / len(self._pnls) if self._pnls else 0
@@ -642,12 +657,12 @@ class EnhancedTradeAnalyzer(bt.Analyzer):
     def get_analysis(self) -> Dict[str, Any]:
         """获取分析结果"""
         return {
-            'profit_factor': getattr(self.rets, '_profit_factor', 0),
-            'expected_value': getattr(self.rets, '_expected_value', 0),
-            'max_win_streak': getattr(self.rets, '_max_win_streak', 0),
-            'max_loss_streak': getattr(self.rets, '_max_loss_streak', 0),
-            'max_single_win': getattr(self.rets, '_max_single_win', 0),
-            'max_single_loss': getattr(self.rets, '_max_single_loss', 0),
+            "profit_factor": getattr(self.rets, "_profit_factor", 0),
+            "expected_value": getattr(self.rets, "_expected_value", 0),
+            "max_win_streak": getattr(self.rets, "_max_win_streak", 0),
+            "max_loss_streak": getattr(self.rets, "_max_loss_streak", 0),
+            "max_single_win": getattr(self.rets, "_max_single_win", 0),
+            "max_single_loss": getattr(self.rets, "_max_single_loss", 0),
         }
 
 
@@ -660,17 +675,17 @@ def add_all_analyzers(cerebro: bt.Cerebro):
         cerebro: Backtrader Cerebro实例
     """
     # 标准分析器
-    cerebro.addanalyzer(bt.analyzers.SharpeRatio, _name='sharpe')
-    cerebro.addanalyzer(bt.analyzers.DrawDown, _name='drawdown')
-    cerebro.addanalyzer(bt.analyzers.Returns, _name='returns')
-    cerebro.addanalyzer(bt.analyzers.TradeAnalyzer, _name='trades')
+    cerebro.addanalyzer(bt.analyzers.SharpeRatio, _name="sharpe")
+    cerebro.addanalyzer(bt.analyzers.DrawDown, _name="drawdown")
+    cerebro.addanalyzer(bt.analyzers.Returns, _name="returns")
+    cerebro.addanalyzer(bt.analyzers.TradeAnalyzer, _name="trades")
 
     # 自定义分析器
-    cerebro.addanalyzer(CalmarRatio, _name='calmar')
-    cerebro.addanalyzer(SortinoRatio, _name='sortino')
-    cerebro.addanalyzer(TradeDetailAnalyzer, _name='trade_details')
-    cerebro.addanalyzer(ModelPredictionAnalyzer, _name='predictions')
-    cerebro.addanalyzer(EnhancedTradeAnalyzer, _name='enhanced_trades')
+    cerebro.addanalyzer(CalmarRatio, _name="calmar")
+    cerebro.addanalyzer(SortinoRatio, _name="sortino")
+    cerebro.addanalyzer(TradeDetailAnalyzer, _name="trade_details")
+    cerebro.addanalyzer(ModelPredictionAnalyzer, _name="predictions")
+    cerebro.addanalyzer(EnhancedTradeAnalyzer, _name="enhanced_trades")
 
     logger.info("[add_all_analyzers] 已添加所有分析器")
 
@@ -688,26 +703,26 @@ def get_analyzer_results(result) -> Dict[str, Any]:
     results = {}
 
     # 标准分析器
-    if hasattr(result.analyzers, 'sharpe'):
-        results['sharpe'] = result.analyzers.sharpe.get_analysis()
-    if hasattr(result.analyzers, 'drawdown'):
-        results['drawdown'] = result.analyzers.drawdown.get_analysis()
-    if hasattr(result.analyzers, 'returns'):
-        results['returns'] = result.analyzers.returns.get_analysis()
-    if hasattr(result.analyzers, 'trades'):
-        results['trades'] = result.analyzers.trades.get_analysis()
+    if hasattr(result.analyzers, "sharpe"):
+        results["sharpe"] = result.analyzers.sharpe.get_analysis()
+    if hasattr(result.analyzers, "drawdown"):
+        results["drawdown"] = result.analyzers.drawdown.get_analysis()
+    if hasattr(result.analyzers, "returns"):
+        results["returns"] = result.analyzers.returns.get_analysis()
+    if hasattr(result.analyzers, "trades"):
+        results["trades"] = result.analyzers.trades.get_analysis()
 
     # 自定义分析器
-    if hasattr(result.analyzers, 'calmar'):
-        results['calmar'] = result.analyzers.calmar.get_analysis()
-    if hasattr(result.analyzers, 'sortino'):
-        results['sortino'] = result.analyzers.sortino.get_analysis()
-    if hasattr(result.analyzers, 'trade_details'):
-        results['trade_details'] = result.analyzers.trade_details.get_analysis()
-    if hasattr(result.analyzers, 'predictions'):
-        results['predictions'] = result.analyzers.predictions.get_analysis()
-    if hasattr(result.analyzers, 'enhanced_trades'):
-        results['enhanced_trades'] = result.analyzers.enhanced_trades.get_analysis()
+    if hasattr(result.analyzers, "calmar"):
+        results["calmar"] = result.analyzers.calmar.get_analysis()
+    if hasattr(result.analyzers, "sortino"):
+        results["sortino"] = result.analyzers.sortino.get_analysis()
+    if hasattr(result.analyzers, "trade_details"):
+        results["trade_details"] = result.analyzers.trade_details.get_analysis()
+    if hasattr(result.analyzers, "predictions"):
+        results["predictions"] = result.analyzers.predictions.get_analysis()
+    if hasattr(result.analyzers, "enhanced_trades"):
+        results["enhanced_trades"] = result.analyzers.enhanced_trades.get_analysis()
 
     return results
 

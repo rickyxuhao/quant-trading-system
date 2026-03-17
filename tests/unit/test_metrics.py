@@ -1,14 +1,18 @@
 """
 绩效指标计算单元测试
 """
+
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import pandas as pd
 import numpy as np
 
 from projects.quant_trading.backtest.metrics import (
-    MetricsCalculator, PerformanceMetrics, MetricsError, MetricType
+    MetricsCalculator,
+    PerformanceMetrics,
+    MetricsError,
+    MetricType,
 )
 
 
@@ -134,7 +138,7 @@ class TestRiskMetrics:
         nav_history = []
 
         for date, ret in zip(dates, daily_returns):
-            nav *= (1 + ret)
+            nav *= 1 + ret
             nav_history.append((date, nav))
 
         metrics = metrics_calculator.calculate(nav_history)
@@ -148,10 +152,10 @@ class TestRiskMetrics:
         # 创建有正有负的收益序列
         nav_history = [
             (datetime(2023, 1, 1), 1.0),
-            (datetime(2023, 1, 2), 1.05),   # +5%
-            (datetime(2023, 1, 3), 0.98),   # -6.67%
-            (datetime(2023, 1, 4), 1.02),   # +4.08%
-            (datetime(2023, 1, 5), 0.95),   # -6.86%
+            (datetime(2023, 1, 2), 1.05),  # +5%
+            (datetime(2023, 1, 3), 0.98),  # -6.67%
+            (datetime(2023, 1, 4), 1.02),  # +4.08%
+            (datetime(2023, 1, 5), 0.95),  # -6.86%
         ]
 
         metrics = metrics_calculator.calculate(nav_history)
@@ -168,7 +172,7 @@ class TestRiskMetrics:
         nav = 1.0
         nav_history = []
         for date, ret in zip(dates, daily_returns):
-            nav *= (1 + ret)
+            nav *= 1 + ret
             nav_history.append((date, nav))
 
         metrics = metrics_calculator.calculate(nav_history)
@@ -185,7 +189,7 @@ class TestRiskMetrics:
         nav = 1.0
         nav_history = []
         for date, ret in zip(dates, daily_returns):
-            nav *= (1 + ret)
+            nav *= 1 + ret
             nav_history.append((date, nav))
 
         metrics = metrics_calculator.calculate(nav_history)
@@ -207,7 +211,7 @@ class TestRiskAdjustedMetrics:
         nav = 1.0
         nav_history = []
         for date, ret in zip(dates, daily_returns):
-            nav *= (1 + ret)
+            nav *= 1 + ret
             nav_history.append((date, nav))
 
         metrics = metrics_calculator.calculate(nav_history)
@@ -224,7 +228,7 @@ class TestRiskAdjustedMetrics:
         nav = 1.0
         nav_history = []
         for date, ret in zip(dates, daily_returns):
-            nav *= (1 + ret)
+            nav *= 1 + ret
             nav_history.append((date, nav))
 
         metrics = metrics_calculator.calculate(nav_history)
@@ -257,7 +261,7 @@ class TestRiskAdjustedMetrics:
         nav = 1.0
         nav_history = []
         for date, ret in zip(dates, daily_returns):
-            nav *= (1 + ret)
+            nav *= 1 + ret
             nav_history.append((date, nav))
 
         metrics = metrics_calculator.calculate(nav_history)
@@ -279,14 +283,16 @@ class TestTradeMetrics:
         ]
 
         # 使用正确的交易格式 - 确保每只股票的买卖配对
-        trades_df = pd.DataFrame({
-            "ts_code": ["000001.SZ", "000001.SZ"],
-            "side": ["buy", "sell"],
-            "quantity": [100, 100],
-            "price": [100.0, 110.0],  # 盈利
-            "amount": [10000.0, 11000.0],
-            "trade_date": [datetime(2023, 1, 5), datetime(2023, 1, 15)],
-        })
+        trades_df = pd.DataFrame(
+            {
+                "ts_code": ["000001.SZ", "000001.SZ"],
+                "side": ["buy", "sell"],
+                "quantity": [100, 100],
+                "price": [100.0, 110.0],  # 盈利
+                "amount": [10000.0, 11000.0],
+                "trade_date": [datetime(2023, 1, 5), datetime(2023, 1, 15)],
+            }
+        )
 
         metrics = metrics_calculator.calculate(nav_history, trades_df=trades_df)
 
@@ -301,15 +307,17 @@ class TestTradeMetrics:
         ]
 
         # 一盈一亏的交易
-        trades_df = pd.DataFrame({
-            "ts_code": ["000001.SZ", "000001.SZ", "000002.SZ", "000002.SZ"],
-            "side": ["buy", "sell", "buy", "sell"],
-            "quantity": [100, 100, 200, 200],
-            "price": [100.0, 110.0, 50.0, 48.0],
-            "amount": [10000.0, 11000.0, 10000.0, 9600.0],
-            "commission": [5.0, 5.0, 5.0, 5.0],
-            "trade_date": pd.date_range("2023-01-01", periods=4),
-        })
+        trades_df = pd.DataFrame(
+            {
+                "ts_code": ["000001.SZ", "000001.SZ", "000002.SZ", "000002.SZ"],
+                "side": ["buy", "sell", "buy", "sell"],
+                "quantity": [100, 100, 200, 200],
+                "price": [100.0, 110.0, 50.0, 48.0],
+                "amount": [10000.0, 11000.0, 10000.0, 9600.0],
+                "commission": [5.0, 5.0, 5.0, 5.0],
+                "trade_date": pd.date_range("2023-01-01", periods=4),
+            }
+        )
 
         metrics = metrics_calculator.calculate(nav_history, trades_df=trades_df)
 
@@ -357,8 +365,8 @@ class TestRelativeMetrics:
         benchmark_history = []
 
         for date, s_ret, b_ret in zip(dates, strategy_returns, benchmark_returns):
-            strategy_nav *= (1 + s_ret)
-            benchmark_nav *= (1 + b_ret)
+            strategy_nav *= 1 + s_ret
+            benchmark_nav *= 1 + b_ret
             nav_history.append((date, strategy_nav))
             benchmark_history.append((date, benchmark_nav))
 
@@ -383,8 +391,8 @@ class TestRelativeMetrics:
         benchmark_history = []
 
         for date, s_ret, b_ret in zip(dates, strategy_returns, benchmark_returns):
-            strategy_nav *= (1 + s_ret)
-            benchmark_nav *= (1 + b_ret)
+            strategy_nav *= 1 + s_ret
+            benchmark_nav *= 1 + b_ret
             nav_history.append((date, strategy_nav))
             benchmark_history.append((date, benchmark_nav))
 
@@ -406,7 +414,7 @@ class TestRollingMetrics:
         nav_history = []
         for date in dates:
             ret = np.random.normal(0.0005, 0.015)
-            nav *= (1 + ret)
+            nav *= 1 + ret
             nav_history.append((date, nav))
 
         rolling_df = metrics_calculator.calculate_rolling_metrics(nav_history, window=20)
@@ -422,11 +430,7 @@ class TestPerformanceMetrics:
 
     def test_to_dict(self):
         """测试转换为字典"""
-        metrics = PerformanceMetrics(
-            total_return=0.15,
-            sharpe_ratio=1.5,
-            total_trades=50
-        )
+        metrics = PerformanceMetrics(total_return=0.15, sharpe_ratio=1.5, total_trades=50)
 
         data = metrics.to_dict()
 
@@ -436,10 +440,7 @@ class TestPerformanceMetrics:
 
     def test_to_dict_formatted(self):
         """测试格式化输出"""
-        metrics = PerformanceMetrics(
-            total_return=0.15,
-            sharpe_ratio=1.5
-        )
+        metrics = PerformanceMetrics(total_return=0.15, sharpe_ratio=1.5)
 
         formatted = metrics.to_dict(format_output=True)
 
@@ -448,11 +449,7 @@ class TestPerformanceMetrics:
 
     def test_get_by_type(self):
         """测试按类型获取指标"""
-        metrics = PerformanceMetrics(
-            total_return=0.15,
-            sharpe_ratio=1.5,
-            win_rate=0.6
-        )
+        metrics = PerformanceMetrics(total_return=0.15, sharpe_ratio=1.5, win_rate=0.6)
 
         return_metrics = metrics.get_by_type(MetricType.RETURN)
         risk_adj_metrics = metrics.get_by_type(MetricType.RISK_ADJUSTED)

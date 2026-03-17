@@ -4,10 +4,10 @@
 为Backtrader集成提供统一的策略框架
 """
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Callable, Optional
+from typing import Any, Optional
 
 import backtrader as bt
 
@@ -88,7 +88,6 @@ class BaseStrategy(bt.Strategy):
 
     def _init_indicators(self) -> None:
         """初始化技术指标（子类可重写）"""
-        pass
 
     def log(self, txt: str, dt: Optional[datetime] = None) -> None:
         """记录日志"""
@@ -149,7 +148,6 @@ class BaseStrategy(bt.Strategy):
 
     def prenext(self) -> None:
         """数据未全部就绪时调用"""
-        pass
 
     def nextstart(self) -> None:
         """数据首次全部就绪时调用"""

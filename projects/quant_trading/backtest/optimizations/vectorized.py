@@ -4,9 +4,10 @@
 提供向量化回测实现，比事件驱动回测更快。
 适用于简单策略的快速回测和参数扫描。
 """
+
 import logging
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, List, Tuple
 from dataclasses import dataclass
 
 import pandas as pd
@@ -20,6 +21,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class VectorizedResult:
     """向量化回测结果"""
+
     nav_history: List[Tuple[datetime, float]]
     returns: pd.Series
     positions: pd.DataFrame
@@ -97,10 +99,7 @@ class VectorizedBacktester:
         nav = (1 + net_returns).cumprod() * self.initial_cash
 
         # 生成净值历史
-        nav_history = [
-            (idx, float(val))
-            for idx, val in nav.items()
-        ]
+        nav_history = [(idx, float(val)) for idx, val in nav.items()]
 
         # 计算绩效指标
         calculator = MetricsCalculator()
@@ -142,12 +141,14 @@ class VectorizedBacktester:
             for date, change in changes.items():
                 if change != 0:
                     side = "buy" if change > 0 else "sell"
-                    trades.append({
-                        "date": date,
-                        "ts_code": col,
-                        "side": side,
-                        "price": price_series[date],
-                    })
+                    trades.append(
+                        {
+                            "date": date,
+                            "ts_code": col,
+                            "side": side,
+                            "price": price_series[date],
+                        }
+                    )
 
         return pd.DataFrame(trades)
 

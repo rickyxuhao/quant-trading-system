@@ -1,16 +1,17 @@
 """
 极端场景端到端测试
 """
+
 import pytest
-from datetime import datetime, timedelta
-from unittest.mock import Mock, patch, MagicMock
+from datetime import datetime
+from unittest.mock import patch, MagicMock
 
 import pandas as pd
 import numpy as np
 
 from projects.quant_trading.backtest.engine import BacktestEngine, BacktestConfig
 from projects.quant_trading.backtest.strategy import BaseStrategy, Signal, SignalType
-from projects.quant_trading.backtest.data_manager import DataManager, MissingDataError
+from projects.quant_trading.backtest.data_manager import MissingDataError
 
 
 class SimpleTestStrategy(BaseStrategy):
@@ -38,8 +39,7 @@ class TestExtremeScenarios:
 
         # 模拟交易日
         mock_dm.get_trade_dates.return_value = [
-            (datetime(2023, 1, i).strftime("%Y%m%d"))
-            for i in range(3, 20, 1)
+            (datetime(2023, 1, i).strftime("%Y%m%d")) for i in range(3, 20, 1)
         ]
 
         mock_dm.get_all_stocks.return_value = ["000001.SZ"]
@@ -53,17 +53,19 @@ class TestExtremeScenarios:
 
             for i, date in enumerate(dates):
                 # 涨停：开盘价=昨收*1.1，收盘价=开盘价，成交量极低
-                close = base_price * (1.10 ** i)
-                prices.append({
-                    "trade_date": dates[i].strftime("%Y%m%d"),
-                    "open": close,  # 一字涨停
-                    "high": close,
-                    "low": close,
-                    "close": close,
-                    "pre_close": close / 1.1,
-                    "vol": 100,  # 极低的成交量
-                    "amount": close * 100,
-                })
+                close = base_price * (1.10**i)
+                prices.append(
+                    {
+                        "trade_date": dates[i].strftime("%Y%m%d"),
+                        "open": close,  # 一字涨停
+                        "high": close,
+                        "low": close,
+                        "close": close,
+                        "pre_close": close / 1.1,
+                        "vol": 100,  # 极低的成交量
+                        "amount": close * 100,
+                    }
+                )
 
             df = pd.DataFrame(prices)
             df["trade_date"] = pd.to_datetime(df["trade_date"])
@@ -76,7 +78,7 @@ class TestExtremeScenarios:
             end_date=datetime(2023, 1, 20),
             initial_cash=100000.0,
             max_positions=5,
-            min_positions=1
+            min_positions=1,
         )
 
         strategy = SimpleTestStrategy()
@@ -97,8 +99,7 @@ class TestExtremeScenarios:
         mock_dm_class.return_value = mock_dm
 
         mock_dm.get_trade_dates.return_value = [
-            (datetime(2023, 1, i).strftime("%Y%m%d"))
-            for i in range(3, 20, 1)
+            (datetime(2023, 1, i).strftime("%Y%m%d")) for i in range(3, 20, 1)
         ]
 
         mock_dm.get_all_stocks.return_value = ["000001.SZ"]
@@ -112,17 +113,19 @@ class TestExtremeScenarios:
 
             for i, date in enumerate(dates):
                 # 跌停
-                close = base_price * (0.90 ** i)
-                prices.append({
-                    "trade_date": dates[i].strftime("%Y%m%d"),
-                    "open": close,
-                    "high": close,
-                    "low": close,
-                    "close": close,
-                    "pre_close": close / 0.9,
-                    "vol": 100,
-                    "amount": close * 100,
-                })
+                close = base_price * (0.90**i)
+                prices.append(
+                    {
+                        "trade_date": dates[i].strftime("%Y%m%d"),
+                        "open": close,
+                        "high": close,
+                        "low": close,
+                        "close": close,
+                        "pre_close": close / 0.9,
+                        "vol": 100,
+                        "amount": close * 100,
+                    }
+                )
 
             df = pd.DataFrame(prices)
             df["trade_date"] = pd.to_datetime(df["trade_date"])
@@ -135,7 +138,7 @@ class TestExtremeScenarios:
             end_date=datetime(2023, 1, 20),
             initial_cash=100000.0,
             max_positions=5,
-            min_positions=1
+            min_positions=1,
         )
 
         strategy = SimpleTestStrategy()
@@ -154,8 +157,7 @@ class TestExtremeScenarios:
         mock_dm_class.return_value = mock_dm
 
         mock_dm.get_trade_dates.return_value = [
-            (datetime(2023, 1, i).strftime("%Y%m%d"))
-            for i in range(3, 15, 1)
+            (datetime(2023, 1, i).strftime("%Y%m%d")) for i in range(3, 15, 1)
         ]
 
         mock_dm.get_all_stocks.return_value = ["000001.SZ"]
@@ -171,14 +173,16 @@ class TestExtremeScenarios:
 
             for i, date in enumerate(valid_dates):
                 price = base_price + i * 0.5
-                prices.append({
-                    "trade_date": date.strftime("%Y%m%d"),
-                    "open": price * 0.99,
-                    "high": price * 1.01,
-                    "low": price * 0.98,
-                    "close": price,
-                    "vol": 100000,
-                })
+                prices.append(
+                    {
+                        "trade_date": date.strftime("%Y%m%d"),
+                        "open": price * 0.99,
+                        "high": price * 1.01,
+                        "low": price * 0.98,
+                        "close": price,
+                        "vol": 100000,
+                    }
+                )
 
             df = pd.DataFrame(prices)
             df["trade_date"] = pd.to_datetime(df["trade_date"])
@@ -191,7 +195,7 @@ class TestExtremeScenarios:
             end_date=datetime(2023, 1, 15),
             initial_cash=100000.0,
             max_positions=5,
-            min_positions=1
+            min_positions=1,
         )
 
         strategy = SimpleTestStrategy()
@@ -209,8 +213,7 @@ class TestExtremeScenarios:
         mock_dm_class.return_value = mock_dm
 
         mock_dm.get_trade_dates.return_value = [
-            (datetime(2023, 1, i).strftime("%Y%m%d"))
-            for i in range(3, 25, 1)
+            (datetime(2023, 1, i).strftime("%Y%m%d")) for i in range(3, 25, 1)
         ]
 
         mock_dm.get_all_stocks.return_value = ["000001.SZ"]
@@ -229,14 +232,16 @@ class TestExtremeScenarios:
                 else:
                     price = 100.0 + i * 0.5  # 正常上涨
 
-                prices.append({
-                    "trade_date": dates[i].strftime("%Y%m%d"),
-                    "open": price * 0.98 if i == 10 else price * 0.99,
-                    "high": price * 1.01,
-                    "low": price * 0.90 if i == 10 else price * 0.98,
-                    "close": price,
-                    "vol": 1000000 if i == 10 else 100000,
-                })
+                prices.append(
+                    {
+                        "trade_date": dates[i].strftime("%Y%m%d"),
+                        "open": price * 0.98 if i == 10 else price * 0.99,
+                        "high": price * 1.01,
+                        "low": price * 0.90 if i == 10 else price * 0.98,
+                        "close": price,
+                        "vol": 1000000 if i == 10 else 100000,
+                    }
+                )
 
             df = pd.DataFrame(prices)
             df["trade_date"] = pd.to_datetime(df["trade_date"])
@@ -250,7 +255,7 @@ class TestExtremeScenarios:
             initial_cash=100000.0,
             max_positions=5,
             min_positions=1,
-            enable_risk_control=True
+            enable_risk_control=True,
         )
 
         strategy = SimpleTestStrategy()
@@ -269,8 +274,7 @@ class TestExtremeScenarios:
         mock_dm_class.return_value = mock_dm
 
         mock_dm.get_trade_dates.return_value = [
-            (datetime(2023, 1, i).strftime("%Y%m%d"))
-            for i in range(3, 30, 1)
+            (datetime(2023, 1, i).strftime("%Y%m%d")) for i in range(3, 30, 1)
         ]
 
         mock_dm.get_all_stocks.return_value = ["000001.SZ", "000002.SZ"]
@@ -284,15 +288,17 @@ class TestExtremeScenarios:
 
             for i, date in enumerate(dates):
                 # 持续下跌
-                price = base_price * (0.95 ** i)
-                prices.append({
-                    "trade_date": dates[i].strftime("%Y%m%d"),
-                    "open": price * 1.02,
-                    "high": price * 1.02,
-                    "low": price * 0.95,
-                    "close": price,
-                    "vol": 100000,
-                })
+                price = base_price * (0.95**i)
+                prices.append(
+                    {
+                        "trade_date": dates[i].strftime("%Y%m%d"),
+                        "open": price * 1.02,
+                        "high": price * 1.02,
+                        "low": price * 0.95,
+                        "close": price,
+                        "vol": 100000,
+                    }
+                )
 
             df = pd.DataFrame(prices)
             df["trade_date"] = pd.to_datetime(df["trade_date"])
@@ -306,7 +312,7 @@ class TestExtremeScenarios:
             initial_cash=100000.0,
             max_positions=5,
             min_positions=1,
-            enable_risk_control=True
+            enable_risk_control=True,
         )
 
         strategy = SimpleTestStrategy()
@@ -325,8 +331,7 @@ class TestExtremeScenarios:
         mock_dm_class.return_value = mock_dm
 
         mock_dm.get_trade_dates.return_value = [
-            (datetime(2023, 1, i).strftime("%Y%m%d"))
-            for i in range(3, 15, 1)
+            (datetime(2023, 1, i).strftime("%Y%m%d")) for i in range(3, 15, 1)
         ]
 
         mock_dm.get_all_stocks.return_value = ["000001.SZ"]
@@ -340,15 +345,17 @@ class TestExtremeScenarios:
 
             for i, date in enumerate(dates):
                 price = base_price + i * 0.1
-                prices.append({
-                    "trade_date": dates[i].strftime("%Y%m%d"),
-                    "open": price,
-                    "high": price * 1.005,
-                    "low": price * 0.995,
-                    "close": price,
-                    "vol": 100,  # 极低的成交量
-                    "amount": price * 100,
-                })
+                prices.append(
+                    {
+                        "trade_date": dates[i].strftime("%Y%m%d"),
+                        "open": price,
+                        "high": price * 1.005,
+                        "low": price * 0.995,
+                        "close": price,
+                        "vol": 100,  # 极低的成交量
+                        "amount": price * 100,
+                    }
+                )
 
             df = pd.DataFrame(prices)
             df["trade_date"] = pd.to_datetime(df["trade_date"])
@@ -361,7 +368,7 @@ class TestExtremeScenarios:
             end_date=datetime(2023, 1, 15),
             initial_cash=100000.0,
             max_positions=5,
-            min_positions=1
+            min_positions=1,
         )
 
         strategy = SimpleTestStrategy()
@@ -378,8 +385,7 @@ class TestExtremeScenarios:
         mock_dm_class.return_value = mock_dm
 
         mock_dm.get_trade_dates.return_value = [
-            (datetime(2023, 1, i).strftime("%Y%m%d"))
-            for i in range(3, 30, 1)
+            (datetime(2023, 1, i).strftime("%Y%m%d")) for i in range(3, 30, 1)
         ]
 
         mock_dm.get_all_stocks.return_value = ["000001.SZ"]
@@ -398,14 +404,16 @@ class TestExtremeScenarios:
                 price = base_price * (1 + change)
                 base_price = price
 
-                prices.append({
-                    "trade_date": dates[i].strftime("%Y%m%d"),
-                    "open": price * (1 + np.random.normal(0, 0.02)),
-                    "high": price * 1.08,
-                    "low": price * 0.92,
-                    "close": price,
-                    "vol": int(np.random.randint(50000, 500000)),
-                })
+                prices.append(
+                    {
+                        "trade_date": dates[i].strftime("%Y%m%d"),
+                        "open": price * (1 + np.random.normal(0, 0.02)),
+                        "high": price * 1.08,
+                        "low": price * 0.92,
+                        "close": price,
+                        "vol": int(np.random.randint(50000, 500000)),
+                    }
+                )
 
             df = pd.DataFrame(prices)
             df["trade_date"] = pd.to_datetime(df["trade_date"])
@@ -419,7 +427,7 @@ class TestExtremeScenarios:
             initial_cash=100000.0,
             max_positions=5,
             min_positions=1,
-            enable_risk_control=True
+            enable_risk_control=True,
         )
 
         strategy = SimpleTestStrategy()
@@ -443,8 +451,7 @@ class TestErrorHandling:
         mock_dm_class.return_value = mock_dm
 
         mock_dm.get_trade_dates.return_value = [
-            (datetime(2023, 1, i).strftime("%Y%m%d"))
-            for i in range(3, 20, 1)
+            (datetime(2023, 1, i).strftime("%Y%m%d")) for i in range(3, 20, 1)
         ]
         mock_dm.get_all_stocks.return_value = ["000001.SZ"]
 
@@ -462,14 +469,16 @@ class TestErrorHandling:
             prices = []
 
             for i, date in enumerate(dates):
-                prices.append({
-                    "trade_date": dates[i].strftime("%Y%m%d"),
-                    "open": 100.0,
-                    "high": 101.0,
-                    "low": 99.0,
-                    "close": 100.0,
-                    "vol": 100000,
-                })
+                prices.append(
+                    {
+                        "trade_date": dates[i].strftime("%Y%m%d"),
+                        "open": 100.0,
+                        "high": 101.0,
+                        "low": 99.0,
+                        "close": 100.0,
+                        "vol": 100000,
+                    }
+                )
 
             df = pd.DataFrame(prices)
             df["trade_date"] = pd.to_datetime(df["trade_date"])
@@ -482,7 +491,7 @@ class TestErrorHandling:
             end_date=datetime(2023, 1, 20),
             initial_cash=100000.0,
             max_positions=5,
-            min_positions=1
+            min_positions=1,
         )
 
         strategy = SimpleTestStrategy()
@@ -502,15 +511,12 @@ class TestErrorHandling:
         mock_dm_class.return_value = mock_dm
 
         mock_dm.get_trade_dates.return_value = [
-            (datetime(2023, 1, i).strftime("%Y%m%d"))
-            for i in range(3, 10, 1)
+            (datetime(2023, 1, i).strftime("%Y%m%d")) for i in range(3, 10, 1)
         ]
         mock_dm.get_all_stocks.return_value = []  # 空股票列表
 
         config = BacktestConfig(
-            start_date=datetime(2023, 1, 3),
-            end_date=datetime(2023, 1, 10),
-            initial_cash=100000.0
+            start_date=datetime(2023, 1, 3), end_date=datetime(2023, 1, 10), initial_cash=100000.0
         )
 
         strategy = SimpleTestStrategy()

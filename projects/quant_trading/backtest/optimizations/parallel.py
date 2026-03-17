@@ -3,12 +3,11 @@
 
 支持多进程并行参数扫描和回测。
 """
+
 import logging
-from datetime import datetime
 from typing import Dict, List, Optional, Any, Callable
 from functools import partial
 from multiprocessing import Pool, cpu_count
-import multiprocessing as mp
 
 from projects.quant_trading.backtest.engine import BacktestEngine, BacktestConfig
 from projects.quant_trading.backtest.strategy import BaseStrategy
@@ -92,20 +91,21 @@ def run_parallel_backtests(
 
     if n_workers == 1:
         # 单进程模式
-        results = [
-            _run_single_backtest(params, config, strategy_factory)
-            for params in param_grid
-        ]
+        results = [_run_single_backtest(params, config, strategy_factory) for params in param_grid]
         return results
 
     # 多进程模式
     with Pool(n_workers) as pool:
         results = pool.map(
-            partial(_run_single_backtest, config_template=config, strategy_factory=strategy_factory),
+            partial(
+                _run_single_backtest, config_template=config, strategy_factory=strategy_factory
+            ),
             param_grid,
         )
 
-    logger.info(f"Parallel backtests completed: {len([r for r in results if r['success']])}/{len(results)} successful")
+    logger.info(
+        f"Parallel backtests completed: {len([r for r in results if r['success']])}/{len(results)} successful"
+    )
 
     return results
 
@@ -145,11 +145,13 @@ class ParallelBacktestRunner:
             config: 回测配置
             strategy_factory: 策略工厂函数
         """
-        self._tasks.append({
-            "params": params,
-            "config": config,
-            "strategy_factory": strategy_factory,
-        })
+        self._tasks.append(
+            {
+                "params": params,
+                "config": config,
+                "strategy_factory": strategy_factory,
+            }
+        )
 
     def run_all(self) -> List[Dict[str, Any]]:
         """运行所有任务

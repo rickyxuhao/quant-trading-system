@@ -3,10 +3,10 @@
 
 采集数据健康、模型性能、回测性能等系统指标。
 """
-import time
+
 import psutil
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Dict, List, Optional, Any
 from collections import deque
 import logging
@@ -42,6 +42,7 @@ class SystemMetrics:
         # 可视化指标
         dashboard_load_time_ms: Dashboard加载时间（毫秒）
     """
+
     timestamp: datetime = field(default_factory=datetime.now)
 
     # 数据健康
@@ -79,14 +80,13 @@ class SystemMetrics:
             "memory_usage_mb": self.memory_usage_mb,
             "cache_hit_rate_pct": self.cache_hit_rate_pct,
             "dashboard_load_time_ms": self.dashboard_load_time_ms,
-            **self.extra_metrics
+            **self.extra_metrics,
         }
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "SystemMetrics":
         """从字典创建"""
-        extra = {k: v for k, v in data.items()
-                 if k not in cls.__dataclass_fields__}
+        extra = {k: v for k, v in data.items() if k not in cls.__dataclass_fields__}
 
         metrics = cls(
             timestamp=datetime.fromisoformat(data.get("timestamp", datetime.now().isoformat())),
@@ -100,7 +100,7 @@ class SystemMetrics:
             memory_usage_mb=data.get("memory_usage_mb", 0.0),
             cache_hit_rate_pct=data.get("cache_hit_rate_pct", 0.0),
             dashboard_load_time_ms=data.get("dashboard_load_time_ms", 0.0),
-            extra_metrics=extra
+            extra_metrics=extra,
         )
         return metrics
 
@@ -188,9 +188,7 @@ class SystemMetricsCollector:
         # 缓存命中率
         total_cache_ops = self._cache_stats["hits"] + self._cache_stats["misses"]
         if total_cache_ops > 0:
-            metrics.cache_hit_rate_pct = (
-                self._cache_stats["hits"] / total_cache_ops * 100
-            )
+            metrics.cache_hit_rate_pct = self._cache_stats["hits"] / total_cache_ops * 100
 
         # Dashboard加载时间
         if self._dashboard_load_times:

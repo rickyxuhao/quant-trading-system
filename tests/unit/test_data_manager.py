@@ -1,16 +1,16 @@
 """
 数据管理器单元测试
 """
+
 import pytest
-from datetime import datetime, timedelta
-from unittest.mock import Mock, patch, MagicMock
+from datetime import datetime
+from unittest.mock import patch
 
 import pandas as pd
-import numpy as np
 
 from projects.quant_trading.backtest.data_manager import (
-    DataManager, MissingDataError, DatabaseError,
-    StockData, IndexData
+    DataManager,
+    MissingDataError,
 )
 
 
@@ -131,12 +131,21 @@ class TestGetStockData:
         mock_db.fetchall.side_effect = [
             # 日线数据
             [
-                {"trade_date": "20230103", "open": 100.0, "high": 101.0,
-                 "low": 99.0, "close": 100.5, "pre_close": 100.0,
-                 "t_change": 0.5, "pct_chg": 0.5, "vol": 100000, "amount": 10000000},
+                {
+                    "trade_date": "20230103",
+                    "open": 100.0,
+                    "high": 101.0,
+                    "low": 99.0,
+                    "close": 100.5,
+                    "pre_close": 100.0,
+                    "t_change": 0.5,
+                    "pct_chg": 0.5,
+                    "vol": 100000,
+                    "amount": 10000000,
+                },
             ],
             # 复权因子数据
-            [{"trade_date": "20230103", "adj_factor": 1.0}]
+            [{"trade_date": "20230103", "adj_factor": 1.0}],
         ]
 
         dm = DataManager()
@@ -153,9 +162,18 @@ class TestGetStockData:
     def test_get_stock_data_no_adjust(self, mock_db):
         """测试获取不复权股票数据"""
         mock_db.fetchall.return_value = [
-            {"trade_date": "20230103", "open": 100.0, "high": 101.0,
-             "low": 99.0, "close": 100.5, "pre_close": 100.0,
-             "t_change": 0.5, "pct_chg": 0.5, "vol": 100000, "amount": 10000000},
+            {
+                "trade_date": "20230103",
+                "open": 100.0,
+                "high": 101.0,
+                "low": 99.0,
+                "close": 100.5,
+                "pre_close": 100.0,
+                "t_change": 0.5,
+                "pct_chg": 0.5,
+                "vol": 100000,
+                "amount": 10000000,
+            },
         ]
 
         dm = DataManager()
@@ -186,9 +204,18 @@ class TestGetStockData:
     def test_get_stock_data_cache_hit(self, mock_db):
         """测试缓存命中"""
         mock_db.fetchall.return_value = [
-            {"trade_date": "20230103", "open": 100.0, "high": 101.0,
-             "low": 99.0, "close": 100.5, "pre_close": 100.0,
-             "t_change": 0.5, "pct_chg": 0.5, "vol": 100000, "amount": 10000000},
+            {
+                "trade_date": "20230103",
+                "open": 100.0,
+                "high": 101.0,
+                "low": 99.0,
+                "close": 100.5,
+                "pre_close": 100.0,
+                "t_change": 0.5,
+                "pct_chg": 0.5,
+                "vol": 100000,
+                "amount": 10000000,
+            },
         ]
 
         dm = DataManager()
@@ -217,25 +244,37 @@ class TestBatchStockData:
         mock_db.fetchall.side_effect = [
             # 日线数据 - 需要包含 pre_close 字段用于复权计算
             [
-                {"ts_code": "000001.SZ", "trade_date": "20230103", "open": 100.0,
-                 "high": 101.0, "low": 99.0, "close": 100.5, "pre_close": 100.0},
-                {"ts_code": "000002.SZ", "trade_date": "20230103", "open": 50.0,
-                 "high": 51.0, "low": 49.0, "close": 50.5, "pre_close": 50.0},
+                {
+                    "ts_code": "000001.SZ",
+                    "trade_date": "20230103",
+                    "open": 100.0,
+                    "high": 101.0,
+                    "low": 99.0,
+                    "close": 100.5,
+                    "pre_close": 100.0,
+                },
+                {
+                    "ts_code": "000002.SZ",
+                    "trade_date": "20230103",
+                    "open": 50.0,
+                    "high": 51.0,
+                    "low": 49.0,
+                    "close": 50.5,
+                    "pre_close": 50.0,
+                },
             ],
             # 复权因子数据
             [
                 {"ts_code": "000001.SZ", "trade_date": "20230103", "adj_factor": 1.0},
                 {"ts_code": "000002.SZ", "trade_date": "20230103", "adj_factor": 2.0},
-            ]
+            ],
         ]
 
         dm = DataManager()
         start = datetime(2023, 1, 1)
         end = datetime(2023, 1, 31)
 
-        result = dm.get_batch_stock_data(
-            ["000001.SZ", "000002.SZ"], start, end, adjust=True
-        )
+        result = dm.get_batch_stock_data(["000001.SZ", "000002.SZ"], start, end, adjust=True)
 
         assert len(result) == 2
         assert "000001.SZ" in result
@@ -251,9 +290,18 @@ class TestIndexData:
     def test_get_index_data(self, mock_db):
         """测试获取指数数据"""
         mock_db.fetchall.return_value = [
-            {"trade_date": "20230103", "open": 4000.0, "high": 4050.0,
-             "low": 3980.0, "close": 4020.0, "pre_close": 4000.0,
-             "change": 20.0, "pct_chg": 0.5, "vol": 1000000, "amount": 100000000},
+            {
+                "trade_date": "20230103",
+                "open": 4000.0,
+                "high": 4050.0,
+                "low": 3980.0,
+                "close": 4020.0,
+                "pre_close": 4000.0,
+                "change": 20.0,
+                "pct_chg": 0.5,
+                "vol": 1000000,
+                "amount": 100000000,
+            },
         ]
 
         dm = DataManager()
@@ -270,9 +318,18 @@ class TestDataIntegrity:
     def test_check_data_integrity_complete(self, mock_db):
         """测试数据完整性检查 - 完整数据"""
         mock_db.fetchall.return_value = [
-            {"trade_date": f"202301{day:02d}", "open": 100.0, "high": 101.0,
-             "low": 99.0, "close": 100.5, "pre_close": 100.0,
-             "t_change": 0.5, "pct_chg": 0.5, "vol": 100000, "amount": 10000000}
+            {
+                "trade_date": f"202301{day:02d}",
+                "open": 100.0,
+                "high": 101.0,
+                "low": 99.0,
+                "close": 100.5,
+                "pre_close": 100.0,
+                "t_change": 0.5,
+                "pct_chg": 0.5,
+                "vol": 100000,
+                "amount": 10000000,
+            }
             for day in [3, 4, 5]  # 3个交易日
         ]
 
@@ -291,12 +348,30 @@ class TestDataIntegrity:
     def test_check_data_integrity_missing(self, mock_db):
         """测试数据完整性检查 - 缺失数据"""
         mock_db.fetchall.return_value = [
-            {"trade_date": "20230103", "open": 100.0, "high": 101.0,
-             "low": 99.0, "close": 100.5, "pre_close": 100.0,
-             "t_change": 0.5, "pct_chg": 0.5, "vol": 100000, "amount": 10000000},
-            {"trade_date": "20230105", "open": 102.0, "high": 103.0,
-             "low": 101.0, "close": 102.5, "pre_close": 102.0,
-             "t_change": 0.5, "pct_chg": 0.5, "vol": 100000, "amount": 10000000},
+            {
+                "trade_date": "20230103",
+                "open": 100.0,
+                "high": 101.0,
+                "low": 99.0,
+                "close": 100.5,
+                "pre_close": 100.0,
+                "t_change": 0.5,
+                "pct_chg": 0.5,
+                "vol": 100000,
+                "amount": 10000000,
+            },
+            {
+                "trade_date": "20230105",
+                "open": 102.0,
+                "high": 103.0,
+                "low": 101.0,
+                "close": 102.5,
+                "pre_close": 102.0,
+                "t_change": 0.5,
+                "pct_chg": 0.5,
+                "vol": 100000,
+                "amount": 10000000,
+            },
         ]
 
         dm = DataManager()
@@ -395,7 +470,7 @@ class TestMissingDataError:
             "数据缺失",
             ts_code="000001.SZ",
             start_date=datetime(2023, 1, 1),
-            end_date=datetime(2023, 1, 31)
+            end_date=datetime(2023, 1, 31),
         )
 
         message = str(error)

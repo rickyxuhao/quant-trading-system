@@ -1,14 +1,13 @@
 """
 pytest配置与共享fixtures
 """
+
 import os
 import sys
-import json
-import pickle
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Any, Generator
-from unittest.mock import Mock, MagicMock
+from typing import Dict, List, Generator
+from unittest.mock import MagicMock
 
 import pytest
 import pandas as pd
@@ -20,9 +19,9 @@ if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
 from projects.quant_trading.backtest.strategy import BaseStrategy, Signal, SignalType
-from projects.quant_trading.backtest.engine import BacktestConfig, BacktestEngine
-from projects.quant_trading.backtest.portfolio import Portfolio, TransactionCost, Order, OrderSide
-from projects.quant_trading.backtest.metrics import MetricsCalculator, PerformanceMetrics
+from projects.quant_trading.backtest.engine import BacktestConfig
+from projects.quant_trading.backtest.portfolio import Portfolio, TransactionCost
+from projects.quant_trading.backtest.metrics import MetricsCalculator
 from projects.quant_trading.backtest.risk_manager import RiskManager, RiskConfig
 
 
@@ -30,9 +29,12 @@ from projects.quant_trading.backtest.risk_manager import RiskManager, RiskConfig
 # pytest配置
 # ============================================================================
 
+
 def pytest_configure(config):
     """pytest配置"""
-    config.addinivalue_line("markers", "slow: marks tests as slow (deselect with '-m \"not slow\"')")
+    config.addinivalue_line(
+        "markers", "slow: marks tests as slow (deselect with '-m \"not slow\"')"
+    )
     config.addinivalue_line("markers", "integration: marks tests as integration tests")
     config.addinivalue_line("markers", "e2e: marks tests as end-to-end tests")
     config.addinivalue_line("markers", "unit: marks tests as unit tests")
@@ -47,6 +49,7 @@ def test_data_dir() -> Path:
 # ============================================================================
 # 日期Fixtures
 # ============================================================================
+
 
 @pytest.fixture
 def sample_start_date() -> datetime:
@@ -78,6 +81,7 @@ def sample_trade_dates() -> List[datetime]:
 # 股票数据Fixtures
 # ============================================================================
 
+
 @pytest.fixture
 def sample_stock_codes() -> List[str]:
     """样本股票代码列表"""
@@ -101,18 +105,20 @@ def sample_price_data() -> pd.DataFrame:
     prices = []
     for i in range(len(dates)):
         change = np.random.normal(0.0005, 0.02)
-        base_price *= (1 + change)
-        prices.append({
-            "trade_date": dates[i].strftime("%Y%m%d"),
-            "open": base_price * (1 + np.random.normal(0, 0.005)),
-            "high": base_price * (1 + abs(np.random.normal(0, 0.01))),
-            "low": base_price * (1 - abs(np.random.normal(0, 0.01))),
-            "close": base_price,
-            "pre_close": base_price / (1 + change),
-            "vol": np.random.randint(100000, 1000000),
-            "amount": np.random.randint(10000000, 100000000),
-            "pct_chg": change * 100,
-        })
+        base_price *= 1 + change
+        prices.append(
+            {
+                "trade_date": dates[i].strftime("%Y%m%d"),
+                "open": base_price * (1 + np.random.normal(0, 0.005)),
+                "high": base_price * (1 + abs(np.random.normal(0, 0.01))),
+                "low": base_price * (1 - abs(np.random.normal(0, 0.01))),
+                "close": base_price,
+                "pre_close": base_price / (1 + change),
+                "vol": np.random.randint(100000, 1000000),
+                "amount": np.random.randint(10000000, 100000000),
+                "pct_chg": change * 100,
+            }
+        )
 
     df = pd.DataFrame(prices)
     df["ts_code"] = "000001.SZ"
@@ -132,16 +138,18 @@ def sample_stock_data_dict(sample_stock_codes) -> Dict[str, pd.DataFrame]:
 
         for i in range(len(dates)):
             change = np.random.normal(0.0003, 0.015)
-            base_price *= (1 + change)
-            prices.append({
-                "open": base_price * (1 + np.random.normal(0, 0.005)),
-                "high": base_price * (1 + abs(np.random.normal(0, 0.01))),
-                "low": base_price * (1 - abs(np.random.normal(0, 0.01))),
-                "close": base_price,
-                "pre_close": base_price / (1 + change),
-                "vol": np.random.randint(100000, 1000000),
-                "amount": np.random.randint(10000000, 100000000),
-            })
+            base_price *= 1 + change
+            prices.append(
+                {
+                    "open": base_price * (1 + np.random.normal(0, 0.005)),
+                    "high": base_price * (1 + abs(np.random.normal(0, 0.01))),
+                    "low": base_price * (1 - abs(np.random.normal(0, 0.01))),
+                    "close": base_price,
+                    "pre_close": base_price / (1 + change),
+                    "vol": np.random.randint(100000, 1000000),
+                    "amount": np.random.randint(10000000, 100000000),
+                }
+            )
 
         df = pd.DataFrame(prices, index=dates)
         df.index.name = "trade_date"
@@ -153,6 +161,7 @@ def sample_stock_data_dict(sample_stock_codes) -> Dict[str, pd.DataFrame]:
 # ============================================================================
 # 回测相关Fixtures
 # ============================================================================
+
 
 @pytest.fixture
 def sample_backtest_config(sample_start_date, sample_end_date) -> BacktestConfig:
@@ -174,11 +183,7 @@ def sample_backtest_config(sample_start_date, sample_end_date) -> BacktestConfig
 @pytest.fixture
 def sample_portfolio() -> Portfolio:
     """样本投资组合"""
-    return Portfolio(
-        initial_cash=100000.0,
-        commission_rate=0.00015,
-        slip_rate=0.0002
-    )
+    return Portfolio(initial_cash=100000.0, commission_rate=0.00015, slip_rate=0.0002)
 
 
 @pytest.fixture
@@ -189,7 +194,7 @@ def sample_transaction_cost() -> TransactionCost:
         min_commission=5.0,
         slip_rate=0.0002,
         stamp_tax_rate=0.001,
-        transfer_fee_rate=0.00002
+        transfer_fee_rate=0.00002,
     )
 
 
@@ -197,10 +202,7 @@ def sample_transaction_cost() -> TransactionCost:
 def sample_risk_config() -> RiskConfig:
     """样本风控配置"""
     return RiskConfig(
-        max_position_pct=0.3,
-        max_drawdown_limit=0.2,
-        stop_loss_pct=0.1,
-        position_limit=10
+        max_position_pct=0.3, max_drawdown_limit=0.2, stop_loss_pct=0.1, position_limit=10
     )
 
 
@@ -213,6 +215,7 @@ def sample_risk_manager(sample_risk_config) -> RiskManager:
 # ============================================================================
 # 策略Fixtures
 # ============================================================================
+
 
 class MockStrategy(BaseStrategy):
     """测试用模拟策略"""
@@ -227,12 +230,14 @@ class MockStrategy(BaseStrategy):
         signals = []
         for ts_code in self.signals_to_return[:5]:  # 最多返回5只
             if ts_code in available_stocks:
-                signals.append(Signal(
-                    ts_code=ts_code,
-                    signal_type=SignalType.BUY,
-                    weight=0.2,
-                    reason="Mock strategy signal"
-                ))
+                signals.append(
+                    Signal(
+                        ts_code=ts_code,
+                        signal_type=SignalType.BUY,
+                        weight=0.2,
+                        reason="Mock strategy signal",
+                    )
+                )
         return signals
 
 
@@ -240,14 +245,14 @@ class MockStrategy(BaseStrategy):
 def mock_strategy() -> MockStrategy:
     """模拟策略"""
     return MockStrategy(
-        name="TestMockStrategy",
-        signals_to_return=["000001.SZ", "000002.SZ", "600000.SH"]
+        name="TestMockStrategy", signals_to_return=["000001.SZ", "000002.SZ", "600000.SH"]
     )
 
 
 # ============================================================================
 # Mock DataManager Fixtures
 # ============================================================================
+
 
 @pytest.fixture
 def mock_data_manager() -> MagicMock:
@@ -262,16 +267,23 @@ def mock_data_manager() -> MagicMock:
     ][:252]
 
     mock.get_all_stocks.return_value = [
-        "000001.SZ", "000002.SZ", "600000.SH", "600519.SH", "000858.SZ"
+        "000001.SZ",
+        "000002.SZ",
+        "600000.SH",
+        "600519.SH",
+        "000858.SZ",
     ]
 
-    mock.get_stock_data.return_value = pd.DataFrame({
-        "open": [100.0, 101.0, 102.0],
-        "high": [102.0, 103.0, 104.0],
-        "low": [99.0, 100.0, 101.0],
-        "close": [101.0, 102.0, 103.0],
-        "vol": [100000, 110000, 120000],
-    }, index=pd.date_range("2023-01-01", periods=3))
+    mock.get_stock_data.return_value = pd.DataFrame(
+        {
+            "open": [100.0, 101.0, 102.0],
+            "high": [102.0, 103.0, 104.0],
+            "low": [99.0, 100.0, 101.0],
+            "close": [101.0, 102.0, 103.0],
+            "vol": [100000, 110000, 120000],
+        },
+        index=pd.date_range("2023-01-01", periods=3),
+    )
 
     return mock
 
@@ -279,6 +291,7 @@ def mock_data_manager() -> MagicMock:
 # ============================================================================
 # 绩效指标Fixtures
 # ============================================================================
+
 
 @pytest.fixture
 def sample_nav_history() -> List[tuple]:
@@ -289,7 +302,7 @@ def sample_nav_history() -> List[tuple]:
     history = []
     for date in dates:
         ret = np.random.normal(0.0005, 0.015)
-        nav *= (1 + ret)
+        nav *= 1 + ret
         history.append((date, nav))
     return history
 
@@ -303,7 +316,7 @@ def sample_benchmark_nav() -> List[tuple]:
     history = []
     for date in dates:
         ret = np.random.normal(0.0003, 0.012)
-        nav *= (1 + ret)
+        nav *= 1 + ret
         history.append((date, nav))
     return history
 
@@ -311,15 +324,17 @@ def sample_benchmark_nav() -> List[tuple]:
 @pytest.fixture
 def sample_trades_df() -> pd.DataFrame:
     """样本交易记录DataFrame"""
-    return pd.DataFrame({
-        "ts_code": ["000001.SZ", "000001.SZ", "000002.SZ", "000002.SZ"],
-        "side": ["buy", "sell", "buy", "sell"],
-        "quantity": [100, 100, 200, 200],
-        "price": [100.0, 105.0, 50.0, 52.0],
-        "amount": [10000.0, 10500.0, 10000.0, 10400.0],
-        "commission": [5.0, 5.0, 5.0, 5.0],
-        "trade_date": pd.date_range("2023-01-01", periods=4),
-    })
+    return pd.DataFrame(
+        {
+            "ts_code": ["000001.SZ", "000001.SZ", "000002.SZ", "000002.SZ"],
+            "side": ["buy", "sell", "buy", "sell"],
+            "quantity": [100, 100, 200, 200],
+            "price": [100.0, 105.0, 50.0, 52.0],
+            "amount": [10000.0, 10500.0, 10000.0, 10400.0],
+            "commission": [5.0, 5.0, 5.0, 5.0],
+            "trade_date": pd.date_range("2023-01-01", periods=4),
+        }
+    )
 
 
 @pytest.fixture
@@ -332,6 +347,7 @@ def metrics_calculator() -> MetricsCalculator:
 # 临时文件Fixtures
 # ============================================================================
 
+
 @pytest.fixture
 def temp_output_dir(tmp_path) -> Path:
     """临时输出目录"""
@@ -343,6 +359,7 @@ def temp_output_dir(tmp_path) -> Path:
 # ============================================================================
 # 数据库Mock Fixtures
 # ============================================================================
+
 
 @pytest.fixture
 def mock_db_connection() -> Generator[MagicMock, None, None]:
@@ -357,7 +374,9 @@ def mock_db_connection() -> Generator[MagicMock, None, None]:
         {"ts_code": "000002.SZ", "name": "万科A", "industry": "房地产"},
     ]
     mock_cursor.fetchone.return_value = {
-        "ts_code": "000001.SZ", "name": "平安银行", "industry": "银行"
+        "ts_code": "000001.SZ",
+        "name": "平安银行",
+        "industry": "银行",
     }
 
     yield mock_conn
@@ -366,6 +385,7 @@ def mock_db_connection() -> Generator[MagicMock, None, None]:
 # ============================================================================
 # 极端场景Fixtures
 # ============================================================================
+
 
 @pytest.fixture
 def limit_up_scenario_data() -> pd.DataFrame:
@@ -377,16 +397,18 @@ def limit_up_scenario_data() -> pd.DataFrame:
     for i, date in enumerate(dates):
         # 涨停 +10%
         close = base_price * (1.10 ** (i + 1))
-        data.append({
-            "trade_date": date.strftime("%Y%m%d"),
-            "open": close * 0.99,  # 涨停开盘
-            "high": close,
-            "low": close * 0.99,
-            "close": close,
-            "pre_close": close / 1.10,
-            "pct_chg": 10.0,
-            "vol": 1000,  # 成交量极低（涨停无法买入）
-        })
+        data.append(
+            {
+                "trade_date": date.strftime("%Y%m%d"),
+                "open": close * 0.99,  # 涨停开盘
+                "high": close,
+                "low": close * 0.99,
+                "close": close,
+                "pre_close": close / 1.10,
+                "pct_chg": 10.0,
+                "vol": 1000,  # 成交量极低（涨停无法买入）
+            }
+        )
 
     return pd.DataFrame(data)
 
@@ -405,16 +427,18 @@ def gap_data_scenario() -> pd.DataFrame:
 
     for date in valid_dates:
         change = np.random.normal(0, 0.02)
-        base_price *= (1 + change)
-        data.append({
-            "trade_date": date.strftime("%Y%m%d"),
-            "open": base_price * 0.99,
-            "high": base_price * 1.01,
-            "low": base_price * 0.98,
-            "close": base_price,
-            "pre_close": base_price / (1 + change),
-            "vol": 100000,
-        })
+        base_price *= 1 + change
+        data.append(
+            {
+                "trade_date": date.strftime("%Y%m%d"),
+                "open": base_price * 0.99,
+                "high": base_price * 1.01,
+                "low": base_price * 0.98,
+                "close": base_price,
+                "pre_close": base_price / (1 + change),
+                "vol": 100000,
+            }
+        )
 
     return pd.DataFrame(data)
 
@@ -422,6 +446,7 @@ def gap_data_scenario() -> pd.DataFrame:
 # ============================================================================
 # 环境变量Fixtures
 # ============================================================================
+
 
 @pytest.fixture(autouse=True)
 def setup_test_env():

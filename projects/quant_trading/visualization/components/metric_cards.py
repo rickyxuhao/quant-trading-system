@@ -1,13 +1,14 @@
 """关键指标卡片组件"""
+
 import streamlit as st
-from typing import Optional, Dict, Any
+from typing import Optional
 from projects.quant_trading.backtest.metrics import PerformanceMetrics
 
 
 def render_metric_cards(
     metrics: PerformanceMetrics,
     benchmark_metrics: Optional[PerformanceMetrics] = None,
-    use_columns: bool = True
+    use_columns: bool = True,
 ):
     """
     渲染关键指标卡片
@@ -29,13 +30,15 @@ def render_metric_cards(
         delta_color = "normal"
         if benchmark_metrics:
             delta = f"{(metrics.annual_return - benchmark_metrics.annual_return) * 100:.2f}%"
-            delta_color = "green" if metrics.annual_return > benchmark_metrics.annual_return else "red"
+            delta_color = (
+                "green" if metrics.annual_return > benchmark_metrics.annual_return else "red"
+            )
 
         st.metric(
             label="📈 年化收益率",
             value=f"{metrics.annual_return * 100:.2f}%",
             delta=delta,
-            delta_color=delta_color if delta else "normal"
+            delta_color=delta_color if delta else "normal",
         )
 
     # 夏普比率
@@ -44,26 +47,17 @@ def render_metric_cards(
         if benchmark_metrics:
             delta = f"{metrics.sharpe_ratio - benchmark_metrics.sharpe_ratio:.2f}"
 
-        st.metric(
-            label="⚖️ 夏普比率",
-            value=f"{metrics.sharpe_ratio:.2f}",
-            delta=delta
-        )
+        st.metric(label="⚖️ 夏普比率", value=f"{metrics.sharpe_ratio:.2f}", delta=delta)
 
     # 最大回撤
     with cols[2]:
         st.metric(
-            label="📉 最大回撤",
-            value=f"{metrics.max_drawdown * 100:.2f}%",
-            delta_color="inverse"
+            label="📉 最大回撤", value=f"{metrics.max_drawdown * 100:.2f}%", delta_color="inverse"
         )
 
     # Calmar比率
     with cols[3]:
-        st.metric(
-            label="🎯 Calmar比率",
-            value=f"{metrics.calmar_ratio:.2f}"
-        )
+        st.metric(label="🎯 Calmar比率", value=f"{metrics.calmar_ratio:.2f}")
 
 
 def render_detailed_metrics_table(metrics: PerformanceMetrics):

@@ -1,9 +1,12 @@
 """格式化工具函数"""
+
 from datetime import datetime, date
-from typing import Union, Optional
+from typing import Union
 
 
-def format_number(value: Union[int, float], precision: int = 2, prefix: str = "", suffix: str = "") -> str:
+def format_number(
+    value: Union[int, float], precision: int = 2, prefix: str = "", suffix: str = ""
+) -> str:
     """
     格式化数字
 

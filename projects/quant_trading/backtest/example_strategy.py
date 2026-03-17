@@ -20,16 +20,14 @@ from __future__ import annotations
 
 import logging
 import sys
-from abc import ABC
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 if TYPE_CHECKING:
     import pandas as pd
 
-import numpy as np
 
 # Setup logging
 logger = logging.getLogger(__name__)
@@ -47,6 +45,7 @@ try:
     )
 except ImportError as e:
     logger.error(f"Failed to import Strategy base class: {e}")
+
     # Define minimal base classes for standalone usage
     class Signal:  # type: ignore[no-redef]
         def __init__(
@@ -184,11 +183,7 @@ class MomentumStrategy(BaseStrategy):
                     continue
 
                 momentum = (end_price - start_price) / start_price
-                avg_volume = (
-                    df_period["vol"].mean()
-                    if "vol" in df_period.columns
-                    else float("inf")
-                )
+                avg_volume = df_period["vol"].mean() if "vol" in df_period.columns else float("inf")
 
                 if avg_volume < self.min_volume:
                     continue
@@ -517,12 +512,12 @@ class DualMomentumStrategy(BaseStrategy):
             )
 
         if signals:
-            logger.info(f"[Dual Momentum] Absolute filter: {len(positive_momentum)} positive stocks")
+            logger.info(
+                f"[Dual Momentum] Absolute filter: {len(positive_momentum)} positive stocks"
+            )
             logger.info(f"[Dual Momentum] Selected {len(signals)} stocks:")
             for i, item in enumerate(selected, 1):
-                logger.info(
-                    f"  {i}. {item.ts_code}: momentum={item.metrics['momentum']*100:+.2f}%"
-                )
+                logger.info(f"  {i}. {item.ts_code}: momentum={item.metrics['momentum']*100:+.2f}%")
 
         return signals
 
@@ -727,9 +722,7 @@ def create_strategy(strategy_type: str, **params: Any) -> BaseStrategy:
     strategy_type_lower = strategy_type.lower()
     if strategy_type_lower not in strategy_map:
         available = ", ".join(strategy_map.keys())
-        raise ValueError(
-            f"Unknown strategy type: '{strategy_type}'. " f"Available: [{available}]"
-        )
+        raise ValueError(f"Unknown strategy type: '{strategy_type}'. " f"Available: [{available}]")
 
     strategy_class = strategy_map[strategy_type_lower]
     return strategy_class(**params)

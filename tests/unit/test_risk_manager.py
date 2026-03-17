@@ -1,15 +1,17 @@
 """
 风控管理器单元测试
 """
-import pytest
-from datetime import datetime, timedelta, date
-from unittest.mock import Mock, MagicMock
+
+from datetime import datetime
 
 import pandas as pd
-import numpy as np
 
 from projects.quant_trading.backtest.risk_manager import (
-    RiskManager, RiskConfig, RiskAlert, RiskSeverity, RiskAlertType
+    RiskManager,
+    RiskConfig,
+    RiskAlert,
+    RiskSeverity,
+    RiskAlertType,
 )
 
 
@@ -27,11 +29,7 @@ class TestRiskConfig:
 
     def test_custom_config(self):
         """测试自定义配置"""
-        config = RiskConfig(
-            max_drawdown_limit=0.20,
-            stop_loss_pct=0.10,
-            max_position_weight=0.40
-        )
+        config = RiskConfig(max_drawdown_limit=0.20, stop_loss_pct=0.10, max_position_weight=0.40)
 
         assert config.max_drawdown_limit == 0.20
         assert config.stop_loss_pct == 0.10
@@ -49,7 +47,7 @@ class TestRiskAlert:
             severity=RiskSeverity.CRITICAL,
             message="触发止损",
             value=0.12,
-            threshold=0.08
+            threshold=0.08,
         )
 
         assert alert.alert_type == RiskAlertType.STOP_LOSS
@@ -64,7 +62,7 @@ class TestRiskAlert:
             severity=RiskSeverity.WARNING,
             message="回撤超限",
             value=0.18,
-            threshold=0.15
+            threshold=0.15,
         )
 
         data = alert.to_dict()
@@ -108,7 +106,7 @@ class TestStopLoss:
             timestamp=datetime(2023, 1, 15),
             ts_code="000001.SZ",
             current_price=current_price,
-            avg_cost=avg_cost
+            avg_cost=avg_cost,
         )
 
         assert triggered is True
@@ -125,7 +123,7 @@ class TestStopLoss:
             timestamp=datetime(2023, 1, 15),
             ts_code="000001.SZ",
             current_price=current_price,
-            avg_cost=avg_cost
+            avg_cost=avg_cost,
         )
 
         assert triggered is False
@@ -136,10 +134,7 @@ class TestStopLoss:
         rm = RiskManager(config)
 
         triggered = rm.check_stop_loss(
-            timestamp=datetime(2023, 1, 15),
-            ts_code="000001.SZ",
-            current_price=80.0,
-            avg_cost=100.0
+            timestamp=datetime(2023, 1, 15), ts_code="000001.SZ", current_price=80.0, avg_cost=100.0
         )
 
         assert triggered is False
@@ -195,15 +190,11 @@ class TestPositionLimits:
         config = RiskConfig(max_position_weight=0.30)
         rm = RiskManager(config)
 
-        positions = {
-            "000001.SZ": {"quantity": 1000, "market_value": 40000}
-        }
+        positions = {"000001.SZ": {"quantity": 1000, "market_value": 40000}}
 
         # API: check_position_limits(timestamp, positions, total_value)
         violations = rm.check_position_limits(
-            timestamp=datetime(2023, 1, 15),
-            positions=positions,
-            total_value=100000
+            timestamp=datetime(2023, 1, 15), positions=positions, total_value=100000
         )
 
         # 单只股票40%权重，超过30%限制
@@ -214,14 +205,10 @@ class TestPositionLimits:
         config = RiskConfig(max_position_weight=0.30)
         rm = RiskManager(config)
 
-        positions = {
-            "000001.SZ": {"quantity": 1000, "market_value": 20000}
-        }
+        positions = {"000001.SZ": {"quantity": 1000, "market_value": 20000}}
 
         violations = rm.check_position_limits(
-            timestamp=datetime(2023, 1, 15),
-            positions=positions,
-            total_value=100000
+            timestamp=datetime(2023, 1, 15), positions=positions, total_value=100000
         )
 
         # 单只股票20%权重，未超限
@@ -236,12 +223,14 @@ class TestAlerts:
         rm = RiskManager()
 
         # 创建告警
-        rm.alerts.append(RiskAlert(
-            timestamp=datetime(2023, 1, 15),
-            alert_type=RiskAlertType.STOP_LOSS,
-            severity=RiskSeverity.CRITICAL,
-            message="止损触发"
-        ))
+        rm.alerts.append(
+            RiskAlert(
+                timestamp=datetime(2023, 1, 15),
+                alert_type=RiskAlertType.STOP_LOSS,
+                severity=RiskSeverity.CRITICAL,
+                message="止损触发",
+            )
+        )
 
         # 使用get_alerts_by_type而非get_alerts
         alerts = rm.get_alerts_by_type(RiskAlertType.STOP_LOSS)
@@ -252,12 +241,14 @@ class TestAlerts:
         """测试清除告警"""
         rm = RiskManager()
 
-        rm.alerts.append(RiskAlert(
-            timestamp=datetime(2023, 1, 15),
-            alert_type=RiskAlertType.STOP_LOSS,
-            severity=RiskSeverity.CRITICAL,
-            message="止损触发"
-        ))
+        rm.alerts.append(
+            RiskAlert(
+                timestamp=datetime(2023, 1, 15),
+                alert_type=RiskAlertType.STOP_LOSS,
+                severity=RiskSeverity.CRITICAL,
+                message="止损触发",
+            )
+        )
 
         rm.clear_alerts()
 
@@ -267,12 +258,14 @@ class TestAlerts:
         """测试获取告警DataFrame"""
         rm = RiskManager()
 
-        rm.alerts.append(RiskAlert(
-            timestamp=datetime(2023, 1, 15),
-            alert_type=RiskAlertType.STOP_LOSS,
-            severity=RiskSeverity.CRITICAL,
-            message="止损触发"
-        ))
+        rm.alerts.append(
+            RiskAlert(
+                timestamp=datetime(2023, 1, 15),
+                alert_type=RiskAlertType.STOP_LOSS,
+                severity=RiskSeverity.CRITICAL,
+                message="止损触发",
+            )
+        )
 
         df = rm.get_alerts_df()
 
@@ -293,14 +286,11 @@ class TestDailyLimits:
 
         # 使用check_daily_limits API
         result = rm.check_daily_limits(
-            timestamp=datetime(2023, 1, 15),
-            daily_pnl=-4000,  # 亏损4%
-            trade_count=1,
-            turnover=0.1
+            timestamp=datetime(2023, 1, 15), daily_pnl=-4000, trade_count=1, turnover=0.1  # 亏损4%
         )
 
         # 应该触发限制
-        assert result['can_trade'] is False or len(rm.alerts) > 0
+        assert result["can_trade"] is False or len(rm.alerts) > 0
 
     def test_daily_trade_limit(self):
         """测试单日交易次数限制"""
@@ -312,10 +302,10 @@ class TestDailyLimits:
             timestamp=datetime(2023, 1, 15),
             daily_pnl=100,
             trade_count=7,  # 超过5次限制
-            turnover=0.1
+            turnover=0.1,
         )
 
-        assert result['can_trade'] is False or len(rm.alerts) > 0
+        assert result["can_trade"] is False or len(rm.alerts) > 0
 
 
 class TestPortfolioValueTracking:
@@ -352,9 +342,7 @@ class TestEdgeCases:
         rm = RiskManager()
 
         violations = rm.check_position_limits(
-            timestamp=datetime(2023, 1, 15),
-            positions={},
-            total_value=100000
+            timestamp=datetime(2023, 1, 15), positions={}, total_value=100000
         )
 
         assert len(violations) == 0
@@ -366,7 +354,7 @@ class TestEdgeCases:
         violations = rm.check_position_limits(
             timestamp=datetime(2023, 1, 15),
             positions={"000001.SZ": {"quantity": 100, "market_value": 0}},
-            total_value=0
+            total_value=0,
         )
 
         # 应该能正常处理

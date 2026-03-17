@@ -10,7 +10,6 @@
 from dataclasses import dataclass
 from typing import Optional, Tuple
 
-import numpy as np
 import pandas as pd
 
 from core.logger import get_logger
@@ -21,19 +20,20 @@ logger = get_logger(__name__)
 @dataclass
 class PositionConfig:
     """仓位配置"""
+
     # 基础配置
-    max_position_pct: float = 0.1      # 最大仓位占比（相对于总资金）
-    single_side_pct: float = 0.05      # 单边仓位占比
+    max_position_pct: float = 0.1  # 最大仓位占比（相对于总资金）
+    single_side_pct: float = 0.05  # 单边仓位占比
 
     # 波动率调整
     use_volatility_adjustment: bool = True
     atr_window: int = 14
-    target_atr_multiple: float = 2.0   # 目标风险 = ATR * multiple
+    target_atr_multiple: float = 2.0  # 目标风险 = ATR * multiple
 
     # 分级止盈
     use_staged_exit: bool = True
-    first_stage_profit: float = 0.05   # 5%止盈第一部分
-    first_stage_pct: float = 0.3       # 止盈30%仓位
+    first_stage_profit: float = 0.05  # 5%止盈第一部分
+    first_stage_pct: float = 0.3  # 止盈30%仓位
     second_stage_profit: float = 0.10  # 10%止盈剩余
 
     # 时间止损
@@ -43,7 +43,7 @@ class PositionConfig:
     # 移动止盈
     use_trailing_stop: bool = True
     trailing_activation: float = 0.10  # 盈利10%启动
-    trailing_drawdown: float = 0.05    # 回撤5%触发
+    trailing_drawdown: float = 0.05  # 回撤5%触发
 
 
 class PairPositionSizer:
@@ -60,7 +60,7 @@ class PairPositionSizer:
         price_b: float,
         hedge_ratio: float,
         atr_a: Optional[float] = None,
-        atr_b: Optional[float] = None
+        atr_b: Optional[float] = None,
     ) -> Tuple[int, int]:
         """
         计算配对交易的仓位大小
@@ -94,10 +94,7 @@ class PairPositionSizer:
         return shares_a, shares_b
 
     def calculate_spread_position(
-        self,
-        capital: float,
-        spread_price: float,
-        spread_volatility: Optional[float] = None
+        self, capital: float, spread_price: float, spread_volatility: Optional[float] = None
     ) -> int:
         """
         基于价差计算仓位（用于Spread合成交易）
@@ -124,11 +121,7 @@ class PairPositionSizer:
         return max(size, 0)
 
     def check_staged_exit(
-        self,
-        entry_price: float,
-        current_price: float,
-        position_size: int,
-        days_held: int
+        self, entry_price: float, current_price: float, position_size: int, days_held: int
     ) -> Tuple[Optional[int], str]:
         """
         检查分级止盈条件
@@ -164,11 +157,7 @@ class PairPositionSizer:
         return None, ""
 
     def calculate_trailing_stop(
-        self,
-        entry_price: float,
-        highest_price: float,
-        current_price: float,
-        position_size: int
+        self, entry_price: float, highest_price: float, current_price: float, position_size: int
     ) -> Tuple[Optional[int], str]:
         """
         计算移动止盈
@@ -197,11 +186,7 @@ class PairPositionSizer:
         return None, ""
 
     def calculate_atr(
-        self,
-        high: pd.Series,
-        low: pd.Series,
-        close: pd.Series,
-        window: Optional[int] = None
+        self, high: pd.Series, low: pd.Series, close: pd.Series, window: Optional[int] = None
     ) -> pd.Series:
         """
         计算ATR（平均真实波幅）
@@ -235,7 +220,7 @@ class PairPositionSizer:
         win_rate: float,
         avg_win: float,
         avg_loss: float,
-        max_pct: float = 0.25
+        max_pct: float = 0.25,
     ) -> float:
         """
         使用Kelly公式计算最优仓位
@@ -276,19 +261,21 @@ class PairPositionSizer:
         size_b: int,
         price_a: float,
         price_b: float,
-        reason: str = ""
+        reason: str = "",
     ) -> None:
         """记录仓位变动"""
-        self.position_history.append({
-            "timestamp": timestamp,
-            "action": action,
-            "size_a": size_a,
-            "size_b": size_b,
-            "price_a": price_a,
-            "price_b": price_b,
-            "value": abs(size_a) * price_a + abs(size_b) * price_b,
-            "reason": reason
-        })
+        self.position_history.append(
+            {
+                "timestamp": timestamp,
+                "action": action,
+                "size_a": size_a,
+                "size_b": size_b,
+                "price_a": price_a,
+                "price_b": price_b,
+                "value": abs(size_a) * price_a + abs(size_b) * price_b,
+                "reason": reason,
+            }
+        )
 
     def get_position_summary(self) -> dict:
         """获取仓位汇总信息"""
@@ -307,11 +294,7 @@ class PairPositionSizer:
 class RiskManager:
     """风险管理器"""
 
-    def __init__(
-        self,
-        max_drawdown_pct: float = 0.15,
-        daily_loss_limit_pct: float = 0.03
-    ):
+    def __init__(self, max_drawdown_pct: float = 0.15, daily_loss_limit_pct: float = 0.03):
         self.max_drawdown_pct = max_drawdown_pct
         self.daily_loss_limit_pct = daily_loss_limit_pct
 
@@ -338,7 +321,7 @@ class RiskManager:
             "drawdown": drawdown,
             "max_drawdown_triggered": drawdown >= self.max_drawdown_pct,
             "daily_loss_triggered": False,
-            "trading_allowed": True
+            "trading_allowed": True,
         }
 
         if status["max_drawdown_triggered"]:

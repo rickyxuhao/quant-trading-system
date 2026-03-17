@@ -3,13 +3,14 @@
 
 提供多级缓存机制，优化数据加载和计算性能。
 """
+
 import pickle
 import hashlib
 import logging
 from functools import wraps
 from typing import Dict, Any, Optional, Callable
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime
 import threading
 
 logger = logging.getLogger(__name__)
@@ -133,10 +134,13 @@ class CacheManager:
             try:
                 disk_file = self.disk_path / f"{key}.pkl"
                 with open(disk_file, "wb") as f:
-                    pickle.dump({
-                        "value": value,
-                        "timestamp": datetime.now(),
-                    }, f)
+                    pickle.dump(
+                        {
+                            "value": value,
+                            "timestamp": datetime.now(),
+                        },
+                        f,
+                    )
             except Exception as e:
                 logger.warning(f"Failed to write disk cache: {e}")
 
@@ -209,6 +213,7 @@ def cached(
         ... def expensive_function(x, y):
         ...     return x + y
     """
+
     def decorator(func: Callable) -> Callable:
         _cache = cache or get_global_cache()
 
@@ -233,4 +238,5 @@ def cached(
             return result
 
         return wrapper
+
     return decorator

@@ -2,16 +2,16 @@
 前置筛选模块 - 负责股票池过滤（去ST、板块筛选、流动性筛选）
 支持板块筛选和预设配置
 """
-from dataclasses import dataclass, field
+
+from dataclasses import dataclass
 from datetime import datetime
-from typing import List, Set, Optional, Callable, Dict, Any, Union
+from typing import List, Set, Optional, Callable, Dict
 from enum import Enum
 import logging
 
 import pandas as pd
-import numpy as np
 
-from projects.quant_trading.backtest.data_manager import DataManager, MissingDataError
+from projects.quant_trading.backtest.data_manager import DataManager
 
 # 配置日志
 logger = logging.getLogger(__name__)
@@ -19,14 +19,16 @@ logger = logging.getLogger(__name__)
 
 class Sector(Enum):
     """板块枚举"""
-    MAIN_BOARD = "主板"           # 主板
-    GEM = "创业板"                # 创业板
-    STAR_MARKET = "科创板"        # 科创板
-    NORTH_BOUND = "北交所"        # 北交所
+
+    MAIN_BOARD = "主板"  # 主板
+    GEM = "创业板"  # 创业板
+    STAR_MARKET = "科创板"  # 科创板
+    NORTH_BOUND = "北交所"  # 北交所
 
 
 class Industry(Enum):
     """行业枚举（申万一级行业示例）"""
+
     BANK = "银行"
     NON_BANK_FINANCE = "非银金融"
     REAL_ESTATE = "房地产"
@@ -82,6 +84,7 @@ class FilterCriteria:
         turn_over_min: 最低换手率
         turn_over_max: 最高换手率
     """
+
     exclude_st: bool = True
     exclude_suspended: bool = True
     exclude_new_listing: bool = True
@@ -105,6 +108,7 @@ class FilterCriteria:
 @dataclass
 class FilterConfig:
     """筛选配置预设"""
+
     name: str
     criteria: FilterCriteria
     description: str = ""
@@ -127,10 +131,7 @@ class StockFilter:
         self._new_listing_cache: Dict[datetime, Set[str]] = {}
 
     def filter_stocks(
-        self,
-        date: datetime,
-        stock_pool: List[str],
-        criteria: FilterCriteria
+        self, date: datetime, stock_pool: List[str], criteria: FilterCriteria
     ) -> List[str]:
         """根据条件筛选股票
 
@@ -222,7 +223,7 @@ class StockFilter:
             非停牌股票列表
         """
         try:
-            df = self.data_manager.get_market_data_for_date(date, ['ts_code', 'vol'])
+            df = self.data_manager.get_market_data_for_date(date, ["ts_code", "vol"])
         except Exception as e:
             logger.warning(f"获取市场数据失败: {e}，返回空列表")
             return []
@@ -231,17 +232,14 @@ class StockFilter:
             logger.warning(f"无市场数据: {date.strftime('%Y%m%d')}")
             return []
 
-        trading_stocks = set(df[df['vol'] > 0]['ts_code'].tolist())
+        trading_stocks = set(df[df["vol"] > 0]["ts_code"].tolist())
         filtered = [s for s in stocks if s in trading_stocks]
         if len(filtered) < len(stocks):
             logger.debug(f"排除停牌股票: {len(stocks) - len(filtered)} 只")
         return filtered
 
     def _filter_new_listing(
-        self,
-        date: datetime,
-        stocks: List[str],
-        min_listing_days: int
+        self, date: datetime, stocks: List[str], min_listing_days: int
     ) -> List[str]:
         """排除新股（上市天数不足）
 
@@ -274,10 +272,7 @@ class StockFilter:
         return result
 
     def _filter_liquidity(
-        self,
-        date: datetime,
-        stocks: List[str],
-        criteria: FilterCriteria
+        self, date: datetime, stocks: List[str], criteria: FilterCriteria
     ) -> List[str]:
         """根据流动性筛选 - 使用批量查询优化
 
@@ -306,11 +301,10 @@ class StockFilter:
                 continue
 
             df = df.tail(criteria.lookback_days)
-            avg_volume = df['vol'].mean()
-            avg_amount = df['amount'].mean()
+            avg_volume = df["vol"].mean()
+            avg_amount = df["amount"].mean()
 
-            if avg_volume >= criteria.min_avg_volume and \
-               avg_amount >= criteria.min_avg_amount:
+            if avg_volume >= criteria.min_avg_volume and avg_amount >= criteria.min_avg_amount:
                 qualified_stocks.append(ts_code)
 
         if len(qualified_stocks) < len(stocks):
@@ -329,8 +323,7 @@ class StockFilter:
         """
         info_dict = self.data_manager.get_batch_stock_info(stocks)
         filtered = [
-            s for s in stocks
-            if s in info_dict and info_dict[s].get('industry') in industries
+            s for s in stocks if s in info_dict and info_dict[s].get("industry") in industries
         ]
         logger.debug(f"行业筛选: {len(stocks)} -> {len(filtered)} 只")
         return filtered
@@ -347,8 +340,9 @@ class StockFilter:
         """
         info_dict = self.data_manager.get_batch_stock_info(stocks)
         filtered = [
-            s for s in stocks
-            if s not in info_dict or info_dict[s].get('industry') not in industries
+            s
+            for s in stocks
+            if s not in info_dict or info_dict[s].get("industry") not in industries
         ]
         if len(filtered) < len(stocks):
             logger.debug(f"排除行业: {len(stocks) - len(filtered)} 只")
@@ -372,15 +366,15 @@ class StockFilter:
             if ts_code not in info_dict:
                 continue
             info = info_dict[ts_code]
-            market = info.get('market', '')
+            market = info.get("market", "")
             # 根据market字段判断板块
-            if '科创板' in sector_names and market == '科创板':
+            if "科创板" in sector_names and market == "科创板":
                 result.append(ts_code)
-            elif '创业板' in sector_names and market == '创业板':
+            elif "创业板" in sector_names and market == "创业板":
                 result.append(ts_code)
-            elif '主板' in sector_names and market in ['主板', '深圳主板', '上海主板']:
+            elif "主板" in sector_names and market in ["主板", "深圳主板", "上海主板"]:
                 result.append(ts_code)
-            elif '北交所' in sector_names and market == '北交所':
+            elif "北交所" in sector_names and market == "北交所":
                 result.append(ts_code)
         logger.debug(f"板块筛选: {len(stocks)} -> {len(result)} 只")
         return result
@@ -396,18 +390,12 @@ class StockFilter:
             属于目标市场的股票列表
         """
         info_dict = self.data_manager.get_batch_stock_info(stocks)
-        filtered = [
-            s for s in stocks
-            if s in info_dict and info_dict[s].get('market') in markets
-        ]
+        filtered = [s for s in stocks if s in info_dict and info_dict[s].get("market") in markets]
         logger.debug(f"市场筛选: {len(stocks)} -> {len(filtered)} 只")
         return filtered
 
     def _filter_by_market_cap(
-        self,
-        date: datetime,
-        stocks: List[str],
-        criteria: FilterCriteria
+        self, date: datetime, stocks: List[str], criteria: FilterCriteria
     ) -> List[str]:
         """按市值筛选
 
@@ -421,7 +409,7 @@ class StockFilter:
         """
         try:
             df = self.data_manager.get_market_data_for_date(
-                date, ['ts_code', 'total_mv', 'circ_mv']
+                date, ["ts_code", "total_mv", "circ_mv"]
             )
         except Exception as e:
             logger.warning(f"获取市值数据失败: {e}，跳过市值筛选")
@@ -431,23 +419,20 @@ class StockFilter:
             logger.warning(f"无市值数据: {date.strftime('%Y%m%d')}")
             return []
 
-        df = df[df['ts_code'].isin(stocks)]
+        df = df[df["ts_code"].isin(stocks)]
 
         if criteria.min_market_cap > 0:
-            df = df[df['total_mv'] >= criteria.min_market_cap / 10000]  # 转换为万元
+            df = df[df["total_mv"] >= criteria.min_market_cap / 10000]  # 转换为万元
 
         if criteria.max_market_cap is not None:
-            df = df[df['total_mv'] <= criteria.max_market_cap / 10000]
+            df = df[df["total_mv"] <= criteria.max_market_cap / 10000]
 
-        filtered = df['ts_code'].tolist()
+        filtered = df["ts_code"].tolist()
         logger.debug(f"市值筛选: {len(stocks)} -> {len(filtered)} 只")
         return filtered
 
     def _filter_by_price(
-        self,
-        date: datetime,
-        stocks: List[str],
-        criteria: FilterCriteria
+        self, date: datetime, stocks: List[str], criteria: FilterCriteria
     ) -> List[str]:
         """按价格筛选
 
@@ -463,7 +448,7 @@ class StockFilter:
             return stocks
 
         try:
-            df = self.data_manager.get_market_data_for_date(date, ['ts_code', 'close'])
+            df = self.data_manager.get_market_data_for_date(date, ["ts_code", "close"])
         except Exception as e:
             logger.warning(f"获取价格数据失败: {e}，跳过价格筛选")
             return stocks
@@ -472,20 +457,17 @@ class StockFilter:
             logger.warning(f"无价格数据: {date.strftime('%Y%m%d')}")
             return []
 
-        df = df[df['ts_code'].isin(stocks)]
+        df = df[df["ts_code"].isin(stocks)]
 
         if criteria.price_min is not None:
-            df = df[df['close'] >= criteria.price_min]
+            df = df[df["close"] >= criteria.price_min]
         if criteria.price_max is not None:
-            df = df[df['close'] <= criteria.price_max]
+            df = df[df["close"] <= criteria.price_max]
 
-        return df['ts_code'].tolist()
+        return df["ts_code"].tolist()
 
     def _filter_by_turnover(
-        self,
-        date: datetime,
-        stocks: List[str],
-        criteria: FilterCriteria
+        self, date: datetime, stocks: List[str], criteria: FilterCriteria
     ) -> List[str]:
         """按换手率筛选
 
@@ -501,30 +483,30 @@ class StockFilter:
             return stocks
 
         try:
-            df = self.data_manager.get_market_data_for_date(date, ['ts_code', 'turnover_rate'])
+            df = self.data_manager.get_market_data_for_date(date, ["ts_code", "turnover_rate"])
         except Exception as e:
             logger.warning(f"获取换手率数据失败: {e}，跳过换手率筛选")
             return stocks
 
-        if df.empty or 'turnover_rate' not in df.columns:
+        if df.empty or "turnover_rate" not in df.columns:
             logger.warning(f"无换手率数据: {date.strftime('%Y%m%d')}")
             return stocks
 
-        df = df[df['ts_code'].isin(stocks)]
+        df = df[df["ts_code"].isin(stocks)]
 
         if criteria.turn_over_min is not None:
-            df = df[df['turnover_rate'] >= criteria.turn_over_min]
+            df = df[df["turnover_rate"] >= criteria.turn_over_min]
         if criteria.turn_over_max is not None:
-            df = df[df['turnover_rate'] <= criteria.turn_over_max]
+            df = df[df["turnover_rate"] <= criteria.turn_over_max]
 
-        return df['ts_code'].tolist()
+        return df["ts_code"].tolist()
 
     def filter_limit_up_down(
         self,
         date: datetime,
         stocks: List[str],
         exclude_limit_up: bool = True,
-        exclude_limit_down: bool = True
+        exclude_limit_down: bool = True,
     ) -> List[str]:
         """过滤涨跌停股票
 
@@ -539,7 +521,7 @@ class StockFilter:
         """
         try:
             df = self.data_manager.get_market_data_for_date(
-                date, ['ts_code', 'close', 'pre_close', 'pct_chg']
+                date, ["ts_code", "close", "pre_close", "pct_chg"]
             )
         except Exception as e:
             logger.warning(f"获取涨跌停数据失败: {e}")
@@ -552,11 +534,11 @@ class StockFilter:
         result = []
         excluded_count = 0
         for ts_code in stocks:
-            row = df[df['ts_code'] == ts_code]
+            row = df[df["ts_code"] == ts_code]
             if row.empty:
                 continue
 
-            pct_chg = row['pct_chg'].values[0]
+            pct_chg = row["pct_chg"].values[0]
 
             # 判断涨跌停
             is_limit_up = pct_chg >= 9.5
@@ -576,34 +558,27 @@ class StockFilter:
         return result
 
     def get_top_liquid_stocks(
-        self,
-        date: datetime,
-        stock_pool: List[str],
-        top_n: int = 100,
-        sort_by: str = 'amount'
+        self, date: datetime, stock_pool: List[str], top_n: int = 100, sort_by: str = "amount"
     ) -> List[str]:
         """获取流动性最好的N只股票"""
-        df = self.data_manager.get_market_data_for_date(
-            date, ['ts_code', 'vol', 'amount']
-        )
+        df = self.data_manager.get_market_data_for_date(date, ["ts_code", "vol", "amount"])
 
         if df.empty:
             return []
 
-        df = df[df['ts_code'].isin(stock_pool)]
+        df = df[df["ts_code"].isin(stock_pool)]
 
         if df.empty:
             return []
 
         df = df.sort_values(by=sort_by, ascending=False)
-        return df.head(top_n)['ts_code'].tolist()
+        return df.head(top_n)["ts_code"].tolist()
 
     def create_dynamic_filter(
-        self,
-        date: datetime,
-        criteria: FilterCriteria
+        self, date: datetime, criteria: FilterCriteria
     ) -> Callable[[List[str]], List[str]]:
         """创建动态筛选函数"""
+
         def filter_func(stocks: List[str]) -> List[str]:
             return self.filter_stocks(date, stocks, criteria)
 
@@ -627,12 +602,12 @@ class FilterPresets:
             exclude_suspended=True,
             exclude_new_listing=True,
             min_listing_days=252,
-            min_market_cap=50e8,      # 50亿
-            max_market_cap=500e8,     # 500亿以内
-            min_avg_volume=1e7,       # 1000万股
-            min_avg_amount=1e8,       # 1亿成交额
+            min_market_cap=50e8,  # 50亿
+            max_market_cap=500e8,  # 500亿以内
+            min_avg_volume=1e7,  # 1000万股
+            min_avg_amount=1e8,  # 1亿成交额
             lookback_days=20,
-            sectors=[Sector.MAIN_BOARD]
+            sectors=[Sector.MAIN_BOARD],
         )
 
     @staticmethod
@@ -643,11 +618,11 @@ class FilterPresets:
             exclude_suspended=True,
             exclude_new_listing=True,
             min_listing_days=120,
-            min_market_cap=20e8,      # 20亿
-            min_avg_volume=5e6,       # 500万股
-            min_avg_amount=5e7,       # 5000万
+            min_market_cap=20e8,  # 20亿
+            min_avg_volume=5e6,  # 500万股
+            min_avg_amount=5e7,  # 5000万
             lookback_days=20,
-            sectors=[Sector.MAIN_BOARD, Sector.GEM]
+            sectors=[Sector.MAIN_BOARD, Sector.GEM],
         )
 
     @staticmethod
@@ -658,11 +633,11 @@ class FilterPresets:
             exclude_suspended=True,
             exclude_new_listing=True,
             min_listing_days=60,
-            min_market_cap=5e8,       # 5亿
-            min_avg_volume=1e6,       # 100万股
-            min_avg_amount=1e7,       # 1000万
+            min_market_cap=5e8,  # 5亿
+            min_avg_volume=1e6,  # 100万股
+            min_avg_amount=1e7,  # 1000万
             lookback_days=20,
-            sectors=[Sector.MAIN_BOARD, Sector.GEM, Sector.STAR_MARKET]
+            sectors=[Sector.MAIN_BOARD, Sector.GEM, Sector.STAR_MARKET],
         )
 
     @staticmethod
@@ -673,11 +648,11 @@ class FilterPresets:
             exclude_suspended=True,
             exclude_new_listing=True,
             min_listing_days=20,
-            min_market_cap=1e8,       # 1亿
-            min_avg_volume=3e5,       # 30万股
-            min_avg_amount=3e6,       # 300万
+            min_market_cap=1e8,  # 1亿
+            min_avg_volume=3e5,  # 30万股
+            min_avg_amount=3e6,  # 300万
             lookback_days=20,
-            sectors=[Sector.MAIN_BOARD, Sector.GEM, Sector.STAR_MARKET, Sector.NORTH_BOUND]
+            sectors=[Sector.MAIN_BOARD, Sector.GEM, Sector.STAR_MARKET, Sector.NORTH_BOUND],
         )
 
     @staticmethod
@@ -688,16 +663,16 @@ class FilterPresets:
             exclude_suspended=True,
             exclude_new_listing=True,
             min_listing_days=60,
-            min_market_cap=5e7,       # 5000万
-            max_market_cap=50e8,      # 50亿以内
-            min_avg_volume=2e5,       # 20万股
-            min_avg_amount=2e6,       # 200万
+            min_market_cap=5e7,  # 5000万
+            max_market_cap=50e8,  # 50亿以内
+            min_avg_volume=2e5,  # 20万股
+            min_avg_amount=2e6,  # 200万
             lookback_days=20,
             industries_exclude=[
                 Industry.BANK.value,
                 Industry.NON_BANK_FINANCE.value,
-                Industry.REAL_ESTATE.value
-            ]
+                Industry.REAL_ESTATE.value,
+            ],
         )
 
     @staticmethod
@@ -708,9 +683,9 @@ class FilterPresets:
             exclude_suspended=True,
             exclude_new_listing=True,
             min_listing_days=252,
-            min_market_cap=100e8,     # 100亿
-            min_avg_volume=5e6,       # 500万股
-            min_avg_amount=5e7,       # 5000万
+            min_market_cap=100e8,  # 100亿
+            min_avg_volume=5e6,  # 500万股
+            min_avg_amount=5e7,  # 5000万
             lookback_days=20,
             sectors=[Sector.MAIN_BOARD],
             industries=[
@@ -718,8 +693,8 @@ class FilterPresets:
                 Industry.PHARMACEUTICAL.value,
                 Industry.HOME_APPLIANCES.value,
                 Industry.BANK.value,
-                Industry.NON_BANK_FINANCE.value
-            ]
+                Industry.NON_BANK_FINANCE.value,
+            ],
         )
 
     @staticmethod
@@ -740,8 +715,8 @@ class FilterPresets:
                 Industry.COMMUNICATION.value,
                 Industry.MEDIA.value,
                 Industry.ELECTRICAL_EQUIPMENT.value,
-                Industry.MACHINERY.value
-            ]
+                Industry.MACHINERY.value,
+            ],
         )
 
     @staticmethod
@@ -753,5 +728,5 @@ class FilterPresets:
             exclude_new_listing=False,
             min_market_cap=0,
             min_avg_volume=0,
-            min_avg_amount=0
+            min_avg_amount=0,
         )

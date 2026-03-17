@@ -1,10 +1,10 @@
 """
 完整工作流端到端测试
 """
+
 import pytest
 from datetime import datetime
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import patch, MagicMock
 
 import pandas as pd
 import numpy as np
@@ -33,16 +33,18 @@ class MAStrategy(BaseStrategy):
                 continue
 
             # 计算均线
-            ma_short_val = df["close"].iloc[-self.ma_short:].mean()
-            ma_long_val = df["close"].iloc[-self.ma_long:].mean()
+            ma_short_val = df["close"].iloc[-self.ma_short :].mean()
+            ma_long_val = df["close"].iloc[-self.ma_long :].mean()
 
             if ma_short_val > ma_long_val:
-                signals.append(Signal(
-                    ts_code=ts_code,
-                    signal_type=SignalType.BUY,
-                    weight=0.1,
-                    reason=f"MA{self.ma_short} > MA{self.ma_long}"
-                ))
+                signals.append(
+                    Signal(
+                        ts_code=ts_code,
+                        signal_type=SignalType.BUY,
+                        weight=0.1,
+                        reason=f"MA{self.ma_short} > MA{self.ma_long}",
+                    )
+                )
 
         return signals
 
@@ -73,7 +75,11 @@ class TestFullWorkflow:
 
         # 模拟股票列表
         mock_dm.get_all_stocks.return_value = [
-            "000001.SZ", "000002.SZ", "600000.SH", "600519.SH", "000858.SZ"
+            "000001.SZ",
+            "000002.SZ",
+            "600000.SH",
+            "600519.SH",
+            "000858.SZ",
         ]
 
         # 模拟股票数据 - 带均线交叉的模式
@@ -91,14 +97,16 @@ class TestFullWorkflow:
                     trend = 30 * 0.002 - (i - 30) * 0.001  # 趋平
 
                 price = base_price * (1 + trend + np.random.randn() * 0.01)
-                prices.append({
-                    "trade_date": dates[i].strftime("%Y%m%d"),
-                    "open": price * 0.99,
-                    "high": price * 1.02,
-                    "low": price * 0.98,
-                    "close": price,
-                    "vol": np.random.randint(100000, 1000000),
-                })
+                prices.append(
+                    {
+                        "trade_date": dates[i].strftime("%Y%m%d"),
+                        "open": price * 0.99,
+                        "high": price * 1.02,
+                        "low": price * 0.98,
+                        "close": price,
+                        "vol": np.random.randint(100000, 1000000),
+                    }
+                )
 
             df = pd.DataFrame(prices)
             df["trade_date"] = pd.to_datetime(df["trade_date"])
@@ -109,9 +117,7 @@ class TestFullWorkflow:
         # 设置mock筛选器
         mock_filter = MagicMock()
         mock_filter_class.return_value = mock_filter
-        mock_filter.filter_stocks.return_value = [
-            "000001.SZ", "000002.SZ", "600000.SH"
-        ]
+        mock_filter.filter_stocks.return_value = ["000001.SZ", "000002.SZ", "600000.SH"]
 
         # 1. 创建策略
         strategy = MAStrategy(ma_short=5, ma_long=20)
@@ -124,7 +130,7 @@ class TestFullWorkflow:
             max_positions=10,
             min_positions=3,
             rebalance_freq="weekly",
-            enable_risk_control=True
+            enable_risk_control=True,
         )
 
         # 3. 创建回测引擎
@@ -160,8 +166,7 @@ class TestFullWorkflow:
 
         # 模拟数据
         mock_dm.get_trade_dates.return_value = [
-            (datetime(2023, 1, i).strftime("%Y%m%d"))
-            for i in range(3, 50, 2)
+            (datetime(2023, 1, i).strftime("%Y%m%d")) for i in range(3, 50, 2)
         ]
         mock_dm.get_all_stocks.return_value = ["000001.SZ", "000002.SZ"]
 
@@ -171,14 +176,16 @@ class TestFullWorkflow:
             prices = []
             for i in range(days):
                 price = 100.0 + i * 0.1 + np.random.randn() * 0.5
-                prices.append({
-                    "trade_date": dates[i].strftime("%Y%m%d"),
-                    "open": price * 0.99,
-                    "high": price * 1.01,
-                    "low": price * 0.98,
-                    "close": price,
-                    "vol": 100000,
-                })
+                prices.append(
+                    {
+                        "trade_date": dates[i].strftime("%Y%m%d"),
+                        "open": price * 0.99,
+                        "high": price * 1.01,
+                        "low": price * 0.98,
+                        "close": price,
+                        "vol": 100000,
+                    }
+                )
             df = pd.DataFrame(prices)
             df["trade_date"] = pd.to_datetime(df["trade_date"])
             return df
@@ -199,19 +206,21 @@ class TestFullWorkflow:
                 end_date=datetime(2023, 2, 28),
                 initial_cash=100000.0,
                 max_positions=5,
-                min_positions=1
+                min_positions=1,
             )
 
             engine = BacktestEngine(config, strategy, data_manager=mock_dm)
             results = engine.run()
             metrics = results["metrics"]
 
-            results_summary.append({
-                "strategy": name,
-                "total_return": metrics.total_return,
-                "sharpe_ratio": metrics.sharpe_ratio,
-                "max_drawdown": metrics.max_drawdown,
-            })
+            results_summary.append(
+                {
+                    "strategy": name,
+                    "total_return": metrics.total_return,
+                    "sharpe_ratio": metrics.sharpe_ratio,
+                    "max_drawdown": metrics.max_drawdown,
+                }
+            )
 
         # 验证至少有一个策略有结果
         assert len(results_summary) == 2
@@ -228,37 +237,36 @@ class TestFullWorkflow:
         mock_dm_class.return_value = mock_dm
 
         mock_dm.get_trade_dates.return_value = [
-            (datetime(2023, 1, i).strftime("%Y%m%d"))
-            for i in range(3, 20, 2)
+            (datetime(2023, 1, i).strftime("%Y%m%d")) for i in range(3, 20, 2)
         ]
         mock_dm.get_all_stocks.return_value = ["000001.SZ"]
 
         dates = pd.date_range("2023-01-01", periods=10, freq="B")
         price_data = []
         for i, date in enumerate(dates):
-            price_data.append({
-                "trade_date": date.strftime("%Y%m%d"),
-                "open": 100.0 + i,
-                "high": 101.0 + i,
-                "low": 99.0 + i,
-                "close": 100.0 + i,
-                "vol": 100000,
-            })
+            price_data.append(
+                {
+                    "trade_date": date.strftime("%Y%m%d"),
+                    "open": 100.0 + i,
+                    "high": 101.0 + i,
+                    "low": 99.0 + i,
+                    "close": 100.0 + i,
+                    "vol": 100000,
+                }
+            )
 
         df = pd.DataFrame(price_data)
         df["trade_date"] = pd.to_datetime(df["trade_date"])
         mock_dm.get_stock_data.return_value = df
 
         config = BacktestConfig(
-            start_date=datetime(2023, 1, 3),
-            end_date=datetime(2023, 1, 20),
-            initial_cash=100000.0
+            start_date=datetime(2023, 1, 3), end_date=datetime(2023, 1, 20), initial_cash=100000.0
         )
 
         strategy = MAStrategy()
         engine = BacktestEngine(config, strategy, data_manager=mock_dm)
 
-        results = engine.run()
+        engine.run()
 
         # 保存结果
         output_dir = tmp_path / "backtest_results"

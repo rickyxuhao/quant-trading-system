@@ -1,6 +1,7 @@
 """可视化模块配置"""
+
 from dataclasses import dataclass
-from typing import Optional, List, Dict, Any
+from typing import List, Dict, Any
 
 
 @dataclass

@@ -1,4 +1,5 @@
 """参数调优页面"""
+
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -8,8 +9,6 @@ from plotly.subplots import make_subplots
 from datetime import datetime
 
 from projects.quant_trading.visualization.state_manager import StateManager
-from projects.quant_trading.visualization.components.metric_cards import render_metric_cards
-from projects.quant_trading.visualization.utils.data_loader import DataLoader
 from projects.quant_trading.backtest.metrics import PerformanceMetrics
 
 
@@ -62,9 +61,7 @@ def render_parameter_controls():
     # 策略选择
     st.subheader("策略选择")
     strategy = st.selectbox(
-        "选择策略",
-        ["MA趋势策略", "均值回归策略", "ML预测策略"],
-        key="opt_strategy"
+        "选择策略", ["MA趋势策略", "均值回归策略", "ML预测策略"], key="opt_strategy"
     )
 
     # MA参数
@@ -88,16 +85,17 @@ def render_parameter_controls():
         with st.spinner("正在运行回测..."):
             # 模拟回测执行
             import time
+
             time.sleep(1.5)
 
             # 根据参数生成不同的模拟结果
             params = {
-                'ma_short': ma_short,
-                'ma_long': ma_long,
-                'entry_threshold': entry_threshold,
-                'exit_threshold': exit_threshold,
-                'stop_loss': stop_loss,
-                'take_profit': take_profit
+                "ma_short": ma_short,
+                "ma_long": ma_long,
+                "entry_threshold": entry_threshold,
+                "exit_threshold": exit_threshold,
+                "stop_loss": stop_loss,
+                "take_profit": take_profit,
             }
 
             # 基于参数计算一个确定性但变化的收益
@@ -127,13 +125,13 @@ def render_parameter_controls():
                 sharpe_ratio=sharpe,
                 calmar_ratio=abs(annual_return / max_dd) if max_dd != 0 else 0,
                 win_rate=win_rate,
-                total_trades=np.random.randint(50, 150)
+                total_trades=np.random.randint(50, 150),
             )
 
             result = {
-                'params': params,
-                'metrics': metrics,
-                'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                "params": params,
+                "metrics": metrics,
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             }
 
             StateManager.add_comparison_result(result)
@@ -145,22 +143,22 @@ def render_comparison_table(comparison: list):
     """渲染对比表格"""
     rows = []
     for i, result in enumerate(comparison):
-        params = result.get('params', {})
-        metrics = result.get('metrics', {})
+        params = result.get("params", {})
+        metrics = result.get("metrics", {})
 
         row = {
-            '组合': f"组合{i+1}",
-            '短期均线': params.get('ma_short', '-'),
-            '长期均线': params.get('ma_long', '-'),
-            '入场阈值': f"{params.get('entry_threshold', 0):.2%}",
-            '出场阈值': f"{params.get('exit_threshold', 0):.2%}",
-            '止损': f"{params.get('stop_loss', 0):.0%}",
-            '止盈': f"{params.get('take_profit', 0):.0%}",
-            '年化收益': f"{metrics.annual_return*100:.2f}%",
-            '夏普比率': f"{metrics.sharpe_ratio:.2f}",
-            '最大回撤': f"{metrics.max_drawdown*100:.2f}%",
-            '胜率': f"{metrics.win_rate*100:.1f}%",
-            '交易次数': metrics.total_trades,
+            "组合": f"组合{i+1}",
+            "短期均线": params.get("ma_short", "-"),
+            "长期均线": params.get("ma_long", "-"),
+            "入场阈值": f"{params.get('entry_threshold', 0):.2%}",
+            "出场阈值": f"{params.get('exit_threshold', 0):.2%}",
+            "止损": f"{params.get('stop_loss', 0):.0%}",
+            "止盈": f"{params.get('take_profit', 0):.0%}",
+            "年化收益": f"{metrics.annual_return*100:.2f}%",
+            "夏普比率": f"{metrics.sharpe_ratio:.2f}",
+            "最大回撤": f"{metrics.max_drawdown*100:.2f}%",
+            "胜率": f"{metrics.win_rate*100:.1f}%",
+            "交易次数": metrics.total_trades,
         }
         rows.append(row)
 
@@ -172,12 +170,12 @@ def render_comparison_table(comparison: list):
         use_container_width=True,
         hide_index=True,
         column_config={
-            '组合': st.column_config.TextColumn('组合', width='small'),
-            '年化收益': st.column_config.TextColumn('年化收益', help='越高越好'),
-            '夏普比率': st.column_config.TextColumn('夏普', help='越高越好'),
-            '最大回撤': st.column_config.TextColumn('最大回撤', help='绝对值越小越好'),
-            '胜率': st.column_config.TextColumn('胜率', help='越高越好'),
-        }
+            "组合": st.column_config.TextColumn("组合", width="small"),
+            "年化收益": st.column_config.TextColumn("年化收益", help="越高越好"),
+            "夏普比率": st.column_config.TextColumn("夏普", help="越高越好"),
+            "最大回撤": st.column_config.TextColumn("最大回撤", help="绝对值越小越好"),
+            "胜率": st.column_config.TextColumn("胜率", help="越高越好"),
+        },
     )
 
 
@@ -185,10 +183,10 @@ def render_radar_chart(comparison: list):
     """渲染雷达图对比"""
     fig = go.Figure()
 
-    colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b']
+    colors = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b"]
 
     for i, result in enumerate(comparison):
-        metrics = result.get('metrics', {})
+        metrics = result.get("metrics", {})
 
         # 归一化指标（0-1范围）
         annual_return_norm = min(max(metrics.annual_return * 3, 0), 1)  # 30%收益=1
@@ -197,25 +195,26 @@ def render_radar_chart(comparison: list):
         win_rate_norm = metrics.win_rate
         calmar_norm = min(max(metrics.calmar_ratio / 2, 0), 1)  # Calmar 2=1
 
-        fig.add_trace(go.Scatterpolar(
-            r=[annual_return_norm, sharpe_norm, drawdown_norm, win_rate_norm, calmar_norm],
-            theta=['年化收益', '夏普比率', '回撤控制', '胜率', 'Calmar'],
-            fill='toself',
-            name=f"组合{i+1}",
-            line_color=colors[i % len(colors)],
-            fillcolor=colors[i % len(colors)],
-            opacity=0.3
-        ))
+        fig.add_trace(
+            go.Scatterpolar(
+                r=[annual_return_norm, sharpe_norm, drawdown_norm, win_rate_norm, calmar_norm],
+                theta=["年化收益", "夏普比率", "回撤控制", "胜率", "Calmar"],
+                fill="toself",
+                name=f"组合{i+1}",
+                line_color=colors[i % len(colors)],
+                fillcolor=colors[i % len(colors)],
+                opacity=0.3,
+            )
+        )
 
     fig.update_layout(
         polar=dict(
-            radialaxis=dict(visible=True, range=[0, 1]),
-            angularaxis=dict(direction='clockwise')
+            radialaxis=dict(visible=True, range=[0, 1]), angularaxis=dict(direction="clockwise")
         ),
         showlegend=True,
         legend=dict(orientation="h", yanchor="bottom", y=-0.2),
         height=500,
-        template='plotly_white'
+        template="plotly_white",
     )
 
     st.plotly_chart(fig, use_container_width=True, key="radar_comparison")
@@ -230,24 +229,28 @@ def render_sensitivity_analysis(comparison: list):
     # 提取数据
     df_data = []
     for result in comparison:
-        params = result.get('params', {})
-        metrics = result.get('metrics', {})
-        row = {**params, **{
-            'annual_return': metrics.annual_return,
-            'sharpe_ratio': metrics.sharpe_ratio,
-            'max_drawdown': metrics.max_drawdown
-        }}
+        params = result.get("params", {})
+        metrics = result.get("metrics", {})
+        row = {
+            **params,
+            **{
+                "annual_return": metrics.annual_return,
+                "sharpe_ratio": metrics.sharpe_ratio,
+                "max_drawdown": metrics.max_drawdown,
+            },
+        }
         df_data.append(row)
 
     df = pd.DataFrame(df_data)
 
     # 参数敏感性图表
-    param_cols = ['ma_short', 'ma_long', 'entry_threshold', 'stop_loss']
+    param_cols = ["ma_short", "ma_long", "entry_threshold", "stop_loss"]
 
     fig = make_subplots(
-        rows=2, cols=2,
-        subplot_titles=[f'{col} vs 年化收益' for col in param_cols],
-        vertical_spacing=0.15
+        rows=2,
+        cols=2,
+        subplot_titles=[f"{col} vs 年化收益" for col in param_cols],
+        vertical_spacing=0.15,
     )
 
     for i, col in enumerate(param_cols):
@@ -257,40 +260,45 @@ def render_sensitivity_analysis(comparison: list):
         fig.add_trace(
             go.Scatter(
                 x=df[col],
-                y=df['annual_return'] * 100,
-                mode='markers+lines',
+                y=df["annual_return"] * 100,
+                mode="markers+lines",
                 name=col,
-                marker=dict(size=10)
+                marker=dict(size=10),
             ),
-            row=row, col=col_idx
+            row=row,
+            col=col_idx,
         )
 
         fig.update_xaxes(title_text=col, row=row, col=col_idx)
-        fig.update_yaxes(title_text='年化收益 (%)', row=row, col=col_idx)
+        fig.update_yaxes(title_text="年化收益 (%)", row=row, col=col_idx)
 
-    fig.update_layout(
-        height=600,
-        showlegend=False,
-        template='plotly_white'
-    )
+    fig.update_layout(height=600, showlegend=False, template="plotly_white")
 
     st.plotly_chart(fig, use_container_width=True, key="sensitivity_analysis")
 
     # 参数相关性热图
     st.subheader("参数-指标相关性")
 
-    corr_cols = ['ma_short', 'ma_long', 'entry_threshold', 'stop_loss',
-                 'annual_return', 'sharpe_ratio', 'max_drawdown']
+    corr_cols = [
+        "ma_short",
+        "ma_long",
+        "entry_threshold",
+        "stop_loss",
+        "annual_return",
+        "sharpe_ratio",
+        "max_drawdown",
+    ]
     corr_matrix = df[corr_cols].corr()
 
     fig = px.imshow(
         corr_matrix,
-        text_auto='.2f',
-        aspect='auto',
-        color_continuous_scale='RdBu_r',
-        zmin=-1, zmax=1
+        text_auto=".2f",
+        aspect="auto",
+        color_continuous_scale="RdBu_r",
+        zmin=-1,
+        zmax=1,
     )
-    fig.update_layout(height=400, template='plotly_white')
+    fig.update_layout(height=400, template="plotly_white")
 
     st.plotly_chart(fig, use_container_width=True, key="correlation_heatmap")
 
@@ -299,17 +307,17 @@ def export_comparison_results(comparison: list):
     """导出对比结果为CSV"""
     rows = []
     for i, result in enumerate(comparison):
-        params = result.get('params', {})
-        metrics = result.get('metrics', {})
+        params = result.get("params", {})
+        metrics = result.get("metrics", {})
 
         row = {
-            '组合': f"组合{i+1}",
+            "组合": f"组合{i+1}",
             **params,
-            'annual_return': metrics.annual_return,
-            'sharpe_ratio': metrics.sharpe_ratio,
-            'max_drawdown': metrics.max_drawdown,
-            'win_rate': metrics.win_rate,
-            'total_trades': metrics.total_trades,
+            "annual_return": metrics.annual_return,
+            "sharpe_ratio": metrics.sharpe_ratio,
+            "max_drawdown": metrics.max_drawdown,
+            "win_rate": metrics.win_rate,
+            "total_trades": metrics.total_trades,
         }
         rows.append(row)
 
@@ -321,5 +329,5 @@ def export_comparison_results(comparison: list):
         label="下载CSV",
         data=csv,
         file_name=f"optimization_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-        mime='text/csv'
+        mime="text/csv",
     )

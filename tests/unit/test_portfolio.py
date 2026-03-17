@@ -1,16 +1,19 @@
 """
 投资组合单元测试
 """
+
 import pytest
 from datetime import datetime
-from decimal import Decimal
 
 import pandas as pd
-import numpy as np
 
 from projects.quant_trading.backtest.portfolio import (
-    Portfolio, TransactionCost, Order, OrderSide, OrderType, OrderStatus,
-    Trade, Position, PortfolioState, PortfolioError, TransactionCostError
+    Portfolio,
+    TransactionCost,
+    Order,
+    OrderSide,
+    OrderType,
+    Position,
 )
 
 
@@ -30,9 +33,7 @@ class TestTransactionCost:
         """测试买入成本计算"""
         tc = TransactionCost()
         commission, slip_cost, stamp_tax, transfer_fee = tc.calculate(
-            side=OrderSide.BUY,
-            quantity=100,
-            price=100.0
+            side=OrderSide.BUY, quantity=100, price=100.0
         )
 
         # 成交金额: 10000
@@ -54,9 +55,7 @@ class TestTransactionCost:
         """测试卖出成本计算"""
         tc = TransactionCost()
         commission, slip_cost, stamp_tax, transfer_fee = tc.calculate(
-            side=OrderSide.SELL,
-            quantity=100,
-            price=100.0
+            side=OrderSide.SELL, quantity=100, price=100.0
         )
 
         # 成交金额: 10000
@@ -92,10 +91,7 @@ class TestOrder:
     def test_valid_market_order(self):
         """测试有效市价单"""
         order = Order(
-            ts_code="000001.SZ",
-            side=OrderSide.BUY,
-            quantity=100,
-            order_type=OrderType.MARKET
+            ts_code="000001.SZ", side=OrderSide.BUY, quantity=100, order_type=OrderType.MARKET
         )
         assert order.ts_code == "000001.SZ"
         assert order.side == OrderSide.BUY
@@ -108,7 +104,7 @@ class TestOrder:
             side=OrderSide.SELL,
             quantity=100,
             order_type=OrderType.LIMIT,
-            limit_price=105.0
+            limit_price=105.0,
         )
         assert order.order_type == OrderType.LIMIT
         assert order.limit_price == 105.0
@@ -124,12 +120,7 @@ class TestOrder:
     def test_limit_order_without_price(self):
         """测试限价单无价格"""
         with pytest.raises(ValueError, match="must have a limit price"):
-            Order(
-                ts_code="000001.SZ",
-                side=OrderSide.BUY,
-                quantity=100,
-                order_type=OrderType.LIMIT
-            )
+            Order(ts_code="000001.SZ", side=OrderSide.BUY, quantity=100, order_type=OrderType.LIMIT)
 
 
 class TestPosition:
@@ -188,10 +179,7 @@ class TestPortfolio:
         portfolio = Portfolio(initial_cash=100000.0)
 
         order = Order(
-            ts_code="000001.SZ",
-            side=OrderSide.BUY,
-            quantity=100,
-            order_type=OrderType.MARKET
+            ts_code="000001.SZ", side=OrderSide.BUY, quantity=100, order_type=OrderType.MARKET
         )
 
         trade = portfolio.execute_order(order, price=100.0, date=datetime(2023, 1, 5))
@@ -208,20 +196,14 @@ class TestPortfolio:
 
         # 先买入
         buy_order = Order(
-            ts_code="000001.SZ",
-            side=OrderSide.BUY,
-            quantity=100,
-            order_type=OrderType.MARKET
+            ts_code="000001.SZ", side=OrderSide.BUY, quantity=100, order_type=OrderType.MARKET
         )
         portfolio.execute_order(buy_order, price=100.0, date=datetime(2023, 1, 5))
         assert "000001.SZ" in portfolio.positions
 
         # 再卖出
         sell_order = Order(
-            ts_code="000001.SZ",
-            side=OrderSide.SELL,
-            quantity=100,
-            order_type=OrderType.MARKET
+            ts_code="000001.SZ", side=OrderSide.SELL, quantity=100, order_type=OrderType.MARKET
         )
         trade = portfolio.execute_order(sell_order, price=110.0, date=datetime(2023, 1, 10))
 
@@ -237,10 +219,7 @@ class TestPortfolio:
         portfolio = Portfolio(initial_cash=1000.0)
 
         order = Order(
-            ts_code="000001.SZ",
-            side=OrderSide.BUY,
-            quantity=100,
-            order_type=OrderType.MARKET
+            ts_code="000001.SZ", side=OrderSide.BUY, quantity=100, order_type=OrderType.MARKET
         )
 
         # 实际行为：返回None而不是抛出异常
@@ -252,10 +231,7 @@ class TestPortfolio:
         portfolio = Portfolio(initial_cash=100000.0)
 
         sell_order = Order(
-            ts_code="000001.SZ",
-            side=OrderSide.SELL,
-            quantity=100,
-            order_type=OrderType.MARKET
+            ts_code="000001.SZ", side=OrderSide.SELL, quantity=100, order_type=OrderType.MARKET
         )
 
         # 实际行为：返回None而不是抛出异常
@@ -268,10 +244,7 @@ class TestPortfolio:
 
         # 买入
         order = Order(
-            ts_code="000001.SZ",
-            side=OrderSide.BUY,
-            quantity=100,
-            order_type=OrderType.MARKET
+            ts_code="000001.SZ", side=OrderSide.BUY, quantity=100, order_type=OrderType.MARKET
         )
         portfolio.execute_order(order, price=100.0, date=datetime(2023, 1, 5))
 
@@ -287,10 +260,7 @@ class TestPortfolio:
 
         # 买入一些股票
         order = Order(
-            ts_code="000001.SZ",
-            side=OrderSide.BUY,
-            quantity=500,
-            order_type=OrderType.MARKET
+            ts_code="000001.SZ", side=OrderSide.BUY, quantity=500, order_type=OrderType.MARKET
         )
         portfolio.execute_order(order, price=100.0, date=datetime(2023, 1, 5))
 
@@ -299,9 +269,7 @@ class TestPortfolio:
         current_prices = {"000002.SZ": 50.0, "600000.SH": 20.0, "000001.SZ": 100.0}
 
         trades = portfolio.rebalance(
-            target_weights=target_weights,
-            current_prices=current_prices,
-            date=datetime(2023, 1, 10)
+            target_weights=target_weights, current_prices=current_prices, date=datetime(2023, 1, 10)
         )
 
         # 应该有卖出原持仓和买入新持仓的交易
@@ -313,10 +281,7 @@ class TestPortfolio:
 
         # 买入
         order = Order(
-            ts_code="000001.SZ",
-            side=OrderSide.BUY,
-            quantity=100,
-            order_type=OrderType.MARKET
+            ts_code="000001.SZ", side=OrderSide.BUY, quantity=100, order_type=OrderType.MARKET
         )
         portfolio.execute_order(order, price=100.0, date=datetime(2023, 1, 5))
         assert "000001.SZ" in portfolio.positions
@@ -336,10 +301,7 @@ class TestPortfolio:
         # 买入多只股票
         for ts_code in ["000001.SZ", "000002.SZ"]:
             order = Order(
-                ts_code=ts_code,
-                side=OrderSide.BUY,
-                quantity=100,
-                order_type=OrderType.MARKET
+                ts_code=ts_code, side=OrderSide.BUY, quantity=100, order_type=OrderType.MARKET
             )
             portfolio.execute_order(order, price=100.0, date=datetime(2023, 1, 5))
 
@@ -355,10 +317,7 @@ class TestPortfolio:
         portfolio = Portfolio(initial_cash=100000.0)
 
         order = Order(
-            ts_code="000001.SZ",
-            side=OrderSide.BUY,
-            quantity=100,
-            order_type=OrderType.MARKET
+            ts_code="000001.SZ", side=OrderSide.BUY, quantity=100, order_type=OrderType.MARKET
         )
         portfolio.execute_order(order, price=100.0, date=datetime(2023, 1, 5))
 
@@ -374,10 +333,7 @@ class TestPortfolio:
 
         # 执行交易并记录状态
         order = Order(
-            ts_code="000001.SZ",
-            side=OrderSide.BUY,
-            quantity=100,
-            order_type=OrderType.MARKET
+            ts_code="000001.SZ", side=OrderSide.BUY, quantity=100, order_type=OrderType.MARKET
         )
         portfolio.execute_order(order, price=100.0, date=datetime(2023, 1, 5))
         portfolio.record_state(datetime(2023, 1, 5))
@@ -396,10 +352,7 @@ class TestPortfolio:
         portfolio = Portfolio(initial_cash=100000.0)
 
         order = Order(
-            ts_code="000001.SZ",
-            side=OrderSide.BUY,
-            quantity=100,
-            order_type=OrderType.MARKET
+            ts_code="000001.SZ", side=OrderSide.BUY, quantity=100, order_type=OrderType.MARKET
         )
         portfolio.execute_order(order, price=100.0, date=datetime(2023, 1, 5))
 
@@ -414,10 +367,7 @@ class TestPortfolio:
         portfolio = Portfolio(initial_cash=100000.0)
 
         order = Order(
-            ts_code="000001.SZ",
-            side=OrderSide.BUY,
-            quantity=100,
-            order_type=OrderType.MARKET
+            ts_code="000001.SZ", side=OrderSide.BUY, quantity=100, order_type=OrderType.MARKET
         )
         portfolio.execute_order(order, price=100.0, date=datetime(2023, 1, 5))
         portfolio.record_state(datetime(2023, 1, 5))

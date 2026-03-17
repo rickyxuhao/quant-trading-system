@@ -3,16 +3,15 @@
 负责现金、持仓、交易成本管理
 滑点调整为万2（0.0002）
 """
+
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple, Any, Iterator
+from typing import Dict, List, Optional, Tuple, Any
 from enum import Enum
-from pathlib import Path
 import logging
 import sys
 
 import pandas as pd
-import numpy as np
 
 # Setup logging
 logger = logging.getLogger(__name__)
@@ -20,18 +19,21 @@ logger = logging.getLogger(__name__)
 
 class OrderSide(Enum):
     """订单方向"""
+
     BUY = "buy"
     SELL = "sell"
 
 
 class OrderType(Enum):
     """订单类型"""
+
     MARKET = "market"
     LIMIT = "limit"
 
 
 class OrderStatus(Enum):
     """订单状态"""
+
     PENDING = "pending"
     FILLED = "filled"
     PARTIAL = "partial"
@@ -42,6 +44,7 @@ class OrderStatus(Enum):
 @dataclass(frozen=True)
 class Order:
     """订单"""
+
     ts_code: str
     side: OrderSide
     quantity: int
@@ -61,6 +64,7 @@ class Order:
 @dataclass(frozen=True)
 class Trade:
     """成交记录"""
+
     ts_code: str
     side: OrderSide
     quantity: int
@@ -84,6 +88,7 @@ class Trade:
 @dataclass
 class Position:
     """持仓"""
+
     ts_code: str
     quantity: int = 0
     avg_cost: float = 0.0
@@ -126,14 +131,14 @@ class Position:
         """增加已实现盈亏"""
         self._realized_pnl += pnl
 
-    def copy(self) -> 'Position':
+    def copy(self) -> "Position":
         """创建持仓副本"""
         pos = Position(
             ts_code=self.ts_code,
             quantity=self.quantity,
             avg_cost=self.avg_cost,
             market_value=self.market_value,
-            current_price=self.current_price
+            current_price=self.current_price,
         )
         pos._realized_pnl = self._realized_pnl
         return pos
@@ -142,6 +147,7 @@ class Position:
 @dataclass
 class PortfolioState:
     """账户状态"""
+
     date: datetime
     cash: float
     positions_value: float
@@ -156,22 +162,22 @@ class PortfolioState:
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典"""
         return {
-            'date': self.date,
-            'cash': self.cash,
-            'positions_value': self.positions_value,
-            'total_value': self.total_value,
-            'position_count': self.position_count
+            "date": self.date,
+            "cash": self.cash,
+            "positions_value": self.positions_value,
+            "total_value": self.total_value,
+            "position_count": self.position_count,
         }
 
 
 class TransactionCostError(Exception):
     """交易成本计算异常"""
-    pass
+
 
 
 class PortfolioError(Exception):
     """投资组合操作异常"""
-    pass
+
 
 
 class TransactionCost:
@@ -182,11 +188,11 @@ class TransactionCost:
 
     def __init__(
         self,
-        commission_rate: float = 0.00015,    # 万1.5佣金
-        min_commission: float = 5.0,          # 最低佣金5元
-        slip_rate: float = 0.0002,            # 万2滑点
-        stamp_tax_rate: float = 0.001,        # 千1印花税（卖出）
-        transfer_fee_rate: float = 0.00002    # 万0.2过户费
+        commission_rate: float = 0.00015,  # 万1.5佣金
+        min_commission: float = 5.0,  # 最低佣金5元
+        slip_rate: float = 0.0002,  # 万2滑点
+        stamp_tax_rate: float = 0.001,  # 千1印花税（卖出）
+        transfer_fee_rate: float = 0.00002,  # 万0.2过户费
     ) -> None:
         """
         初始化交易成本计算器
@@ -200,9 +206,13 @@ class TransactionCost:
         """
         # Validate rates
         if not (0 <= commission_rate <= 0.1):
-            raise TransactionCostError(f"Commission rate should be between 0 and 0.1, got {commission_rate}")
+            raise TransactionCostError(
+                f"Commission rate should be between 0 and 0.1, got {commission_rate}"
+            )
         if not (0 <= slip_rate <= 0.1):
-            raise TransactionCostError(f"Slippage rate should be between 0 and 0.1, got {slip_rate}")
+            raise TransactionCostError(
+                f"Slippage rate should be between 0 and 0.1, got {slip_rate}"
+            )
 
         self.commission_rate = commission_rate
         self.min_commission = min_commission
@@ -213,10 +223,7 @@ class TransactionCost:
         logger.debug(f"TransactionCost initialized: commission={commission_rate}, slip={slip_rate}")
 
     def calculate(
-        self,
-        side: OrderSide,
-        quantity: int,
-        price: float
+        self, side: OrderSide, quantity: int, price: float
     ) -> Tuple[float, float, float, float]:
         """
         计算交易成本
@@ -251,8 +258,10 @@ class TransactionCost:
         # 过户费（买卖双向，沪市）
         transfer_fee = amount * self.transfer_fee_rate
 
-        logger.debug(f"Cost calculation: side={side.value}, qty={quantity}, price={price:.4f}, "
-                    f"commission={commission:.2f}, slip={slip_cost:.2f}, tax={stamp_tax:.2f}, transfer={transfer_fee:.2f}")
+        logger.debug(
+            f"Cost calculation: side={side.value}, qty={quantity}, price={price:.4f}, "
+            f"commission={commission:.2f}, slip={slip_cost:.2f}, tax={stamp_tax:.2f}, transfer={transfer_fee:.2f}"
+        )
 
         return commission, slip_cost, stamp_tax, transfer_fee
 
@@ -275,12 +284,7 @@ class TransactionCost:
         else:
             return price * (1 - self.slip_rate)
 
-    def get_total_cost(
-        self,
-        side: OrderSide,
-        quantity: int,
-        price: float
-    ) -> float:
+    def get_total_cost(self, side: OrderSide, quantity: int, price: float) -> float:
         """
         获取总交易成本
 
@@ -292,9 +296,7 @@ class TransactionCost:
         Returns:
             总交易成本
         """
-        commission, slip_cost, stamp_tax, transfer_fee = self.calculate(
-            side, quantity, price
-        )
+        commission, slip_cost, stamp_tax, transfer_fee = self.calculate(side, quantity, price)
         return commission + slip_cost + stamp_tax + transfer_fee
 
 
@@ -308,9 +310,9 @@ class Portfolio:
         self,
         initial_cash: float = 200000.0,
         commission_rate: float = 0.00015,
-        slip_rate: float = 0.0002,      # 万2滑点
+        slip_rate: float = 0.0002,  # 万2滑点
         risk_manager: Optional[Any] = None,
-        name: str = "default"
+        name: str = "default",
     ) -> None:
         """
         初始化投资组合
@@ -333,8 +335,7 @@ class Portfolio:
         self.daily_values: List[PortfolioState] = []
         self.risk_manager = risk_manager
         self.transaction_cost = TransactionCost(
-            commission_rate=commission_rate,
-            slip_rate=slip_rate
+            commission_rate=commission_rate, slip_rate=slip_rate
         )
         self._frozen_cash: float = 0.0  # 冻结资金（用于风控）
 
@@ -364,7 +365,11 @@ class Portfolio:
     @property
     def total_return(self) -> float:
         """总收益率"""
-        return (self.total_value - self.initial_cash) / self.initial_cash if self.initial_cash > 0 else 0.0
+        return (
+            (self.total_value - self.initial_cash) / self.initial_cash
+            if self.initial_cash > 0
+            else 0.0
+        )
 
     @property
     def drawdown(self) -> float:
@@ -394,19 +399,16 @@ class Portfolio:
         total = self.total_value
         if total == 0:
             return {}
-        return {
-            ts_code: pos.market_value / total
-            for ts_code, pos in self.positions.items()
-        }
+        return {ts_code: pos.market_value / total for ts_code, pos in self.positions.items()}
 
     def get_position_pnl(self) -> Dict[str, Dict[str, float]]:
         """获取各持仓盈亏情况"""
         return {
             ts_code: {
-                'unrealized_pnl': pos.unrealized_pnl,
-                'unrealized_pnl_pct': pos.unrealized_pnl_pct,
-                'realized_pnl': pos.realized_pnl,
-                'market_value': pos.market_value
+                "unrealized_pnl": pos.unrealized_pnl,
+                "unrealized_pnl_pct": pos.unrealized_pnl_pct,
+                "realized_pnl": pos.realized_pnl,
+                "market_value": pos.market_value,
             }
             for ts_code, pos in self.positions.items()
         }
@@ -425,23 +427,23 @@ class Portfolio:
         try:
             # 构建临时持仓用于检查
             temp_portfolio = {
-                'cash': self.cash,
-                'positions': {
+                "cash": self.cash,
+                "positions": {
                     ts_code: {
-                        'quantity': pos.quantity,
-                        'market_value': pos.market_value,
-                        'avg_cost': pos.avg_cost
+                        "quantity": pos.quantity,
+                        "market_value": pos.market_value,
+                        "avg_cost": pos.avg_cost,
                     }
                     for ts_code, pos in self.positions.items()
                 },
-                'total_value': self.total_value,
-                'frozen_cash': self._frozen_cash
+                "total_value": self.total_value,
+                "frozen_cash": self._frozen_cash,
             }
 
             amount = order.quantity * price
 
             # Check if risk_manager has check_order method
-            if hasattr(self.risk_manager, 'check_order'):
+            if hasattr(self.risk_manager, "check_order"):
                 return self.risk_manager.check_order(temp_portfolio, order, amount)
             else:
                 return True, ""
@@ -451,12 +453,7 @@ class Portfolio:
 
     # ========== Order Execution Methods ==========
 
-    def execute_order(
-        self,
-        order: Order,
-        price: float,
-        date: datetime
-    ) -> Optional[Trade]:
+    def execute_order(self, order: Order, price: float, date: datetime) -> Optional[Trade]:
         """
         执行订单
 
@@ -488,14 +485,34 @@ class Portfolio:
             amount = order.quantity * exec_price
 
             if order.side == OrderSide.BUY:
-                trade = self._execute_buy(order, exec_price, amount, total_cost,
-                                          commission, slip_cost, stamp_tax, transfer_fee, date)
+                trade = self._execute_buy(
+                    order,
+                    exec_price,
+                    amount,
+                    total_cost,
+                    commission,
+                    slip_cost,
+                    stamp_tax,
+                    transfer_fee,
+                    date,
+                )
             else:
-                trade = self._execute_sell(order, exec_price, amount, total_cost,
-                                           commission, slip_cost, stamp_tax, transfer_fee, date)
+                trade = self._execute_sell(
+                    order,
+                    exec_price,
+                    amount,
+                    total_cost,
+                    commission,
+                    slip_cost,
+                    stamp_tax,
+                    transfer_fee,
+                    date,
+                )
 
             if trade:
-                logger.debug(f"Order executed: {order.ts_code} {order.side.value} {order.quantity} @ {exec_price:.4f}")
+                logger.debug(
+                    f"Order executed: {order.ts_code} {order.side.value} {order.quantity} @ {exec_price:.4f}"
+                )
                 self._update_peak_and_drawdown()
 
             return trade
@@ -514,7 +531,7 @@ class Portfolio:
         slip_cost: float,
         stamp_tax: float,
         transfer_fee: float,
-        date: datetime
+        date: datetime,
     ) -> Optional[Trade]:
         """执行买入"""
         total_needed = amount + total_cost
@@ -523,7 +540,9 @@ class Portfolio:
             # 资金不足，调整数量
             max_amount = self.cash - total_cost
             if max_amount <= 0:
-                logger.warning(f"Insufficient cash for order: {order.ts_code}, cash={self.cash:.2f}, needed={total_needed:.2f}")
+                logger.warning(
+                    f"Insufficient cash for order: {order.ts_code}, cash={self.cash:.2f}, needed={total_needed:.2f}"
+                )
                 return None
             adjusted_quantity = int(max_amount / exec_price / 100) * 100
             if adjusted_quantity == 0:
@@ -536,7 +555,7 @@ class Portfolio:
                 quantity=adjusted_quantity,
                 order_type=order.order_type,
                 limit_price=order.limit_price,
-                order_date=order.order_date
+                order_date=order.order_date,
             )
             amount = order.quantity * exec_price
             commission, slip_cost, stamp_tax, transfer_fee = self.transaction_cost.calculate(
@@ -545,7 +564,7 @@ class Portfolio:
             total_cost = commission + slip_cost + stamp_tax + transfer_fee
 
         # 更新现金
-        self.cash -= (amount + total_cost)
+        self.cash -= amount + total_cost
 
         # 更新持仓
         if order.ts_code in self.positions:
@@ -559,7 +578,7 @@ class Portfolio:
                 quantity=order.quantity,
                 avg_cost=exec_price + total_cost / order.quantity,
                 market_value=amount,
-                current_price=exec_price
+                current_price=exec_price,
             )
 
         # 记录交易
@@ -572,7 +591,7 @@ class Portfolio:
             commission=commission + stamp_tax + transfer_fee,
             slip_cost=slip_cost,
             total_cost=total_cost,
-            trade_date=date
+            trade_date=date,
         )
         self.trades.append(trade)
 
@@ -588,7 +607,7 @@ class Portfolio:
         slip_cost: float,
         stamp_tax: float,
         transfer_fee: float,
-        date: datetime
+        date: datetime,
     ) -> Optional[Trade]:
         """执行卖出"""
         if order.ts_code not in self.positions:
@@ -597,7 +616,9 @@ class Portfolio:
 
         pos = self.positions[order.ts_code]
         if pos.quantity < order.quantity:
-            logger.warning(f"Cannot sell {order.ts_code}: insufficient quantity ({pos.quantity} < {order.quantity})")
+            logger.warning(
+                f"Cannot sell {order.ts_code}: insufficient quantity ({pos.quantity} < {order.quantity})"
+            )
             return None
 
         # 计算已实现盈亏
@@ -605,7 +626,7 @@ class Portfolio:
         pos.add_realized_pnl(realized_pnl)
 
         # 更新现金
-        self.cash += (amount - total_cost)
+        self.cash += amount - total_cost
 
         # 更新持仓
         pos.quantity -= order.quantity
@@ -625,17 +646,14 @@ class Portfolio:
             commission=commission + stamp_tax + transfer_fee,
             slip_cost=slip_cost,
             total_cost=total_cost,
-            trade_date=date
+            trade_date=date,
         )
         self.trades.append(trade)
 
         return trade
 
     def execute_orders_batch(
-        self,
-        orders: List[Order],
-        prices: Dict[str, float],
-        date: datetime
+        self, orders: List[Order], prices: Dict[str, float], date: datetime
     ) -> List[Trade]:
         """
         批量执行订单
@@ -683,7 +701,7 @@ class Portfolio:
         current_prices: Dict[str, float],
         date: datetime,
         min_weight_diff: float = 0.01,
-        max_single_order_value: Optional[float] = None
+        max_single_order_value: Optional[float] = None,
     ) -> List[Trade]:
         """
         调仓至目标权重
@@ -712,7 +730,7 @@ class Portfolio:
 
         # Sort: sell first, then buy
         sells: List[Tuple[str, float, float]] = []  # (ts_code, current_w, target_w)
-        buys: List[Tuple[str, float, float]] = []   # (ts_code, current_w, target_w)
+        buys: List[Tuple[str, float, float]] = []  # (ts_code, current_w, target_w)
 
         for ts_code in all_stocks:
             target_w = target_weights.get(ts_code, 0.0)
@@ -732,15 +750,29 @@ class Portfolio:
 
         # Execute sells first to free up cash
         for ts_code, current_w, target_w in sells:
-            trade = self._rebalance_sell(ts_code, current_w, target_w, total_value,
-                                         current_prices, date, max_single_order_value)
+            trade = self._rebalance_sell(
+                ts_code,
+                current_w,
+                target_w,
+                total_value,
+                current_prices,
+                date,
+                max_single_order_value,
+            )
             if trade:
                 trades.append(trade)
 
         # Execute buys
         for ts_code, current_w, target_w in buys:
-            trade = self._rebalance_buy(ts_code, current_w, target_w, total_value,
-                                        current_prices, date, max_single_order_value)
+            trade = self._rebalance_buy(
+                ts_code,
+                current_w,
+                target_w,
+                total_value,
+                current_prices,
+                date,
+                max_single_order_value,
+            )
             if trade:
                 trades.append(trade)
 
@@ -755,7 +787,7 @@ class Portfolio:
         total_value: float,
         current_prices: Dict[str, float],
         date: datetime,
-        max_single_order_value: Optional[float]
+        max_single_order_value: Optional[float],
     ) -> Optional[Trade]:
         """执行调仓卖出"""
         target_value = total_value * target_w
@@ -778,12 +810,7 @@ class Portfolio:
         if sell_quantity <= 0:
             return None
 
-        order = Order(
-            ts_code=ts_code,
-            side=OrderSide.SELL,
-            quantity=sell_quantity,
-            order_date=date
-        )
+        order = Order(ts_code=ts_code, side=OrderSide.SELL, quantity=sell_quantity, order_date=date)
         return self.execute_order(order, price, date)
 
     def _rebalance_buy(
@@ -794,7 +821,7 @@ class Portfolio:
         total_value: float,
         current_prices: Dict[str, float],
         date: datetime,
-        max_single_order_value: Optional[float]
+        max_single_order_value: Optional[float],
     ) -> Optional[Trade]:
         """执行调仓买入"""
         target_value = total_value * target_w
@@ -818,12 +845,7 @@ class Portfolio:
         if quantity <= 0:
             return None
 
-        order = Order(
-            ts_code=ts_code,
-            side=OrderSide.BUY,
-            quantity=quantity,
-            order_date=date
-        )
+        order = Order(ts_code=ts_code, side=OrderSide.BUY, quantity=quantity, order_date=date)
         return self.execute_order(order, price, date)
 
     def close_position(self, ts_code: str, price: float, date: datetime) -> Optional[Trade]:
@@ -845,12 +867,7 @@ class Portfolio:
         if pos.quantity == 0:
             return None
 
-        order = Order(
-            ts_code=ts_code,
-            side=OrderSide.SELL,
-            quantity=pos.quantity,
-            order_date=date
-        )
+        order = Order(ts_code=ts_code, side=OrderSide.SELL, quantity=pos.quantity, order_date=date)
 
         trade = self.execute_order(order, price, date)
         if trade:
@@ -922,7 +939,7 @@ class Portfolio:
             cash=self.cash,
             positions_value=self.get_position_value(),
             total_value=self.total_value,
-            positions={k: v.copy() for k, v in self.positions.items()}
+            positions={k: v.copy() for k, v in self.positions.items()},
         )
         self.daily_values.append(state)
         return state
@@ -939,8 +956,8 @@ class Portfolio:
 
         records = [state.to_dict() for state in self.daily_values]
         df = pd.DataFrame(records)
-        if 'date' in df.columns:
-            df = df.set_index('date')
+        if "date" in df.columns:
+            df = df.set_index("date")
         return df
 
     def get_trades_df(self) -> pd.DataFrame:
@@ -955,24 +972,25 @@ class Portfolio:
 
         records = []
         for t in self.trades:
-            records.append({
-                'date': t.trade_date,
-                'ts_code': t.ts_code,
-                'side': t.side.value,
-                'quantity': t.quantity,
-                'price': t.price,
-                'amount': t.amount,
-                'commission': t.commission,
-                'slip_cost': t.slip_cost,
-                'total_cost': t.total_cost
-            })
+            records.append(
+                {
+                    "date": t.trade_date,
+                    "ts_code": t.ts_code,
+                    "side": t.side.value,
+                    "quantity": t.quantity,
+                    "price": t.price,
+                    "amount": t.amount,
+                    "commission": t.commission,
+                    "slip_cost": t.slip_cost,
+                    "total_cost": t.total_cost,
+                }
+            )
 
         return pd.DataFrame(records)
 
     def get_nav_history(self) -> List[Tuple[datetime, float]]:
         """获取净值历史"""
-        return [(state.date, state.total_value / self.initial_cash)
-                for state in self.daily_values]
+        return [(state.date, state.total_value / self.initial_cash) for state in self.daily_values]
 
     def summary(self) -> Dict[str, Any]:
         """
@@ -982,18 +1000,18 @@ class Portfolio:
             组合摘要字典
         """
         return {
-            'name': self.name,
-            'initial_cash': self.initial_cash,
-            'current_cash': self.cash,
-            'total_value': self.total_value,
-            'total_return': self.total_return,
-            'nav': self.nav,
-            'drawdown': self._current_drawdown,
-            'position_count': len(self.positions),
-            'position_value': self.get_position_value(),
-            'available_cash': self.get_available_cash(),
-            'trade_count': len(self.trades),
-            'peak_value': self._peak_value
+            "name": self.name,
+            "initial_cash": self.initial_cash,
+            "current_cash": self.cash,
+            "total_value": self.total_value,
+            "total_return": self.total_return,
+            "nav": self.nav,
+            "drawdown": self._current_drawdown,
+            "position_count": len(self.positions),
+            "position_value": self.get_position_value(),
+            "available_cash": self.get_available_cash(),
+            "trade_count": len(self.trades),
+            "peak_value": self._peak_value,
         }
 
     def reset(self) -> None:
@@ -1011,5 +1029,6 @@ class Portfolio:
 # Import handling for RiskManager type hint
 if sys.version_info >= (3, 7):
     from typing import TYPE_CHECKING
+
     if TYPE_CHECKING:
-        from projects.quant_trading.backtest.risk_manager import RiskManager
+        pass

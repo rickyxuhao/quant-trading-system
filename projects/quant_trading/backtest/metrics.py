@@ -16,7 +16,7 @@ Example:
 import numpy as np
 import pandas as pd
 from typing import List, Tuple, Dict, Optional, Union, Any
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 import logging
@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 
 class MetricType(Enum):
     """指标类型枚举"""
+
     RETURN = "return"
     RISK = "risk"
     RISK_ADJUSTED = "risk_adjusted"
@@ -36,7 +37,7 @@ class MetricType(Enum):
 
 class MetricsError(Exception):
     """绩效指标计算异常"""
-    pass
+
 
 
 @dataclass
@@ -132,42 +133,54 @@ class PerformanceMetrics:
             包含所有指标的字典
         """
         data = {
-            'total_return': self.total_return,
-            'annual_return': self.annual_return,
-            'cumulative_return': self.cumulative_return,
-            'max_drawdown': self.max_drawdown,
-            'max_drawdown_duration': self.max_drawdown_duration,
-            'volatility': self.volatility,
-            'downside_volatility': self.downside_volatility,
-            'var_95': self.var_95,
-            'cvar_95': self.cvar_95,
-            'sharpe_ratio': self.sharpe_ratio,
-            'sortino_ratio': self.sortino_ratio,
-            'calmar_ratio': self.calmar_ratio,
-            'omega_ratio': self.omega_ratio,
-            'win_rate': self.win_rate,
-            'profit_loss_ratio': self.profit_loss_ratio,
-            'total_trades': self.total_trades,
-            'avg_trade_return': self.avg_trade_return,
-            'max_consecutive_wins': self.max_consecutive_wins,
-            'max_consecutive_losses': self.max_consecutive_losses,
-            'alpha': self.alpha,
-            'beta': self.beta,
-            'information_ratio': self.information_ratio,
-            'tracking_error': self.tracking_error,
-            'excess_return': self.excess_return,
-            'up_capture': self.up_capture,
-            'down_capture': self.down_capture,
+            "total_return": self.total_return,
+            "annual_return": self.annual_return,
+            "cumulative_return": self.cumulative_return,
+            "max_drawdown": self.max_drawdown,
+            "max_drawdown_duration": self.max_drawdown_duration,
+            "volatility": self.volatility,
+            "downside_volatility": self.downside_volatility,
+            "var_95": self.var_95,
+            "cvar_95": self.cvar_95,
+            "sharpe_ratio": self.sharpe_ratio,
+            "sortino_ratio": self.sortino_ratio,
+            "calmar_ratio": self.calmar_ratio,
+            "omega_ratio": self.omega_ratio,
+            "win_rate": self.win_rate,
+            "profit_loss_ratio": self.profit_loss_ratio,
+            "total_trades": self.total_trades,
+            "avg_trade_return": self.avg_trade_return,
+            "max_consecutive_wins": self.max_consecutive_wins,
+            "max_consecutive_losses": self.max_consecutive_losses,
+            "alpha": self.alpha,
+            "beta": self.beta,
+            "information_ratio": self.information_ratio,
+            "tracking_error": self.tracking_error,
+            "excess_return": self.excess_return,
+            "up_capture": self.up_capture,
+            "down_capture": self.down_capture,
         }
 
         if format_output:
             formatted = {}
             for key, value in data.items():
                 if isinstance(value, float):
-                    if key in ['total_return', 'annual_return', 'cumulative_return', 'max_drawdown',
-                               'volatility', 'downside_volatility', 'var_95', 'cvar_95',
-                               'excess_return', 'tracking_error', 'up_capture', 'down_capture',
-                               'avg_trade_return', 'win_rate']:
+                    if key in [
+                        "total_return",
+                        "annual_return",
+                        "cumulative_return",
+                        "max_drawdown",
+                        "volatility",
+                        "downside_volatility",
+                        "var_95",
+                        "cvar_95",
+                        "excess_return",
+                        "tracking_error",
+                        "up_capture",
+                        "down_capture",
+                        "avg_trade_return",
+                        "win_rate",
+                    ]:
                         formatted[key] = f"{value * 100:.2f}%"
                     else:
                         formatted[key] = f"{value:.4f}"
@@ -189,41 +202,41 @@ class PerformanceMetrics:
         """
         type_mapping = {
             MetricType.RETURN: {
-                'total_return': self.total_return,
-                'annual_return': self.annual_return,
-                'cumulative_return': self.cumulative_return
+                "total_return": self.total_return,
+                "annual_return": self.annual_return,
+                "cumulative_return": self.cumulative_return,
             },
             MetricType.RISK: {
-                'max_drawdown': self.max_drawdown,
-                'max_drawdown_duration': self.max_drawdown_duration,
-                'volatility': self.volatility,
-                'downside_volatility': self.downside_volatility,
-                'var_95': self.var_95,
-                'cvar_95': self.cvar_95
+                "max_drawdown": self.max_drawdown,
+                "max_drawdown_duration": self.max_drawdown_duration,
+                "volatility": self.volatility,
+                "downside_volatility": self.downside_volatility,
+                "var_95": self.var_95,
+                "cvar_95": self.cvar_95,
             },
             MetricType.RISK_ADJUSTED: {
-                'sharpe_ratio': self.sharpe_ratio,
-                'sortino_ratio': self.sortino_ratio,
-                'calmar_ratio': self.calmar_ratio,
-                'omega_ratio': self.omega_ratio
+                "sharpe_ratio": self.sharpe_ratio,
+                "sortino_ratio": self.sortino_ratio,
+                "calmar_ratio": self.calmar_ratio,
+                "omega_ratio": self.omega_ratio,
             },
             MetricType.TRADE: {
-                'win_rate': self.win_rate,
-                'profit_loss_ratio': self.profit_loss_ratio,
-                'total_trades': self.total_trades,
-                'avg_trade_return': self.avg_trade_return,
-                'max_consecutive_wins': self.max_consecutive_wins,
-                'max_consecutive_losses': self.max_consecutive_losses
+                "win_rate": self.win_rate,
+                "profit_loss_ratio": self.profit_loss_ratio,
+                "total_trades": self.total_trades,
+                "avg_trade_return": self.avg_trade_return,
+                "max_consecutive_wins": self.max_consecutive_wins,
+                "max_consecutive_losses": self.max_consecutive_losses,
             },
             MetricType.RELATIVE: {
-                'alpha': self.alpha,
-                'beta': self.beta,
-                'information_ratio': self.information_ratio,
-                'tracking_error': self.tracking_error,
-                'excess_return': self.excess_return,
-                'up_capture': self.up_capture,
-                'down_capture': self.down_capture
-            }
+                "alpha": self.alpha,
+                "beta": self.beta,
+                "information_ratio": self.information_ratio,
+                "tracking_error": self.tracking_error,
+                "excess_return": self.excess_return,
+                "up_capture": self.up_capture,
+                "down_capture": self.down_capture,
+            },
         }
         return type_mapping.get(metric_type, {})
 
@@ -284,11 +297,7 @@ class MetricsCalculator:
         >>> print(metrics.sharpe_ratio)
     """
 
-    def __init__(
-        self,
-        risk_free_rate: float = 0.03,
-        trading_days_per_year: int = 252
-    ):
+    def __init__(self, risk_free_rate: float = 0.03, trading_days_per_year: int = 252):
         """
         初始化计算器
 
@@ -308,13 +317,15 @@ class MetricsCalculator:
         self.trading_days_per_year = trading_days_per_year
         self._sqrt_trading_days = np.sqrt(trading_days_per_year)
 
-        logger.debug(f"MetricsCalculator initialized: rf={risk_free_rate}, days={trading_days_per_year}")
+        logger.debug(
+            f"MetricsCalculator initialized: rf={risk_free_rate}, days={trading_days_per_year}"
+        )
 
     def calculate(
         self,
         nav_history: List[Tuple[datetime, float]],
         benchmark_nav: Optional[List[Tuple[datetime, float]]] = None,
-        trades_df: Optional[pd.DataFrame] = None
+        trades_df: Optional[pd.DataFrame] = None,
     ) -> PerformanceMetrics:
         """
         计算完整绩效指标
@@ -344,7 +355,7 @@ class MetricsCalculator:
                 logger.warning("Empty NAV data after preparation")
                 return metrics
 
-            daily_returns = df['daily_return'].dropna()
+            daily_returns = df["daily_return"].dropna()
 
             if len(daily_returns) < 2:
                 logger.warning("Insufficient daily returns for metrics calculation")
@@ -389,16 +400,16 @@ class MetricsCalculator:
             处理后的DataFrame，包含date、nav、daily_return列
         """
         try:
-            df = pd.DataFrame(nav_history, columns=['date', 'nav'])
+            df = pd.DataFrame(nav_history, columns=["date", "nav"])
 
             # Ensure date column is datetime
-            if not pd.api.types.is_datetime64_any_dtype(df['date']):
-                df['date'] = pd.to_datetime(df['date'])
+            if not pd.api.types.is_datetime64_any_dtype(df["date"]):
+                df["date"] = pd.to_datetime(df["date"])
 
-            df = df.sort_values('date').drop_duplicates(subset=['date'])
+            df = df.sort_values("date").drop_duplicates(subset=["date"])
 
             # 计算日收益率
-            df['daily_return'] = df['nav'].pct_change()
+            df["daily_return"] = df["nav"].pct_change()
 
             return df
         except Exception as e:
@@ -406,29 +417,23 @@ class MetricsCalculator:
             return None
 
     def _calculate_return_metrics(
-        self,
-        metrics: PerformanceMetrics,
-        df: pd.DataFrame,
-        daily_returns: pd.Series
+        self, metrics: PerformanceMetrics, df: pd.DataFrame, daily_returns: pd.Series
     ) -> PerformanceMetrics:
         """计算收益指标"""
-        start_nav = df['nav'].iloc[0]
-        end_nav = df['nav'].iloc[-1]
+        start_nav = df["nav"].iloc[0]
+        end_nav = df["nav"].iloc[-1]
 
         metrics.total_return = (end_nav / start_nav) - 1
         metrics.cumulative_return = end_nav - start_nav
 
-        days = (df['date'].iloc[-1] - df['date'].iloc[0]).days
+        days = (df["date"].iloc[-1] - df["date"].iloc[0]).days
         if days > 0:
             metrics.annual_return = (1 + metrics.total_return) ** (365 / days) - 1
 
         return metrics
 
     def _calculate_risk_metrics(
-        self,
-        metrics: PerformanceMetrics,
-        df: pd.DataFrame,
-        daily_returns: pd.Series
+        self, metrics: PerformanceMetrics, df: pd.DataFrame, daily_returns: pd.Series
     ) -> PerformanceMetrics:
         """计算风险指标"""
         # 最大回撤
@@ -440,8 +445,7 @@ class MetricsCalculator:
         # 下行波动率（只计算负收益）
         downside_returns = daily_returns[daily_returns < 0]
         metrics.downside_volatility = (
-            downside_returns.std() * self._sqrt_trading_days
-            if len(downside_returns) > 0 else 0.0
+            downside_returns.std() * self._sqrt_trading_days if len(downside_returns) > 0 else 0.0
         )
 
         # VaR和CVaR
@@ -451,9 +455,7 @@ class MetricsCalculator:
         return metrics
 
     def _calculate_risk_adjusted_metrics(
-        self,
-        metrics: PerformanceMetrics,
-        daily_returns: pd.Series
+        self, metrics: PerformanceMetrics, daily_returns: pd.Series
     ) -> PerformanceMetrics:
         """计算风险调整收益指标"""
         # 夏普比率
@@ -479,16 +481,15 @@ class MetricsCalculator:
         return metrics
 
     def _calculate_trade_metrics(
-        self,
-        metrics: PerformanceMetrics,
-        trades_df: pd.DataFrame
+        self, metrics: PerformanceMetrics, trades_df: pd.DataFrame
     ) -> PerformanceMetrics:
         """计算交易指标"""
         metrics.total_trades = len(trades_df)
 
         try:
-            win_rate, pl_ratio, avg_return, max_consec_wins, max_consec_losses = \
+            win_rate, pl_ratio, avg_return, max_consec_wins, max_consec_losses = (
                 self._calc_trade_metrics_advanced(trades_df)
+            )
 
             metrics.win_rate = win_rate
             metrics.profit_loss_ratio = pl_ratio
@@ -504,12 +505,13 @@ class MetricsCalculator:
         self,
         metrics: PerformanceMetrics,
         strategy_df: pd.DataFrame,
-        benchmark_nav: List[Tuple[datetime, float]]
+        benchmark_nav: List[Tuple[datetime, float]],
     ) -> PerformanceMetrics:
         """计算相对基准指标"""
         try:
-            alpha, beta, info_ratio, tracking_error, excess_return, up_capture, down_capture = \
+            alpha, beta, info_ratio, tracking_error, excess_return, up_capture, down_capture = (
                 self._calc_relative_metrics_advanced(strategy_df, benchmark_nav)
+            )
 
             metrics.alpha = alpha
             metrics.beta = beta
@@ -534,17 +536,17 @@ class MetricsCalculator:
             (最大回撤比例, 最大回撤持续天数)
         """
         df = df.copy()
-        df['peak'] = df['nav'].cummax()
-        df['drawdown'] = (df['nav'] - df['peak']) / df['peak']
+        df["peak"] = df["nav"].cummax()
+        df["drawdown"] = (df["nav"] - df["peak"]) / df["peak"]
 
-        max_dd = abs(df['drawdown'].min())
+        max_dd = abs(df["drawdown"].min())
 
         # 计算最大回撤持续天数
         max_dd_duration = 0
         current_duration = 0
         in_drawdown = False
 
-        for dd in df['drawdown']:
+        for dd in df["drawdown"]:
             if dd < -1e-10:  # 考虑浮点精度
                 if not in_drawdown:
                     in_drawdown = True
@@ -559,8 +561,7 @@ class MetricsCalculator:
         return max_dd, max_dd_duration
 
     def _calc_trade_metrics_advanced(
-        self,
-        trades_df: pd.DataFrame
+        self, trades_df: pd.DataFrame
     ) -> Tuple[float, float, float, int, int]:
         """
         计算交易胜率、盈亏比、平均收益、连续输赢次数
@@ -576,7 +577,7 @@ class MetricsCalculator:
 
         # 尝试识别买卖方向
         side_col = None
-        for col in ['side', 'action', 'direction']:
+        for col in ["side", "action", "direction"]:
             if col in trades_df.columns:
                 side_col = col
                 break
@@ -591,27 +592,25 @@ class MetricsCalculator:
         max_consec_wins = 0
         max_consec_losses = 0
 
-        for ts_code in trades_df['ts_code'].unique():
-            stock_trades = trades_df[trades_df['ts_code'] == ts_code]
+        for ts_code in trades_df["ts_code"].unique():
+            stock_trades = trades_df[trades_df["ts_code"] == ts_code]
 
             # 尝试多种可能的列名
-            buy_trades = stock_trades[
-                stock_trades[side_col].str.lower().isin(['buy', 'b'])
-            ]
+            buy_trades = stock_trades[stock_trades[side_col].str.lower().isin(["buy", "b"])]
             sell_trades = stock_trades[
-                stock_trades[side_col].str.lower().isin(['sell', 's', 'sale'])
+                stock_trades[side_col].str.lower().isin(["sell", "s", "sale"])
             ]
 
             if buy_trades.empty or sell_trades.empty:
                 continue
 
             # 计算买卖成本
-            buy_amount = buy_trades['amount'].sum() if 'amount' in buy_trades.columns else 0
-            sell_amount = sell_trades['amount'].sum() if 'amount' in sell_trades.columns else 0
+            buy_amount = buy_trades["amount"].sum() if "amount" in buy_trades.columns else 0
+            sell_amount = sell_trades["amount"].sum() if "amount" in sell_trades.columns else 0
 
             commission = 0
-            if 'commission' in stock_trades.columns:
-                commission = stock_trades['commission'].sum()
+            if "commission" in stock_trades.columns:
+                commission = stock_trades["commission"].sum()
 
             total_buy = buy_amount + commission * 0.5
             total_sell = sell_amount - commission * 0.5
@@ -641,15 +640,17 @@ class MetricsCalculator:
         avg_loss = abs(losses.mean()) if len(losses) > 0 else 0.0
         pl_ratio = avg_profit / avg_loss if avg_loss > 1e-10 else 0.0
 
-        total_amount = trades_df['amount'].sum() if 'amount' in trades_df.columns else 1.0
-        avg_return = profits.mean() / (total_amount / len(trades_df)) if len(trades_df) > 0 and total_amount > 0 else 0.0
+        total_amount = trades_df["amount"].sum() if "amount" in trades_df.columns else 1.0
+        avg_return = (
+            profits.mean() / (total_amount / len(trades_df))
+            if len(trades_df) > 0 and total_amount > 0
+            else 0.0
+        )
 
         return win_rate, pl_ratio, avg_return, max_consec_wins, max_consec_losses
 
     def _calc_relative_metrics_advanced(
-        self,
-        strategy_df: pd.DataFrame,
-        benchmark_nav: List[Tuple[datetime, float]]
+        self, strategy_df: pd.DataFrame, benchmark_nav: List[Tuple[datetime, float]]
     ) -> Tuple[float, float, float, float, float, float, float]:
         """
         计算相对基准的指标（增强版）
@@ -661,28 +662,28 @@ class MetricsCalculator:
         Returns:
             (Alpha, Beta, 信息比率, 跟踪误差, 超额收益, 上涨捕获率, 下跌捕获率)
         """
-        bench_df = pd.DataFrame(benchmark_nav, columns=['date', 'nav'])
+        bench_df = pd.DataFrame(benchmark_nav, columns=["date", "nav"])
 
         # Ensure datetime type
-        if not pd.api.types.is_datetime64_any_dtype(bench_df['date']):
-            bench_df['date'] = pd.to_datetime(bench_df['date'])
+        if not pd.api.types.is_datetime64_any_dtype(bench_df["date"]):
+            bench_df["date"] = pd.to_datetime(bench_df["date"])
 
-        bench_df = bench_df.sort_values('date')
-        bench_df['daily_return'] = bench_df['nav'].pct_change()
+        bench_df = bench_df.sort_values("date")
+        bench_df["daily_return"] = bench_df["nav"].pct_change()
 
         merged = pd.merge(
-            strategy_df[['date', 'daily_return']],
-            bench_df[['date', 'daily_return']],
-            on='date',
-            suffixes=('_strat', '_bench')
+            strategy_df[["date", "daily_return"]],
+            bench_df[["date", "daily_return"]],
+            on="date",
+            suffixes=("_strat", "_bench"),
         ).dropna()
 
         if len(merged) < 2:
             logger.warning("Insufficient data for relative metrics calculation")
             return 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
 
-        strat_returns = merged['daily_return_strat']
-        bench_returns = merged['daily_return_bench']
+        strat_returns = merged["daily_return_strat"]
+        bench_returns = merged["daily_return_bench"]
 
         # Beta
         covariance = np.cov(strat_returns, bench_returns)[0, 1]
@@ -717,12 +718,18 @@ class MetricsCalculator:
         if down_market.sum() > 0:
             down_capture = strat_returns[down_market].sum() / bench_returns[down_market].sum()
 
-        return alpha, beta, information_ratio, tracking_error, excess_return, up_capture, down_capture
+        return (
+            alpha,
+            beta,
+            information_ratio,
+            tracking_error,
+            excess_return,
+            up_capture,
+            down_capture,
+        )
 
     def calculate_rolling_metrics(
-        self,
-        nav_history: List[Tuple[datetime, float]],
-        window: int = 20
+        self, nav_history: List[Tuple[datetime, float]], window: int = 20
     ) -> pd.DataFrame:
         """
         计算滚动指标
@@ -739,20 +746,24 @@ class MetricsCalculator:
         if df is None or len(df) < window:
             return pd.DataFrame()
 
-        df['rolling_volatility'] = df['daily_return'].rolling(window).std() * self._sqrt_trading_days
-        df['rolling_return'] = df['nav'].pct_change(window)
+        df["rolling_volatility"] = (
+            df["daily_return"].rolling(window).std() * self._sqrt_trading_days
+        )
+        df["rolling_return"] = df["nav"].pct_change(window)
 
         # 滚动最大回撤
-        df['rolling_peak'] = df['nav'].rolling(window, min_periods=1).max()
-        df['rolling_drawdown'] = (df['nav'] - df['rolling_peak']) / df['rolling_peak']
+        df["rolling_peak"] = df["nav"].rolling(window, min_periods=1).max()
+        df["rolling_drawdown"] = (df["nav"] - df["rolling_peak"]) / df["rolling_peak"]
 
         # 滚动夏普
-        df['rolling_sharpe'] = (
-            (df['daily_return'].rolling(window).mean() * self.trading_days_per_year - self.risk_free_rate) /
-            (df['daily_return'].rolling(window).std() * self._sqrt_trading_days)
-        )
+        df["rolling_sharpe"] = (
+            df["daily_return"].rolling(window).mean() * self.trading_days_per_year
+            - self.risk_free_rate
+        ) / (df["daily_return"].rolling(window).std() * self._sqrt_trading_days)
 
-        return df[['date', 'rolling_volatility', 'rolling_return', 'rolling_drawdown', 'rolling_sharpe']]
+        return df[
+            ["date", "rolling_volatility", "rolling_return", "rolling_drawdown", "rolling_sharpe"]
+        ]
 
     def get_summary_report(self, metrics: PerformanceMetrics) -> str:
         """
@@ -780,27 +791,26 @@ def create_default_calculator() -> MetricsCalculator:
 if __name__ == "__main__":
     # Setup logging
     logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
 
     # Test
     np.random.seed(42)
-    dates = pd.date_range('2024-01-01', '2024-12-31', freq='B')
+    dates = pd.date_range("2024-01-01", "2024-12-31", freq="B")
 
     # Generate random returns
     nav = 1.0
     nav_history = []
     for date in dates:
         ret = np.random.normal(0.0005, 0.02)
-        nav *= (1 + ret)
+        nav *= 1 + ret
         nav_history.append((date, nav))
 
     bench_nav = 1.0
     benchmark_nav = []
     for date in dates:
         ret = np.random.normal(0.0003, 0.015)
-        bench_nav *= (1 + ret)
+        bench_nav *= 1 + ret
         benchmark_nav.append((date, bench_nav))
 
     calculator = MetricsCalculator()

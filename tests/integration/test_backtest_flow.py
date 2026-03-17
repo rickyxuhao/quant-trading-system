@@ -1,15 +1,18 @@
 """
 回测流程集成测试
 """
+
 import pytest
 from datetime import datetime
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import patch, MagicMock
 
 import pandas as pd
-import numpy as np
 
 from projects.quant_trading.backtest.engine import (
-    BacktestEngine, BacktestConfig, BacktestEvent, BacktestError
+    BacktestEngine,
+    BacktestConfig,
+    BacktestEvent,
+    BacktestError,
 )
 from projects.quant_trading.backtest.strategy import BaseStrategy, Signal, SignalType
 
@@ -25,12 +28,14 @@ class SimpleTestStrategy(BaseStrategy):
         signals = []
         for ts_code in self.signal_stocks:
             if ts_code in available_stocks:
-                signals.append(Signal(
-                    ts_code=ts_code,
-                    signal_type=SignalType.BUY,
-                    weight=1.0 / len(self.signal_stocks),
-                    reason="Test signal"
-                ))
+                signals.append(
+                    Signal(
+                        ts_code=ts_code,
+                        signal_type=SignalType.BUY,
+                        weight=1.0 / len(self.signal_stocks),
+                        reason="Test signal",
+                    )
+                )
         return signals
 
 
@@ -47,28 +52,27 @@ class TestFullBacktestWorkflow:
 
         # 模拟交易日
         mock_dm.get_trade_dates.return_value = [
-            (datetime(2023, 1, i).strftime("%Y%m%d"))
-            for i in range(3, 32, 2)  # 约15个交易日
+            (datetime(2023, 1, i).strftime("%Y%m%d")) for i in range(3, 32, 2)  # 约15个交易日
         ]
 
         # 模拟股票列表
-        mock_dm.get_all_stocks.return_value = [
-            "000001.SZ", "000002.SZ", "600000.SH", "600519.SH"
-        ]
+        mock_dm.get_all_stocks.return_value = ["000001.SZ", "000002.SZ", "600000.SH", "600519.SH"]
 
         # 模拟股票数据
         dates = pd.date_range("2023-01-01", periods=30, freq="B")
         base_price = 100.0
         price_data = []
         for i, date in enumerate(dates):
-            price_data.append({
-                "trade_date": date.strftime("%Y%m%d"),
-                "open": base_price * (1 + i * 0.001),
-                "high": base_price * (1 + i * 0.001 + 0.01),
-                "low": base_price * (1 + i * 0.001 - 0.01),
-                "close": base_price * (1 + i * 0.001),
-                "vol": 100000,
-            })
+            price_data.append(
+                {
+                    "trade_date": date.strftime("%Y%m%d"),
+                    "open": base_price * (1 + i * 0.001),
+                    "high": base_price * (1 + i * 0.001 + 0.01),
+                    "low": base_price * (1 + i * 0.001 - 0.01),
+                    "close": base_price * (1 + i * 0.001),
+                    "vol": 100000,
+                }
+            )
 
         df = pd.DataFrame(price_data)
         df["trade_date"] = pd.to_datetime(df["trade_date"])
@@ -81,7 +85,7 @@ class TestFullBacktestWorkflow:
             initial_cash=100000.0,
             max_positions=5,
             min_positions=2,
-            rebalance_freq="weekly"
+            rebalance_freq="weekly",
         )
 
         strategy = SimpleTestStrategy()
@@ -103,8 +107,7 @@ class TestFullBacktestWorkflow:
         mock_dm_class.return_value = mock_dm
 
         mock_dm.get_trade_dates.return_value = [
-            (datetime(2023, 1, i).strftime("%Y%m%d"))
-            for i in range(3, 20, 2)
+            (datetime(2023, 1, i).strftime("%Y%m%d")) for i in range(3, 20, 2)
         ]
         mock_dm.get_all_stocks.return_value = ["000001.SZ", "000002.SZ"]
 
@@ -116,14 +119,16 @@ class TestFullBacktestWorkflow:
                 close = 100.0 * (1 + i * 0.02)  # 上涨
             else:
                 close = 110.0 * (1 - (i - 4) * 0.05)  # 大幅下跌
-            price_data.append({
-                "trade_date": date.strftime("%Y%m%d"),
-                "open": close * 0.99,
-                "high": close * 1.01,
-                "low": close * 0.98,
-                "close": close,
-                "vol": 100000,
-            })
+            price_data.append(
+                {
+                    "trade_date": date.strftime("%Y%m%d"),
+                    "open": close * 0.99,
+                    "high": close * 1.01,
+                    "low": close * 0.98,
+                    "close": close,
+                    "vol": 100000,
+                }
+            )
 
         df = pd.DataFrame(price_data)
         df["trade_date"] = pd.to_datetime(df["trade_date"])
@@ -135,10 +140,11 @@ class TestFullBacktestWorkflow:
             initial_cash=100000.0,
             enable_risk_control=True,
             max_positions=5,
-            min_positions=1
+            min_positions=1,
         )
 
         from projects.quant_trading.backtest.risk_manager import RiskConfig
+
         risk_config = RiskConfig(max_drawdown_limit=0.15)
 
         strategy = SimpleTestStrategy()
@@ -156,22 +162,23 @@ class TestFullBacktestWorkflow:
         mock_dm_class.return_value = mock_dm
 
         mock_dm.get_trade_dates.return_value = [
-            (datetime(2023, 1, i).strftime("%Y%m%d"))
-            for i in range(3, 10, 2)
+            (datetime(2023, 1, i).strftime("%Y%m%d")) for i in range(3, 10, 2)
         ]
         mock_dm.get_all_stocks.return_value = ["000001.SZ"]
 
         dates = pd.date_range("2023-01-01", periods=5, freq="B")
         price_data = []
         for i, date in enumerate(dates):
-            price_data.append({
-                "trade_date": date.strftime("%Y%m%d"),
-                "open": 100.0,
-                "high": 101.0,
-                "low": 99.0,
-                "close": 100.0,
-                "vol": 100000,
-            })
+            price_data.append(
+                {
+                    "trade_date": date.strftime("%Y%m%d"),
+                    "open": 100.0,
+                    "high": 101.0,
+                    "low": 99.0,
+                    "close": 100.0,
+                    "vol": 100000,
+                }
+            )
 
         df = pd.DataFrame(price_data)
         df["trade_date"] = pd.to_datetime(df["trade_date"])
@@ -182,7 +189,7 @@ class TestFullBacktestWorkflow:
             end_date=datetime(2023, 1, 10),
             initial_cash=100000.0,
             max_positions=5,
-            min_positions=1
+            min_positions=1,
         )
 
         strategy = SimpleTestStrategy()
@@ -212,22 +219,23 @@ class TestFullBacktestWorkflow:
         mock_dm_class.return_value = mock_dm
 
         mock_dm.get_trade_dates.return_value = [
-            (datetime(2023, 1, i).strftime("%Y%m%d"))
-            for i in range(3, 15, 2)
+            (datetime(2023, 1, i).strftime("%Y%m%d")) for i in range(3, 15, 2)
         ]
         mock_dm.get_all_stocks.return_value = ["000001.SZ"]
 
         dates = pd.date_range("2023-01-01", periods=10, freq="B")
         price_data = []
         for i, date in enumerate(dates):
-            price_data.append({
-                "trade_date": date.strftime("%Y%m%d"),
-                "open": 100.0,
-                "high": 101.0,
-                "low": 99.0,
-                "close": 100.0,
-                "vol": 100000,
-            })
+            price_data.append(
+                {
+                    "trade_date": date.strftime("%Y%m%d"),
+                    "open": 100.0,
+                    "high": 101.0,
+                    "low": 99.0,
+                    "close": 100.0,
+                    "vol": 100000,
+                }
+            )
 
         df = pd.DataFrame(price_data)
         df["trade_date"] = pd.to_datetime(df["trade_date"])
@@ -238,7 +246,7 @@ class TestFullBacktestWorkflow:
             end_date=datetime(2023, 1, 15),
             initial_cash=100000.0,
             max_positions=5,
-            min_positions=1
+            min_positions=1,
         )
 
         strategy = SimpleTestStrategy()
@@ -267,26 +275,29 @@ class TestBacktestResults:
         mock_dm_class.return_value = mock_dm
 
         mock_dm.get_trade_dates.return_value = [
-            (datetime(2023, 1, i).strftime("%Y%m%d"))
-            for i in range(3, 20, 2)
+            (datetime(2023, 1, i).strftime("%Y%m%d")) for i in range(3, 20, 2)
         ]
         mock_dm.get_all_stocks.return_value = ["000001.SZ", "000002.SZ"]
-        mock_dm.get_index_data.return_value = pd.DataFrame({
-            "trade_date": pd.date_range("2023-01-01", periods=10),
-            "close": [4000.0 + i * 10 for i in range(10)]
-        })
+        mock_dm.get_index_data.return_value = pd.DataFrame(
+            {
+                "trade_date": pd.date_range("2023-01-01", periods=10),
+                "close": [4000.0 + i * 10 for i in range(10)],
+            }
+        )
 
         dates = pd.date_range("2023-01-01", periods=10, freq="B")
         price_data = []
         for i, date in enumerate(dates):
-            price_data.append({
-                "trade_date": date.strftime("%Y%m%d"),
-                "open": 100.0 + i,
-                "high": 101.0 + i,
-                "low": 99.0 + i,
-                "close": 100.0 + i,
-                "vol": 100000,
-            })
+            price_data.append(
+                {
+                    "trade_date": date.strftime("%Y%m%d"),
+                    "open": 100.0 + i,
+                    "high": 101.0 + i,
+                    "low": 99.0 + i,
+                    "close": 100.0 + i,
+                    "vol": 100000,
+                }
+            )
 
         df = pd.DataFrame(price_data)
         df["trade_date"] = pd.to_datetime(df["trade_date"])
@@ -297,7 +308,7 @@ class TestBacktestResults:
             end_date=datetime(2023, 1, 20),
             initial_cash=100000.0,
             max_positions=5,
-            min_positions=1
+            min_positions=1,
         )
 
         strategy = SimpleTestStrategy()
@@ -306,8 +317,14 @@ class TestBacktestResults:
 
         # 验证结果结构
         required_keys = [
-            "nav_history", "trades", "positions", "summary",
-            "metrics", "risk_alerts", "stats", "config"
+            "nav_history",
+            "trades",
+            "positions",
+            "summary",
+            "metrics",
+            "risk_alerts",
+            "stats",
+            "config",
         ]
         for key in required_keys:
             assert key in results, f"Missing key: {key}"
@@ -319,8 +336,7 @@ class TestBacktestResults:
         mock_dm_class.return_value = mock_dm
 
         mock_dm.get_trade_dates.return_value = [
-            (datetime(2023, 1, i).strftime("%Y%m%d"))
-            for i in range(3, 32, 2)
+            (datetime(2023, 1, i).strftime("%Y%m%d")) for i in range(3, 32, 2)
         ]
         mock_dm.get_all_stocks.return_value = ["000001.SZ"]
 
@@ -330,14 +346,16 @@ class TestBacktestResults:
         base_price = 100.0
         for i, date in enumerate(dates):
             close = base_price * (1 + i * 0.005)  # 稳定上涨
-            price_data.append({
-                "trade_date": date.strftime("%Y%m%d"),
-                "open": close * 0.99,
-                "high": close * 1.01,
-                "low": close * 0.98,
-                "close": close,
-                "vol": 100000,
-            })
+            price_data.append(
+                {
+                    "trade_date": date.strftime("%Y%m%d"),
+                    "open": close * 0.99,
+                    "high": close * 1.01,
+                    "low": close * 0.98,
+                    "close": close,
+                    "vol": 100000,
+                }
+            )
 
         df = pd.DataFrame(price_data)
         df["trade_date"] = pd.to_datetime(df["trade_date"])
@@ -348,7 +366,7 @@ class TestBacktestResults:
             end_date=datetime(2023, 1, 31),
             initial_cash=100000.0,
             max_positions=5,
-            min_positions=1
+            min_positions=1,
         )
 
         strategy = SimpleTestStrategy()
@@ -376,9 +394,7 @@ class TestBacktestErrors:
         mock_dm.get_trade_dates.return_value = []
 
         config = BacktestConfig(
-            start_date=datetime(2023, 1, 1),
-            end_date=datetime(2023, 1, 31),
-            initial_cash=100000.0
+            start_date=datetime(2023, 1, 1), end_date=datetime(2023, 1, 31), initial_cash=100000.0
         )
 
         strategy = SimpleTestStrategy()
@@ -390,9 +406,7 @@ class TestBacktestErrors:
     def test_already_running(self):
         """测试重复运行"""
         config = BacktestConfig(
-            start_date=datetime(2023, 1, 1),
-            end_date=datetime(2023, 1, 31),
-            initial_cash=100000.0
+            start_date=datetime(2023, 1, 1), end_date=datetime(2023, 1, 31), initial_cash=100000.0
         )
 
         strategy = SimpleTestStrategy()
@@ -411,14 +425,12 @@ class TestBacktestErrors:
             BacktestConfig(
                 start_date=datetime(2023, 12, 31),
                 end_date=datetime(2023, 1, 1),
-                initial_cash=100000.0
+                initial_cash=100000.0,
             )
 
     def test_invalid_initial_cash(self):
         """测试无效初始资金"""
         with pytest.raises(ValueError, match="initial_cash must be positive"):
             BacktestConfig(
-                start_date=datetime(2023, 1, 1),
-                end_date=datetime(2023, 12, 31),
-                initial_cash=0
+                start_date=datetime(2023, 1, 1), end_date=datetime(2023, 12, 31), initial_cash=0
             )

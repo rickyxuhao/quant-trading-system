@@ -27,10 +27,10 @@ import sys
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 if TYPE_CHECKING:
-    import pandas as pd
+    pass
 
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent.parent
@@ -38,7 +38,6 @@ sys.path.insert(0, str(project_root))
 
 try:
     from projects.quant_trading.backtest.engine import BacktestConfig, BacktestEngine
-    from projects.quant_trading.backtest.metrics import MetricsCalculator
     from projects.quant_trading.backtest.risk_manager import RiskConfig
     from projects.quant_trading.backtest.strategy import BuyAndHoldStrategy
     from projects.quant_trading.backtest.visualizer import BacktestVisualizer
@@ -105,9 +104,7 @@ def parse_date(date_str: str) -> datetime:
     try:
         return datetime.strptime(date_str, "%Y%m%d")
     except ValueError as e:
-        raise ValueError(
-            f"Invalid date format: {date_str}, expected YYYYMMDD"
-        ) from e
+        raise ValueError(f"Invalid date format: {date_str}, expected YYYYMMDD") from e
 
 
 def parse_args() -> argparse.Namespace:
@@ -300,9 +297,7 @@ def create_strategy_instance(
 
     if strategy_name not in strategy_map:
         available = ", ".join(strategy_map.keys())
-        raise ValueError(
-            f"Unknown strategy: '{strategy_name}'. Available: [{available}]"
-        )
+        raise ValueError(f"Unknown strategy: '{strategy_name}'. Available: [{available}]")
 
     return strategy_map[strategy_name]()
 

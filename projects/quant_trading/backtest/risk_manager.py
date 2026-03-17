@@ -11,12 +11,11 @@ Example:
     >>> should_stop = risk_mgr.check_stop_loss(datetime.now(), '000001.SZ', 9.0, 10.0)
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, date
-from typing import Optional, List, Dict, Callable, Any, Set
+from typing import Optional, List, Dict, Any
 from enum import Enum
 import pandas as pd
-import numpy as np
 import logging
 
 # Setup logging
@@ -25,6 +24,7 @@ logger = logging.getLogger(__name__)
 
 class RiskSeverity(Enum):
     """风险严重程度枚举"""
+
     WARNING = "warning"
     CRITICAL = "critical"
     INFO = "info"
@@ -32,6 +32,7 @@ class RiskSeverity(Enum):
 
 class RiskAlertType(Enum):
     """风险告警类型枚举"""
+
     MAX_DRAWDOWN = "max_drawdown"
     DRAWDOWN_WARNING = "drawdown_warning"
     POSITION_LIMIT = "position_limit"
@@ -65,30 +66,33 @@ class RiskConfig:
         trailing_stop: 是否启用移动止损
         trailing_stop_pct: 移动止损幅度（相对于最高点）
     """
+
     # 回撤控制
-    max_drawdown_limit: float = 0.15           # 最大回撤限制（15%）
-    drawdown_warning: float = 0.10             # 回撤预警线（10%）
+    max_drawdown_limit: float = 0.15  # 最大回撤限制（15%）
+    drawdown_warning: float = 0.10  # 回撤预警线（10%）
 
     # 仓位限制
-    max_position_weight: float = 0.30          # 单只股票最大权重（30%）
-    max_sector_weight: float = 0.50            # 单个行业最大权重（50%）
-    min_cash_ratio: float = 0.05               # 最小现金比例（5%）
+    max_position_weight: float = 0.30  # 单只股票最大权重（30%）
+    max_sector_weight: float = 0.50  # 单个行业最大权重（50%）
+    min_cash_ratio: float = 0.05  # 最小现金比例（5%）
 
     # 交易限制
-    max_daily_loss: float = 0.03               # 单日最大亏损（3%）
-    max_daily_trades: int = 20                 # 单日最大交易次数
-    max_turnover: float = 0.50                 # 单日最大换手率（50%）
+    max_daily_loss: float = 0.03  # 单日最大亏损（3%）
+    max_daily_trades: int = 20  # 单日最大交易次数
+    max_turnover: float = 0.50  # 单日最大换手率（50%）
 
     # 止损设置
     enable_stop_loss: bool = True
-    stop_loss_pct: float = 0.08                # 个股止损线（8%）
-    trailing_stop: bool = False                # 是否启用移动止损
-    trailing_stop_pct: float = 0.05            # 移动止损幅度（5%）
+    stop_loss_pct: float = 0.08  # 个股止损线（8%）
+    trailing_stop: bool = False  # 是否启用移动止损
+    trailing_stop_pct: float = 0.05  # 移动止损幅度（5%）
 
     def __post_init__(self) -> None:
         """验证配置参数有效性"""
         if not 0 < self.max_drawdown_limit < 1:
-            logger.warning(f"max_drawdown_limit should be between 0 and 1, got {self.max_drawdown_limit}")
+            logger.warning(
+                f"max_drawdown_limit should be between 0 and 1, got {self.max_drawdown_limit}"
+            )
         if not 0 < self.stop_loss_pct < 1:
             logger.warning(f"stop_loss_pct should be between 0 and 1, got {self.stop_loss_pct}")
         if self.max_position_weight > 1:
@@ -110,6 +114,7 @@ class RiskAlert:
         value: 实际值
         threshold: 触发阈值
     """
+
     timestamp: datetime
     alert_type: RiskAlertType
     severity: RiskSeverity
@@ -120,12 +125,12 @@ class RiskAlert:
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典"""
         return {
-            'timestamp': self.timestamp,
-            'type': self.alert_type.value,
-            'severity': self.severity.value,
-            'message': self.message,
-            'value': self.value,
-            'threshold': self.threshold
+            "timestamp": self.timestamp,
+            "type": self.alert_type.value,
+            "severity": self.severity.value,
+            "message": self.message,
+            "value": self.value,
+            "threshold": self.threshold,
         }
 
 
@@ -161,12 +166,12 @@ class RiskManager:
         self.alerts: List[RiskAlert] = []
 
         # 内部状态
-        self._peak_value: float = 0.0            # 历史最高净值
-        self._current_drawdown: float = 0.0      # 当前回撤
+        self._peak_value: float = 0.0  # 历史最高净值
+        self._current_drawdown: float = 0.0  # 当前回撤
         self._daily_pnl: Dict[date, float] = {}  # 每日盈亏
         self._daily_trades: Dict[date, int] = {}  # 每日交易次数
         self._stop_loss_prices: Dict[str, float] = {}  # 止损价格
-        self._peak_prices: Dict[str, float] = {}       # 个股最高价（移动止损用）
+        self._peak_prices: Dict[str, float] = {}  # 个股最高价（移动止损用）
 
         logger.debug(f"RiskManager initialized with config: {self.config}")
 
@@ -184,7 +189,7 @@ class RiskManager:
 
         # 更新峰值
         if total_value > self._peak_value:
-            old_peak = self._peak_value
+            self._peak_value
             self._peak_value = total_value
             logger.debug(f"New portfolio peak: {self._peak_value:,.2f}")
 
@@ -203,25 +208,22 @@ class RiskManager:
                 timestamp,
                 RiskAlertType.MAX_DRAWDOWN,
                 RiskSeverity.CRITICAL,
-                f'触发最大回撤限制 {self.config.max_drawdown_limit * 100:.1f}%',
+                f"触发最大回撤限制 {self.config.max_drawdown_limit * 100:.1f}%",
                 self._current_drawdown,
-                self.config.max_drawdown_limit
+                self.config.max_drawdown_limit,
             )
         elif self._current_drawdown >= self.config.drawdown_warning:
             self._add_alert(
                 timestamp,
                 RiskAlertType.DRAWDOWN_WARNING,
                 RiskSeverity.WARNING,
-                f'回撤达到预警线 {self.config.drawdown_warning * 100:.1f}%',
+                f"回撤达到预警线 {self.config.drawdown_warning * 100:.1f}%",
                 self._current_drawdown,
-                self.config.drawdown_warning
+                self.config.drawdown_warning,
             )
 
     def check_position_limits(
-        self,
-        timestamp: datetime,
-        positions: Dict[str, Dict[str, Any]],
-        total_value: float
+        self, timestamp: datetime, positions: Dict[str, Dict[str, Any]], total_value: float
     ) -> List[str]:
         """
         检查仓位限制
@@ -241,7 +243,7 @@ class RiskManager:
             return violations
 
         for ts_code, pos in positions.items():
-            market_value = pos.get('market_value', 0)
+            market_value = pos.get("market_value", 0)
             weight = market_value / total_value if total_value > 0 else 0
 
             if weight > self.config.max_position_weight:
@@ -250,19 +252,14 @@ class RiskManager:
                     timestamp,
                     RiskAlertType.POSITION_LIMIT,
                     RiskSeverity.WARNING,
-                    f'{ts_code} 仓位 {weight * 100:.1f}% 超过限制 {self.config.max_position_weight * 100:.1f}%',
+                    f"{ts_code} 仓位 {weight * 100:.1f}% 超过限制 {self.config.max_position_weight * 100:.1f}%",
                     weight,
-                    self.config.max_position_weight
+                    self.config.max_position_weight,
                 )
 
         return violations
 
-    def check_cash_ratio(
-        self,
-        timestamp: datetime,
-        cash: float,
-        total_value: float
-    ) -> bool:
+    def check_cash_ratio(self, timestamp: datetime, cash: float, total_value: float) -> bool:
         """
         检查现金比例是否满足最小要求
 
@@ -283,19 +280,15 @@ class RiskManager:
                 timestamp,
                 RiskAlertType.CASH_RATIO_LIMIT,
                 RiskSeverity.WARNING,
-                f'现金比例 {cash_ratio * 100:.1f}% 低于最小要求 {self.config.min_cash_ratio * 100:.1f}%',
+                f"现金比例 {cash_ratio * 100:.1f}% 低于最小要求 {self.config.min_cash_ratio * 100:.1f}%",
                 cash_ratio,
-                self.config.min_cash_ratio
+                self.config.min_cash_ratio,
             )
             return False
         return True
 
     def check_stop_loss(
-        self,
-        timestamp: datetime,
-        ts_code: str,
-        current_price: float,
-        avg_cost: float
+        self, timestamp: datetime, ts_code: str, current_price: float, avg_cost: float
     ) -> bool:
         """
         检查是否触发止损
@@ -321,10 +314,10 @@ class RiskManager:
                 timestamp,
                 RiskAlertType.STOP_LOSS,
                 RiskSeverity.CRITICAL,
-                f'{ts_code} 触发止损线 {self.config.stop_loss_pct * 100:.1f}%，'
-                f'当前亏损 {loss_pct * 100:.1f}%',
+                f"{ts_code} 触发止损线 {self.config.stop_loss_pct * 100:.1f}%，"
+                f"当前亏损 {loss_pct * 100:.1f}%",
                 loss_pct,
-                self.config.stop_loss_pct
+                self.config.stop_loss_pct,
             )
             return True
 
@@ -343,20 +336,16 @@ class RiskManager:
                     timestamp,
                     RiskAlertType.TRAILING_STOP,
                     RiskSeverity.CRITICAL,
-                    f'{ts_code} 触发移动止损，从高点 {peak:.2f} 下跌 {trailing_loss * 100:.1f}%',
+                    f"{ts_code} 触发移动止损，从高点 {peak:.2f} 下跌 {trailing_loss * 100:.1f}%",
                     trailing_loss,
-                    self.config.trailing_stop_pct
+                    self.config.trailing_stop_pct,
                 )
                 return True
 
         return False
 
     def check_daily_limits(
-        self,
-        timestamp: datetime,
-        daily_pnl: float,
-        trade_count: int,
-        turnover: float
+        self, timestamp: datetime, daily_pnl: float, trade_count: int, turnover: float
     ) -> Dict[str, Any]:
         """
         检查每日限制
@@ -384,55 +373,55 @@ class RiskManager:
             self._daily_trades[current_date] = 0
         self._daily_trades[current_date] += trade_count
 
-        results: Dict[str, Any] = {'can_trade': True, 'reason': ''}
+        results: Dict[str, Any] = {"can_trade": True, "reason": ""}
 
         # 检查单日亏损
         total_pnl = self._daily_pnl[current_date]
         if total_pnl < 0 and abs(total_pnl) > self.config.max_daily_loss:
-            results['can_trade'] = False
-            results['reason'] = (
-                f'单日亏损 {abs(total_pnl) * 100:.2f}% 超过限制 '
-                f'{self.config.max_daily_loss * 100:.2f}%'
+            results["can_trade"] = False
+            results["reason"] = (
+                f"单日亏损 {abs(total_pnl) * 100:.2f}% 超过限制 "
+                f"{self.config.max_daily_loss * 100:.2f}%"
             )
             self._add_alert(
                 timestamp,
                 RiskAlertType.DAILY_LOSS_LIMIT,
                 RiskSeverity.CRITICAL,
-                results['reason'],
+                results["reason"],
                 abs(total_pnl),
-                self.config.max_daily_loss
+                self.config.max_daily_loss,
             )
 
         # 检查交易次数
         if self._daily_trades[current_date] >= self.config.max_daily_trades:
-            results['can_trade'] = False
-            results['reason'] = (
-                f'单日交易次数 {self._daily_trades[current_date]} '
-                f'超过限制 {self.config.max_daily_trades}'
+            results["can_trade"] = False
+            results["reason"] = (
+                f"单日交易次数 {self._daily_trades[current_date]} "
+                f"超过限制 {self.config.max_daily_trades}"
             )
             self._add_alert(
                 timestamp,
                 RiskAlertType.DAILY_TRADE_LIMIT,
                 RiskSeverity.WARNING,
-                results['reason'],
+                results["reason"],
                 float(self._daily_trades[current_date]),
-                float(self.config.max_daily_trades)
+                float(self.config.max_daily_trades),
             )
 
         # 检查换手率
         if turnover > self.config.max_turnover:
-            results['can_trade'] = False
-            results['reason'] = (
-                f'单日换手率 {turnover * 100:.1f}% '
-                f'超过限制 {self.config.max_turnover * 100:.1f}%'
+            results["can_trade"] = False
+            results["reason"] = (
+                f"单日换手率 {turnover * 100:.1f}% "
+                f"超过限制 {self.config.max_turnover * 100:.1f}%"
             )
             self._add_alert(
                 timestamp,
                 RiskAlertType.TURNOVER_LIMIT,
                 RiskSeverity.WARNING,
-                results['reason'],
+                results["reason"],
                 turnover,
-                self.config.max_turnover
+                self.config.max_turnover,
             )
 
         return results
@@ -471,16 +460,16 @@ class RiskManager:
             包含当前风险状态的字典
         """
         return {
-            'current_drawdown': self._current_drawdown,
-            'peak_value': self._peak_value,
-            'alert_count': len(self.alerts),
-            'critical_alerts': len([a for a in self.alerts if a.severity == RiskSeverity.CRITICAL]),
-            'warning_alerts': len([a for a in self.alerts if a.severity == RiskSeverity.WARNING]),
-            'config': {
-                'max_drawdown_limit': self.config.max_drawdown_limit,
-                'stop_loss_pct': self.config.stop_loss_pct,
-                'max_position_weight': self.config.max_position_weight
-            }
+            "current_drawdown": self._current_drawdown,
+            "peak_value": self._peak_value,
+            "alert_count": len(self.alerts),
+            "critical_alerts": len([a for a in self.alerts if a.severity == RiskSeverity.CRITICAL]),
+            "warning_alerts": len([a for a in self.alerts if a.severity == RiskSeverity.WARNING]),
+            "config": {
+                "max_drawdown_limit": self.config.max_drawdown_limit,
+                "stop_loss_pct": self.config.stop_loss_pct,
+                "max_position_weight": self.config.max_position_weight,
+            },
         }
 
     def get_alerts_df(self) -> pd.DataFrame:
@@ -515,7 +504,7 @@ class RiskManager:
         severity: RiskSeverity,
         message: str,
         value: Optional[float] = None,
-        threshold: Optional[float] = None
+        threshold: Optional[float] = None,
     ) -> None:
         """
         添加告警
@@ -534,7 +523,7 @@ class RiskManager:
             severity=severity,
             message=message,
             value=value,
-            threshold=threshold
+            threshold=threshold,
         )
         self.alerts.append(alert)
 
@@ -589,7 +578,7 @@ def create_conservative_config() -> RiskConfig:
         max_position_weight=0.20,
         max_sector_weight=0.30,
         stop_loss_pct=0.05,
-        max_daily_loss=0.02
+        max_daily_loss=0.02,
     )
 
 
@@ -606,22 +595,18 @@ def create_aggressive_config() -> RiskConfig:
         max_position_weight=0.50,
         max_sector_weight=0.70,
         stop_loss_pct=0.12,
-        max_daily_loss=0.05
+        max_daily_loss=0.05,
     )
 
 
 if __name__ == "__main__":
     # Setup logging
     logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
 
     # Test
-    config = RiskConfig(
-        max_drawdown_limit=0.15,
-        stop_loss_pct=0.08
-    )
+    config = RiskConfig(max_drawdown_limit=0.15, stop_loss_pct=0.08)
 
     risk_mgr = RiskManager(config)
 
@@ -632,13 +617,13 @@ if __name__ == "__main__":
     risk_mgr.update_portfolio_value(now, 90000)  # 回撤14.3%
 
     # 检查止损
-    should_stop = risk_mgr.check_stop_loss(now, '000001.SZ', 9.0, 10.0)
+    should_stop = risk_mgr.check_stop_loss(now, "000001.SZ", 9.0, 10.0)
     print(f"止损触发: {should_stop}")
 
     # 检查仓位限制
     positions = {
-        '000001.SZ': {'quantity': 1000, 'market_value': 50000},
-        '000002.SZ': {'quantity': 1000, 'market_value': 40000}
+        "000001.SZ": {"quantity": 1000, "market_value": 50000},
+        "000002.SZ": {"quantity": 1000, "market_value": 40000},
     }
     violations = risk_mgr.check_position_limits(now, positions, 100000)
     print(f"仓位超限: {violations}")

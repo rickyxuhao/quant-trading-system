@@ -9,7 +9,7 @@
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Dict, Any, Union
+from typing import Optional, Union
 
 import backtrader as bt
 import numpy as np
@@ -28,6 +28,7 @@ logger = get_logger(__name__)
 @dataclass
 class MLStrategyConfig(StrategyConfig):
     """ML策略配置"""
+
     # 信号阈值
     confidence_threshold: float = 0.6  # 最小置信度
     long_threshold: float = 0.55  # 做多阈值 (概率 > 0.55)
@@ -43,7 +44,7 @@ class MLStrategyConfig(StrategyConfig):
 
     # 预测目标
     prediction_horizon: int = 1  # 预测未来1天
-    target_type: str = 'direction'  # 'direction', 'return', 'quantile'
+    target_type: str = "direction"  # 'direction', 'return', 'quantile'
 
 
 class MLStrategy(BaseStrategy):
@@ -54,10 +55,10 @@ class MLStrategy(BaseStrategy):
     """
 
     params = (
-        ('config', None),
-        ('model_type', 'xgboost'),  # 'xgboost' 或 'lstm'
-        ('model_path', None),  # 预训练模型路径
-        ('verbose', False),
+        ("config", None),
+        ("model_type", "xgboost"),  # 'xgboost' 或 'lstm'
+        ("model_path", None),  # 预训练模型路径
+        ("verbose", False),
     )
 
     def __init__(self):
@@ -68,8 +69,7 @@ class MLStrategy(BaseStrategy):
 
         # 初始化特征工程器
         self.feature_engineer = FeatureEngineer(
-            tech_config=TechnicalFeatureConfig(),
-            lookback_window=20
+            tech_config=TechnicalFeatureConfig(), lookback_window=20
         )
 
         # 初始化模型
@@ -89,33 +89,29 @@ class MLStrategy(BaseStrategy):
         """初始化模型"""
         if self.p.model_path and Path(self.p.model_path).exists():
             # 加载预训练模型
-            if self.p.model_type == 'xgboost':
+            if self.p.model_type == "xgboost":
                 self.model = XGBoostModel(model_path=self.p.model_path)
             else:
                 self.model = LSTMModel(model_path=self.p.model_path)
             logger.info(f"已加载预训练模型: {self.p.model_path}")
         else:
             # 创建新模型
-            if self.p.model_type == 'xgboost':
-                xgb_config = XGBoostConfig(
-                    prediction_horizon=self.ml_config.prediction_horizon
-                )
+            if self.p.model_type == "xgboost":
+                xgb_config = XGBoostConfig(prediction_horizon=self.ml_config.prediction_horizon)
                 self.model = XGBoostModel(config=xgb_config)
             else:
-                lstm_config = LSTMConfig(
-                    prediction_horizon=self.ml_config.prediction_horizon
-                )
+                lstm_config = LSTMConfig(prediction_horizon=self.ml_config.prediction_horizon)
                 self.model = LSTMModel(config=lstm_config)
 
     def next(self):
         """核心交易逻辑"""
         # 收集当前bar数据
         current_data = {
-            'open': self.data.open[0],
-            'high': self.data.high[0],
-            'low': self.data.low[0],
-            'close': self.data.close[0],
-            'volume': self.data.volume[0]
+            "open": self.data.open[0],
+            "high": self.data.high[0],
+            "low": self.data.low[0],
+            "close": self.data.close[0],
+            "volume": self.data.volume[0],
         }
         self.price_history.append(current_data)
 
@@ -137,12 +133,14 @@ class MLStrategy(BaseStrategy):
         if prediction is None:
             return
 
-        self.prediction_history.append({
-            'date': self.data.datetime.date(0),
-            'prediction': prediction,
-            'confidence': confidence,
-            'price': self.data.close[0]
-        })
+        self.prediction_history.append(
+            {
+                "date": self.data.datetime.date(0),
+                "prediction": prediction,
+                "confidence": confidence,
+                "price": self.data.close[0],
+            }
+        )
 
         # 根据预测执行交易
         self._execute_trade(prediction, confidence)
@@ -153,11 +151,7 @@ class MLStrategy(BaseStrategy):
         """生成特征"""
         try:
             df = pd.DataFrame(self.price_history)
-            df.index = pd.date_range(
-                end=self.data.datetime.date(0),
-                periods=len(df),
-                freq='D'
-            )
+            df.index = pd.date_range(end=self.data.datetime.date(0), periods=len(df), freq="D")
 
             features = self.feature_engineer.create_features(df)
 
@@ -186,7 +180,7 @@ class MLStrategy(BaseStrategy):
         try:
             if isinstance(self.model, XGBoostModel):
                 # XGBoost预测 - 只需要单行特征
-                if self.ml_config.target_type == 'direction':
+                if self.ml_config.target_type == "direction":
                     proba = self.model.predict(features, return_proba=True)
                     if proba is not None and len(proba[0]) == 3:
                         # 三分类: 跌, 平, 涨 (注意: XGBoost输出是映射后的标签 0,1,2)
@@ -212,7 +206,7 @@ class MLStrategy(BaseStrategy):
                     if len(predictions) > 0:
                         prediction = predictions[-1]  # 取最后一个预测值
                         # 对于分类任务
-                        if self.ml_config.target_type == 'direction':
+                        if self.ml_config.target_type == "direction":
                             proba = self.model.predict(lstm_features, return_confidence=True)
                             if proba is not None and len(proba) > 0:
                                 confidence = np.max(proba[-1])
@@ -244,25 +238,25 @@ class MLStrategy(BaseStrategy):
         current_position = self.position.size
 
         # 信号解释
-        if self.ml_config.target_type == 'direction':
+        if self.ml_config.target_type == "direction":
             # 分类信号
             if prediction > 0 and confidence > self.ml_config.long_threshold:
-                signal = 'long'
+                signal = "long"
             elif prediction < 0 and confidence > (1 - self.ml_config.short_threshold):
-                signal = 'short'
+                signal = "short"
             else:
-                signal = 'neutral'
+                signal = "neutral"
         else:
             # 回归信号
             if prediction > 0.01:  # 预期收益 > 1%
-                signal = 'long'
+                signal = "long"
             elif prediction < -0.01:
-                signal = 'short'
+                signal = "short"
             else:
-                signal = 'neutral'
+                signal = "neutral"
 
         # 执行交易
-        if signal == 'long':
+        if signal == "long":
             if current_position <= 0:  # 空仓或空头，平仓并开多
                 if current_position < 0:
                     self.close()
@@ -271,7 +265,7 @@ class MLStrategy(BaseStrategy):
                     self.buy(size=size)
                     self.log(f"买入信号: 预测={prediction:.3f}, 置信度={confidence:.3f}")
 
-        elif signal == 'short':
+        elif signal == "short":
             if current_position >= 0:  # 空仓或多仓，平仓并开空
                 if current_position > 0:
                     self.close()
@@ -280,7 +274,7 @@ class MLStrategy(BaseStrategy):
                     self.sell(size=size)
                     self.log(f"卖出信号: 预测={prediction:.3f}, 置信度={confidence:.3f}")
 
-        elif signal == 'neutral' and current_position != 0:
+        elif signal == "neutral" and current_position != 0:
             # 平仓
             self.close()
             self.log(f"平仓信号: 预测={prediction:.3f}")
@@ -292,11 +286,7 @@ class MLStrategy(BaseStrategy):
         try:
             # 准备训练数据
             df = pd.DataFrame(self.price_history)
-            df.index = pd.date_range(
-                end=self.data.datetime.date(0),
-                periods=len(df),
-                freq='D'
-            )
+            df.index = pd.date_range(end=self.data.datetime.date(0), periods=len(df), freq="D")
 
             # 特征工程
             features = self.feature_engineer.create_features(df)
@@ -308,7 +298,7 @@ class MLStrategy(BaseStrategy):
             target = self.feature_engineer.create_target(
                 features,
                 horizon=self.ml_config.prediction_horizon,
-                target_type=self.ml_config.target_type
+                target_type=self.ml_config.target_type,
             )
 
             # 数据划分
@@ -350,15 +340,15 @@ class MLStrategy(BaseStrategy):
         # 保存预测历史
         if self.prediction_history:
             pred_df = pd.DataFrame(self.prediction_history)
-            pred_df.to_csv('ml_prediction_history.csv', index=False)
+            pred_df.to_csv("ml_prediction_history.csv", index=False)
             logger.info(f"预测历史已保存: {len(pred_df)}条记录")
 
         # 保存模型
         if self.model and self.model.model is not None:
-            if self.p.model_type == 'xgboost':
-                model_path = f'ml_model_{self.p.model_type}.json'
+            if self.p.model_type == "xgboost":
+                model_path = f"ml_model_{self.p.model_type}.json"
             else:
-                model_path = f'ml_model_{self.p.model_type}.keras'
+                model_path = f"ml_model_{self.p.model_type}.keras"
             self.model.save(model_path)
 
         super().stop()
@@ -366,9 +356,9 @@ class MLStrategy(BaseStrategy):
 
 def create_ml_backtest(
     data_feed: bt.feeds.PandasData,
-    model_type: str = 'xgboost',
+    model_type: str = "xgboost",
     initial_capital: float = 1_000_000,
-    **kwargs
+    **kwargs,
 ) -> bt.Cerebro:
     """
     创建ML策略回测
@@ -384,17 +374,10 @@ def create_ml_backtest(
     """
     from projects.quant_trading.strategies.base_strategy import create_cerebro
 
-    config = MLStrategyConfig(
-        initial_capital=initial_capital,
-        **kwargs
-    )
+    config = MLStrategyConfig(initial_capital=initial_capital, **kwargs)
 
     cerebro = create_cerebro(config)
     cerebro.adddata(data_feed)
-    cerebro.addstrategy(
-        MLStrategy,
-        config=config,
-        model_type=model_type
-    )
+    cerebro.addstrategy(MLStrategy, config=config, model_type=model_type)
 
     return cerebro

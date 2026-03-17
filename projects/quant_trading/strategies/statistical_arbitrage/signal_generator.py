@@ -12,7 +12,6 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
-import numpy as np
 import pandas as pd
 
 from core.logger import get_logger
@@ -22,31 +21,33 @@ logger = get_logger(__name__)
 
 class Signal(Enum):
     """交易信号枚举"""
+
     NO_SIGNAL = 0
-    LONG_SPREAD = 1      # 做多价差（买入A，卖出B）
-    SHORT_SPREAD = -1    # 做空价差（卖出A，买入B）
-    CLOSE_POSITION = 2   # 平仓
+    LONG_SPREAD = 1  # 做多价差（买入A，卖出B）
+    SHORT_SPREAD = -1  # 做空价差（卖出A，买入B）
+    CLOSE_POSITION = 2  # 平仓
 
 
 @dataclass
 class SignalConfig:
     """信号配置"""
+
     # 阈值设置
-    entry_threshold: float = 2.0      # 开仓阈值
-    exit_threshold: float = 0.5       # 平仓阈值
-    stop_threshold: float = 3.5       # 止损阈值
+    entry_threshold: float = 2.0  # 开仓阈值
+    exit_threshold: float = 0.5  # 平仓阈值
+    stop_threshold: float = 3.5  # 止损阈值
 
     # ADF监测
     adf_pvalue_threshold: float = 0.1  # ADF检验p值阈值
-    dynamic_monitoring: bool = True    # 是否动态监测协整关系
+    dynamic_monitoring: bool = True  # 是否动态监测协整关系
 
     # 回望窗口
-    lookback_window: int = 20          # Z-score计算窗口
-    min_lookback: int = 10             # 最小数据要求
+    lookback_window: int = 20  # Z-score计算窗口
+    min_lookback: int = 10  # 最小数据要求
 
     # 趋势过滤
-    use_trend_filter: bool = False     # 是否使用趋势过滤
-    trend_window: int = 60             # 趋势窗口
+    use_trend_filter: bool = False  # 是否使用趋势过滤
+    trend_window: int = 60  # 趋势窗口
 
 
 class SpreadSignalGenerator:
@@ -84,10 +85,7 @@ class SpreadSignalGenerator:
                 self.zscore_history.loc[timestamp] = zscore
 
     def generate_signal(
-        self,
-        spread: float,
-        adf_pvalue: Optional[float] = None,
-        timestamp=None
+        self, spread: float, adf_pvalue: Optional[float] = None, timestamp=None
     ) -> Signal:
         """
         生成交易信号
@@ -206,11 +204,11 @@ class DynamicThresholdGenerator(SpreadSignalGenerator):
             return (
                 self.config.entry_threshold,
                 self.config.exit_threshold,
-                self.config.stop_threshold
+                self.config.stop_threshold,
             )
 
         # 计算Z-score的波动率
-        recent_volatility = self.zscore_history.iloc[-self.volatility_window:].std()
+        recent_volatility = self.zscore_history.iloc[-self.volatility_window :].std()
 
         # 基础阈值
         base_entry = 2.0
@@ -228,10 +226,7 @@ class DynamicThresholdGenerator(SpreadSignalGenerator):
         return entry, exit_threshold, stop
 
     def generate_signal(
-        self,
-        spread: float,
-        adf_pvalue: Optional[float] = None,
-        timestamp=None
+        self, spread: float, adf_pvalue: Optional[float] = None, timestamp=None
     ) -> Signal:
         """使用动态阈值生成信号"""
         # 更新数据

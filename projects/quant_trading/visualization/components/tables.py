@@ -1,7 +1,8 @@
 """数据表格组件"""
+
 import streamlit as st
 import pandas as pd
-from typing import Optional, Dict, Any, List
+from typing import Dict, Any, List
 
 
 def format_currency(value: float, precision: int = 2) -> str:
@@ -20,9 +21,7 @@ def format_number(value: float, precision: int = 2) -> str:
 
 
 def render_trades_table(
-    trades_df: pd.DataFrame,
-    height: int = 400,
-    use_container_width: bool = True
+    trades_df: pd.DataFrame, height: int = 400, use_container_width: bool = True
 ):
     """
     渲染交易明细表格
@@ -40,30 +39,30 @@ def render_trades_table(
     display_df = trades_df.copy()
 
     # 格式化日期列
-    if 'date' in display_df.columns:
-        display_df['date'] = pd.to_datetime(display_df['date']).dt.strftime('%Y-%m-%d')
+    if "date" in display_df.columns:
+        display_df["date"] = pd.to_datetime(display_df["date"]).dt.strftime("%Y-%m-%d")
 
-    if 'trade_date' in display_df.columns:
-        display_df['trade_date'] = pd.to_datetime(display_df['trade_date']).dt.strftime('%Y-%m-%d')
+    if "trade_date" in display_df.columns:
+        display_df["trade_date"] = pd.to_datetime(display_df["trade_date"]).dt.strftime("%Y-%m-%d")
 
     # 格式化金额列
-    currency_columns = ['price', 'amount', 'commission', 'slip_cost', 'total_cost', 'pnl']
+    currency_columns = ["price", "amount", "commission", "slip_cost", "total_cost", "pnl"]
     for col in currency_columns:
         if col in display_df.columns:
             display_df[col] = display_df[col].apply(lambda x: format_currency(x))
 
     # 列名映射
     column_config = {
-        'date': st.column_config.DateColumn('日期', format='YYYY-MM-DD'),
-        'trade_date': st.column_config.DateColumn('交易日期', format='YYYY-MM-DD'),
-        'ts_code': st.column_config.TextColumn('股票代码'),
-        'side': st.column_config.TextColumn('方向'),
-        'quantity': st.column_config.NumberColumn('数量', format='%d'),
-        'price': st.column_config.TextColumn('价格'),
-        'amount': st.column_config.TextColumn('金额'),
-        'commission': st.column_config.TextColumn('佣金'),
-        'slip_cost': st.column_config.TextColumn('滑点成本'),
-        'total_cost': st.column_config.TextColumn('总成本'),
+        "date": st.column_config.DateColumn("日期", format="YYYY-MM-DD"),
+        "trade_date": st.column_config.DateColumn("交易日期", format="YYYY-MM-DD"),
+        "ts_code": st.column_config.TextColumn("股票代码"),
+        "side": st.column_config.TextColumn("方向"),
+        "quantity": st.column_config.NumberColumn("数量", format="%d"),
+        "price": st.column_config.TextColumn("价格"),
+        "amount": st.column_config.TextColumn("金额"),
+        "commission": st.column_config.TextColumn("佣金"),
+        "slip_cost": st.column_config.TextColumn("滑点成本"),
+        "total_cost": st.column_config.TextColumn("总成本"),
     }
 
     st.dataframe(
@@ -71,14 +70,12 @@ def render_trades_table(
         use_container_width=use_container_width,
         height=height,
         column_config=column_config,
-        hide_index=True
+        hide_index=True,
     )
 
 
 def render_positions_table(
-    positions_df: pd.DataFrame,
-    height: int = 400,
-    use_container_width: bool = True
+    positions_df: pd.DataFrame, height: int = 400, use_container_width: bool = True
 ):
     """
     渲染持仓表格
@@ -95,21 +92,21 @@ def render_positions_table(
     display_df = positions_df.copy()
 
     # 格式化日期
-    if 'date' in display_df.columns:
-        display_df['date'] = pd.to_datetime(display_df['date']).dt.strftime('%Y-%m-%d')
+    if "date" in display_df.columns:
+        display_df["date"] = pd.to_datetime(display_df["date"]).dt.strftime("%Y-%m-%d")
 
     # 格式化数值列
-    currency_columns = ['cash', 'positions_value', 'total_value']
+    currency_columns = ["cash", "positions_value", "total_value"]
     for col in currency_columns:
         if col in display_df.columns:
             display_df[col] = display_df[col].apply(lambda x: format_currency(x))
 
     column_config = {
-        'date': st.column_config.DateColumn('日期', format='YYYY-MM-DD'),
-        'cash': st.column_config.TextColumn('现金'),
-        'positions_value': st.column_config.TextColumn('持仓市值'),
-        'total_value': st.column_config.TextColumn('总资产'),
-        'position_count': st.column_config.NumberColumn('持仓数量', format='%d'),
+        "date": st.column_config.DateColumn("日期", format="YYYY-MM-DD"),
+        "cash": st.column_config.TextColumn("现金"),
+        "positions_value": st.column_config.TextColumn("持仓市值"),
+        "total_value": st.column_config.TextColumn("总资产"),
+        "position_count": st.column_config.NumberColumn("持仓数量", format="%d"),
     }
 
     st.dataframe(
@@ -117,14 +114,11 @@ def render_positions_table(
         use_container_width=use_container_width,
         height=height,
         column_config=column_config,
-        hide_index=True
+        hide_index=True,
     )
 
 
-def render_comparison_table(
-    results: List[Dict[str, Any]],
-    use_container_width: bool = True
-):
+def render_comparison_table(results: List[Dict[str, Any]], use_container_width: bool = True):
     """
     渲染参数对比表格
 
@@ -139,28 +133,24 @@ def render_comparison_table(
     rows = []
     for i, result in enumerate(results):
         row = {
-            '组合': f"组合{i+1}",
+            "组合": f"组合{i+1}",
         }
 
         # 添加参数
-        params = result.get('params', {})
+        params = result.get("params", {})
         row.update(params)
 
         # 添加指标
-        metrics = result.get('metrics', {})
+        metrics = result.get("metrics", {})
         if isinstance(metrics, dict):
-            row['年化收益率'] = f"{metrics.get('annual_return', 0) * 100:.2f}%"
-            row['夏普比率'] = f"{metrics.get('sharpe_ratio', 0):.2f}"
-            row['最大回撤'] = f"{metrics.get('max_drawdown', 0) * 100:.2f}%"
-            row['胜率'] = f"{metrics.get('win_rate', 0) * 100:.1f}%"
-            row['总交易次数'] = metrics.get('total_trades', 0)
+            row["年化收益率"] = f"{metrics.get('annual_return', 0) * 100:.2f}%"
+            row["夏普比率"] = f"{metrics.get('sharpe_ratio', 0):.2f}"
+            row["最大回撤"] = f"{metrics.get('max_drawdown', 0) * 100:.2f}%"
+            row["胜率"] = f"{metrics.get('win_rate', 0) * 100:.1f}%"
+            row["总交易次数"] = metrics.get("total_trades", 0)
 
         rows.append(row)
 
     comparison_df = pd.DataFrame(rows)
 
-    st.dataframe(
-        comparison_df,
-        use_container_width=use_container_width,
-        hide_index=True
-    )
+    st.dataframe(comparison_df, use_container_width=use_container_width, hide_index=True)

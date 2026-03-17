@@ -3,16 +3,16 @@
 
 提供系统指标的报表生成功能。
 """
+
 import json
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any
+from typing import Dict, Optional, Any
 from pathlib import Path
 import logging
 
 import pandas as pd
-import numpy as np
 
-from .metrics import SystemMetricsCollector, SystemMetrics
+from .metrics import SystemMetricsCollector
 from .alerts import AlertManager
 
 logger = logging.getLogger(__name__)
@@ -94,10 +94,12 @@ class MetricsReporter:
         if self.alert_manager:
             active_alerts = self.alert_manager.get_active_alerts()
             if active_alerts:
-                lines.extend([
-                    "## 活跃告警",
-                    "",
-                ])
+                lines.extend(
+                    [
+                        "## 活跃告警",
+                        "",
+                    ]
+                )
                 for alert in active_alerts[:10]:  # 最多显示10条
                     status = "✓" if alert.acknowledged else "✗"
                     lines.append(
@@ -128,8 +130,7 @@ class MetricsReporter:
 
         history["timestamp"] = pd.to_datetime(history["timestamp"])
         week_data = history[
-            (history["timestamp"] >= start_date) &
-            (history["timestamp"] <= end_date)
+            (history["timestamp"] >= start_date) & (history["timestamp"] <= end_date)
         ]
 
         if week_data.empty:
@@ -181,8 +182,7 @@ class MetricsReporter:
 
         if self.alert_manager:
             report["active_alerts"] = [
-                alert.to_dict()
-                for alert in self.alert_manager.get_active_alerts()
+                alert.to_dict() for alert in self.alert_manager.get_active_alerts()
             ]
 
         return report

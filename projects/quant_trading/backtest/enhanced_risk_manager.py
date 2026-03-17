@@ -13,16 +13,14 @@
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple, Any, Union
-from enum import Enum
+from datetime import datetime
+from typing import Dict, List, Optional, Tuple, Any
 from collections import defaultdict
 
 import pandas as pd
-import numpy as np
 
 from core.logger import get_logger
-from projects.quant_trading.backtest.risk_config import EnhancedRiskConfig, ExitType
+from projects.quant_trading.backtest.risk_config import EnhancedRiskConfig
 
 logger = get_logger(__name__)
 
@@ -40,6 +38,7 @@ class ExitSignal:
         priority: 优先级（越小优先级越高）
         metadata: 额外元数据
     """
+
     should_exit: bool
     exit_type: str = ""
     exit_size: float = 0.0
@@ -60,18 +59,20 @@ class ExitSignal:
             exit_type=exit_type,
             exit_size=1.0,
             exit_reason=reason,
-            priority=priority
+            priority=priority,
         )
 
     @classmethod
-    def partial_exit(cls, exit_type: str, size: float, reason: str, priority: int = 999) -> "ExitSignal":
+    def partial_exit(
+        cls, exit_type: str, size: float, reason: str, priority: int = 999
+    ) -> "ExitSignal":
         """创建部分平仓信号"""
         return cls(
             should_exit=True,
             exit_type=exit_type,
             exit_size=size,
             exit_reason=reason,
-            priority=priority
+            priority=priority,
         )
 
 
@@ -91,6 +92,7 @@ class SubPosition:
         highest_price: 最高价（用于移动止盈）
         lowest_price: 最低价（用于移动止盈，空头）
     """
+
     id: str
     entry_date: datetime
     entry_price: float
@@ -165,17 +167,14 @@ class PositionTracker:
             子持仓ID
         """
         sub_id = str(uuid.uuid4())[:8]
-        sub_pos = SubPosition(
-            id=sub_id,
-            entry_date=date,
-            entry_price=price,
-            size=size
-        )
+        sub_pos = SubPosition(id=sub_id, entry_date=date, entry_price=price, size=size)
         self.sub_positions[sub_id] = sub_pos
         self.total_entry_value += price * abs(size)
         self.total_size += size
-        logger.debug(f"[PositionTracker] {self.ts_code} 添加子持仓 {sub_id}: "
-                    f"价格={price:.2f}, 数量={size}")
+        logger.debug(
+            f"[PositionTracker] {self.ts_code} 添加子持仓 {sub_id}: "
+            f"价格={price:.2f}, 数量={size}"
+        )
         return sub_id
 
     def remove_position(self, sub_id: str, exit_size: float) -> Optional[SubPosition]:
@@ -206,8 +205,10 @@ class PositionTracker:
             sub_pos.size -= reduce_size
             self.total_size -= reduce_size
             self.total_entry_value -= sub_pos.entry_price * exit_size
-            logger.debug(f"[PositionTracker] {self.ts_code} 减少子持仓 {sub_id}: "
-                        f"减少{exit_size}, 剩余{abs(sub_pos.size)}")
+            logger.debug(
+                f"[PositionTracker] {self.ts_code} 减少子持仓 {sub_id}: "
+                f"减少{exit_size}, 剩余{abs(sub_pos.size)}"
+            )
             return None
 
     def update_partial_exit(self, sub_id: str, exit_level: int):
@@ -283,15 +284,19 @@ class PositionTracker:
                 if profit_pct >= profit_threshold:
                     # 触发这一级止盈
                     exit_size = abs(sub_pos.size) * exit_pct
-                    exits.append((
-                        sub_id,
-                        exit_size,
-                        f"分级止盈第{level+1}档: 盈利{profit_pct*100:.1f}% >= {profit_threshold*100:.1f}%"
-                    ))
+                    exits.append(
+                        (
+                            sub_id,
+                            exit_size,
+                            f"分级止盈第{level+1}档: 盈利{profit_pct*100:.1f}% >= {profit_threshold*100:.1f}%",
+                        )
+                    )
                     # 更新已执行级别
                     sub_pos.exit_level = level + 1
-                    logger.debug(f"[PositionTracker] {self.ts_code} 子持仓 {sub_id} "
-                                f"触发分级止盈第{level+1}档")
+                    logger.debug(
+                        f"[PositionTracker] {self.ts_code} 子持仓 {sub_id} "
+                        f"触发分级止盈第{level+1}档"
+                    )
 
         return exits
 
@@ -341,7 +346,9 @@ class EnhancedRiskManager:
 
         logger.info(f"[EnhancedRiskManager] 初始化完成，配置: {self.config.to_dict()}")
 
-    def add_position(self, ts_code: str, entry_price: float, size: float, entry_date: datetime) -> str:
+    def add_position(
+        self, ts_code: str, entry_price: float, size: float, entry_date: datetime
+    ) -> str:
         """
         添加持仓
 
@@ -360,8 +367,10 @@ class EnhancedRiskManager:
         tracker = self.position_trackers[ts_code]
         sub_id = tracker.add_position(entry_price, size, entry_date)
 
-        logger.info(f"[RiskManager] 添加持仓 {ts_code}: 价格={entry_price:.2f}, "
-                   f"数量={size}, 子ID={sub_id}")
+        logger.info(
+            f"[RiskManager] 添加持仓 {ts_code}: 价格={entry_price:.2f}, "
+            f"数量={size}, 子ID={sub_id}"
+        )
         return sub_id
 
     def remove_position(self, ts_code: str, exit_size: Optional[float] = None) -> bool:
@@ -402,8 +411,10 @@ class EnhancedRiskManager:
                 logger.info(f"[RiskManager] 全部移除持仓 {ts_code} (部分平仓后)")
                 return True
 
-            logger.info(f"[RiskManager] 部分移除持仓 {ts_code}: 移除{exit_size}, "
-                       f"剩余{tracker.get_total_size()}")
+            logger.info(
+                f"[RiskManager] 部分移除持仓 {ts_code}: 移除{exit_size}, "
+                f"剩余{tracker.get_total_size()}"
+            )
             return False
 
     def check_all_exits(
@@ -412,7 +423,7 @@ class EnhancedRiskManager:
         current_price: float,
         holding_days: int,
         market_data: Optional[Dict[str, Any]] = None,
-        predicted_signal: Optional[str] = None
+        predicted_signal: Optional[str] = None,
     ) -> ExitSignal:
         """
         检查所有出场条件
@@ -495,15 +506,17 @@ class EnhancedRiskManager:
             loss_pct = (current_price - avg_cost) / avg_cost
 
         if loss_pct >= self.config.fixed_stop_loss_pct:
-            priority = self.config.get_exit_priority_rank('stop_loss')
+            priority = self.config.get_exit_priority_rank("stop_loss")
             return ExitSignal.full_exit(
-                exit_type='stop_loss',
+                exit_type="stop_loss",
                 reason=f"固定止损触发: 亏损{loss_pct*100:.1f}% >= {self.config.fixed_stop_loss_pct*100:.1f}%",
-                priority=priority
+                priority=priority,
             )
         return ExitSignal.no_exit()
 
-    def _check_fixed_take_profit(self, tracker: PositionTracker, current_price: float) -> ExitSignal:
+    def _check_fixed_take_profit(
+        self, tracker: PositionTracker, current_price: float
+    ) -> ExitSignal:
         """检查固定止盈"""
         avg_cost = tracker.get_average_cost()
         if avg_cost <= 0:
@@ -516,11 +529,11 @@ class EnhancedRiskManager:
             profit_pct = (avg_cost - current_price) / avg_cost
 
         if profit_pct >= self.config.fixed_take_profit_pct:
-            priority = self.config.get_exit_priority_rank('take_profit')
+            priority = self.config.get_exit_priority_rank("take_profit")
             return ExitSignal.full_exit(
-                exit_type='take_profit',
+                exit_type="take_profit",
                 reason=f"固定止盈触发: 盈利{profit_pct*100:.1f}% >= {self.config.fixed_take_profit_pct*100:.1f}%",
-                priority=priority
+                priority=priority,
             )
         return ExitSignal.no_exit()
 
@@ -543,11 +556,11 @@ class EnhancedRiskManager:
                     # 已启动移动止盈
                     pullback_pct = (sub_pos.highest_price - current_price) / sub_pos.highest_price
                     if pullback_pct >= self.config.trailing_stop_pct:
-                        priority = self.config.get_exit_priority_rank('trailing_stop')
+                        priority = self.config.get_exit_priority_rank("trailing_stop")
                         return ExitSignal.full_exit(
-                            exit_type='trailing_stop',
+                            exit_type="trailing_stop",
                             reason=f"移动止盈触发: 从高点{sub_pos.highest_price:.2f}回撤{pullback_pct*100:.1f}%",
-                            priority=priority
+                            priority=priority,
                         )
             else:  # 空头
                 profit_pct = (avg_cost - sub_pos.lowest_price) / avg_cost
@@ -555,26 +568,23 @@ class EnhancedRiskManager:
                     # 已启动移动止盈
                     pullback_pct = (current_price - sub_pos.lowest_price) / sub_pos.lowest_price
                     if pullback_pct >= self.config.trailing_stop_pct:
-                        priority = self.config.get_exit_priority_rank('trailing_stop')
+                        priority = self.config.get_exit_priority_rank("trailing_stop")
                         return ExitSignal.full_exit(
-                            exit_type='trailing_stop',
+                            exit_type="trailing_stop",
                             reason=f"移动止盈触发(空头): 从低点{sub_pos.lowest_price:.2f}反弹{pullback_pct*100:.1f}%",
-                            priority=priority
+                            priority=priority,
                         )
 
         return ExitSignal.no_exit()
 
     def _check_atr_stop(
-        self,
-        tracker: PositionTracker,
-        current_price: float,
-        market_data: Dict[str, Any]
+        self, tracker: PositionTracker, current_price: float, market_data: Dict[str, Any]
     ) -> ExitSignal:
         """检查ATR止损"""
         if not self.config.enable_atr_stop:
             return ExitSignal.no_exit()
 
-        atr = market_data.get('atr')
+        atr = market_data.get("atr")
         if atr is None or atr <= 0:
             return ExitSignal.no_exit()
 
@@ -588,20 +598,20 @@ class EnhancedRiskManager:
         if total_size > 0:  # 多头
             stop_price = avg_cost - stop_distance
             if current_price <= stop_price:
-                priority = self.config.get_exit_priority_rank('atr_stop')
+                priority = self.config.get_exit_priority_rank("atr_stop")
                 return ExitSignal.full_exit(
-                    exit_type='atr_stop',
+                    exit_type="atr_stop",
                     reason=f"ATR止损触发: 价格{current_price:.2f} <= 止损价{stop_price:.2f} (ATR={atr:.2f})",
-                    priority=priority
+                    priority=priority,
                 )
         else:  # 空头
             stop_price = avg_cost + stop_distance
             if current_price >= stop_price:
-                priority = self.config.get_exit_priority_rank('atr_stop')
+                priority = self.config.get_exit_priority_rank("atr_stop")
                 return ExitSignal.full_exit(
-                    exit_type='atr_stop',
+                    exit_type="atr_stop",
                     reason=f"ATR止损触发(空头): 价格{current_price:.2f} >= 止损价{stop_price:.2f} (ATR={atr:.2f})",
-                    priority=priority
+                    priority=priority,
                 )
 
         return ExitSignal.no_exit()
@@ -612,49 +622,45 @@ class EnhancedRiskManager:
             return ExitSignal.no_exit()
 
         if holding_days >= self.config.max_holding_days:
-            priority = self.config.get_exit_priority_rank('time_stop')
+            priority = self.config.get_exit_priority_rank("time_stop")
             return ExitSignal.full_exit(
-                exit_type='time_stop',
+                exit_type="time_stop",
                 reason=f"时间止损触发: 持仓{holding_days}天 >= 最大{self.config.max_holding_days}天",
-                priority=priority
+                priority=priority,
             )
 
         return ExitSignal.no_exit()
 
-    def _check_partial_exits(self, tracker: PositionTracker, current_price: float) -> List[ExitSignal]:
+    def _check_partial_exits(
+        self, tracker: PositionTracker, current_price: float
+    ) -> List[ExitSignal]:
         """检查分级止盈"""
         exits = []
         partial_exits = tracker.check_partial_exits(current_price)
 
         for sub_id, exit_size, reason in partial_exits:
-            priority = self.config.get_exit_priority_rank('take_profit')
+            priority = self.config.get_exit_priority_rank("take_profit")
             signal = ExitSignal.partial_exit(
-                exit_type='take_profit',
-                size=exit_size,
-                reason=reason,
-                priority=priority
+                exit_type="take_profit", size=exit_size, reason=reason, priority=priority
             )
-            signal.metadata['sub_id'] = sub_id
+            signal.metadata["sub_id"] = sub_id
             exits.append(signal)
 
         return exits
 
-    def _check_signal_reverse(
-        self,
-        tracker: PositionTracker,
-        predicted_signal: str
-    ) -> ExitSignal:
+    def _check_signal_reverse(self, tracker: PositionTracker, predicted_signal: str) -> ExitSignal:
         """检查信号反转"""
         total_size = tracker.get_total_size()
 
         # 多头持仓遇到卖出信号，或空头持仓遇到买入信号
-        if (total_size > 0 and predicted_signal == 'SELL') or \
-           (total_size < 0 and predicted_signal == 'BUY'):
-            priority = self.config.get_exit_priority_rank('signal_reverse')
+        if (total_size > 0 and predicted_signal == "SELL") or (
+            total_size < 0 and predicted_signal == "BUY"
+        ):
+            priority = self.config.get_exit_priority_rank("signal_reverse")
             return ExitSignal.full_exit(
-                exit_type='signal_reverse',
+                exit_type="signal_reverse",
                 reason=f"信号反转: 模型预测{predicted_signal}",
-                priority=priority
+                priority=priority,
             )
 
         return ExitSignal.no_exit()
@@ -695,9 +701,9 @@ class EnhancedRiskManager:
         if len(data) < period:
             return 0.0
 
-        high = data['high']
-        low = data['low']
-        close = data['close']
+        high = data["high"]
+        low = data["low"]
+        close = data["close"]
 
         # 计算True Range
         tr1 = high - low
@@ -770,10 +776,10 @@ class EnhancedRiskManager:
 
         tracker = self.position_trackers[ts_code]
         return {
-            'ts_code': ts_code,
-            'total_size': tracker.get_total_size(),
-            'avg_cost': tracker.get_average_cost(),
-            'sub_positions': len(tracker.sub_positions),
+            "ts_code": ts_code,
+            "total_size": tracker.get_total_size(),
+            "avg_cost": tracker.get_average_cost(),
+            "sub_positions": len(tracker.sub_positions),
         }
 
     def reset(self):
@@ -789,7 +795,7 @@ class EnhancedRiskManager:
 
 if __name__ == "__main__":
     # 测试代码
-    from datetime import datetime, timedelta
+    from datetime import datetime
 
     # 创建配置
     config = EnhancedRiskConfig(
@@ -809,44 +815,44 @@ if __name__ == "__main__":
 
     # 添加持仓
     entry_date = datetime.now()
-    risk_mgr.add_position('000001.SZ', 100.0, 1000, entry_date)
+    risk_mgr.add_position("000001.SZ", 100.0, 1000, entry_date)
 
     # 测试固定止损
     print("\n=== 测试固定止损 ===")
-    signal = risk_mgr.check_all_exits('000001.SZ', 94.0, 1)
+    signal = risk_mgr.check_all_exits("000001.SZ", 94.0, 1)
     print(f"价格94.0 (亏损6%): {signal}")
 
-    signal = risk_mgr.check_all_exits('000001.SZ', 96.0, 1)
+    signal = risk_mgr.check_all_exits("000001.SZ", 96.0, 1)
     print(f"价格96.0 (亏损4%): {signal}")
 
     # 测试固定止盈
     print("\n=== 测试固定止盈 ===")
-    signal = risk_mgr.check_all_exits('000001.SZ', 111.0, 1)
+    signal = risk_mgr.check_all_exits("000001.SZ", 111.0, 1)
     print(f"价格111.0 (盈利11%): {signal}")
 
     # 测试移动止盈
     print("\n=== 测试移动止盈 ===")
     # 先涨5%启动移动止盈
-    risk_mgr.position_trackers['000001.SZ'].update_extreme_prices(105.0)
-    signal = risk_mgr.check_all_exits('000001.SZ', 101.5, 1)  # 从105回撤约3.3%
+    risk_mgr.position_trackers["000001.SZ"].update_extreme_prices(105.0)
+    signal = risk_mgr.check_all_exits("000001.SZ", 101.5, 1)  # 从105回撤约3.3%
     print(f"价格101.5 (高点105, 回撤3.3%): {signal}")
 
     # 测试时间止损
     print("\n=== 测试时间止损 ===")
-    signal = risk_mgr.check_all_exits('000001.SZ', 100.0, 25)
+    signal = risk_mgr.check_all_exits("000001.SZ", 100.0, 25)
     print(f"持仓25天: {signal}")
 
     # 测试分级止盈
     print("\n=== 测试分级止盈 ===")
     # 清理之前的持仓，重新建仓
     risk_mgr.reset()
-    risk_mgr.add_position('000001.SZ', 100.0, 1000, entry_date)
+    risk_mgr.add_position("000001.SZ", 100.0, 1000, entry_date)
 
-    signal = risk_mgr.check_all_exits('000001.SZ', 105.0, 1)  # 盈利5%
+    signal = risk_mgr.check_all_exits("000001.SZ", 105.0, 1)  # 盈利5%
     print(f"价格105.0 (盈利5%, 触发第一档分级止盈): {signal}")
 
     # 再次检查，不应该重复触发
-    signal = risk_mgr.check_all_exits('000001.SZ', 105.0, 1)
+    signal = risk_mgr.check_all_exits("000001.SZ", 105.0, 1)
     print(f"再次检查105.0: {signal}")
 
     print("\n测试完成!")

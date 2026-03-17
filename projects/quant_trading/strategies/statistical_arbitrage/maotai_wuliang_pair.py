@@ -9,10 +9,7 @@
 """
 
 from datetime import datetime
-from typing import Optional
 
-import backtrader as bt
-import numpy as np
 import pandas as pd
 
 from core.logger import get_logger
@@ -116,15 +113,15 @@ class MaotaiWuliangStrategy(BaseStrategy):
         adf_pvalue = None
         if len(self.spread_history) >= self.p.lookback:
             try:
-                _, adf_pvalue, _, _, _, _ = self._quick_adf_test(self.spread_history[-self.p.lookback:])
+                _, adf_pvalue, _, _, _, _ = self._quick_adf_test(
+                    self.spread_history[-self.p.lookback :]
+                )
             except:
                 pass
 
         # 生成交易信号
         signal = self.signal_generator.generate_signal(
-            spread,
-            adf_pvalue=adf_pvalue,
-            timestamp=self.maotai.datetime.date(0)
+            spread, adf_pvalue=adf_pvalue, timestamp=self.maotai.datetime.date(0)
         )
 
         # 执行交易
@@ -161,6 +158,7 @@ class MaotaiWuliangStrategy(BaseStrategy):
     def _quick_adf_test(self, series):
         """快速ADF检验"""
         from statsmodels.tsa.stattools import adfuller
+
         return adfuller(series, autolag="AIC")
 
     def _enter_long_spread(self):
@@ -174,20 +172,24 @@ class MaotaiWuliangStrategy(BaseStrategy):
             capital=capital,
             price_a=self.maotai.close[0],
             price_b=self.wuliang.close[0],
-            hedge_ratio=self.hedge_ratio or 1.0
+            hedge_ratio=self.hedge_ratio or 1.0,
         )
 
         if shares_maotai > 0 and shares_wuliang > 0:
             self.buy(data=self.maotai, size=shares_maotai)
             self.sell(data=self.wuliang, size=shares_wuliang)
 
-            self.position_open_price = self.maotai.close[0] - self.hedge_ratio * self.wuliang.close[0]
+            self.position_open_price = (
+                self.maotai.close[0] - self.hedge_ratio * self.wuliang.close[0]
+            )
             self.position_high_watermark = self.position_open_price
             self.days_in_position = 0
             self.current_signal = Signal.LONG_SPREAD
 
-            self.log(f"做多价差: 买入茅台{shares_maotai}股 @ {self.maotai.close[0]:.2f}, "
-                    f"卖出五粮液{shares_wuliang}股 @ {self.wuliang.close[0]:.2f}")
+            self.log(
+                f"做多价差: 买入茅台{shares_maotai}股 @ {self.maotai.close[0]:.2f}, "
+                f"卖出五粮液{shares_wuliang}股 @ {self.wuliang.close[0]:.2f}"
+            )
 
     def _enter_short_spread(self):
         """做空价差：卖出茅台，买入五粮液"""
@@ -200,20 +202,24 @@ class MaotaiWuliangStrategy(BaseStrategy):
             capital=capital,
             price_a=self.maotai.close[0],
             price_b=self.wuliang.close[0],
-            hedge_ratio=self.hedge_ratio or 1.0
+            hedge_ratio=self.hedge_ratio or 1.0,
         )
 
         if shares_maotai > 0 and shares_wuliang > 0:
             self.sell(data=self.maotai, size=shares_maotai)
             self.buy(data=self.wuliang, size=shares_wuliang)
 
-            self.position_open_price = self.maotai.close[0] - self.hedge_ratio * self.wuliang.close[0]
+            self.position_open_price = (
+                self.maotai.close[0] - self.hedge_ratio * self.wuliang.close[0]
+            )
             self.position_high_watermark = self.position_open_price
             self.days_in_position = 0
             self.current_signal = Signal.SHORT_SPREAD
 
-            self.log(f"做空价差: 卖出茅台{shares_maotai}股 @ {self.maotai.close[0]:.2f}, "
-                    f"买入五粮液{shares_wuliang}股 @ {self.wuliang.close[0]:.2f}")
+            self.log(
+                f"做空价差: 卖出茅台{shares_maotai}股 @ {self.maotai.close[0]:.2f}, "
+                f"买入五粮液{shares_wuliang}股 @ {self.wuliang.close[0]:.2f}"
+            )
 
     def _close_position(self, reason: str = ""):
         """平仓"""
@@ -254,7 +260,7 @@ class MaotaiWuliangStrategy(BaseStrategy):
             entry_price=self.position_open_price,
             current_price=current_spread,
             position_size=abs(self.getposition(self.maotai).size),
-            days_held=self.days_in_position
+            days_held=self.days_in_position,
         )
 
         if exit_size:
@@ -291,7 +297,7 @@ def run_backtest(
     wuliang_data,
     start_date: datetime,
     end_date: datetime,
-    initial_capital: float = 1_000_000
+    initial_capital: float = 1_000_000,
 ):
     """
     运行回测

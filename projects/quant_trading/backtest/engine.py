@@ -2,18 +2,16 @@
 回测框架 - 回测引擎核心
 协调数据、筛选、策略、账户管理，执行回测流程
 """
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple, Any, Callable, Union, Set
+
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Dict, List, Optional, Any, Callable
 from enum import Enum, auto
 from pathlib import Path
 import logging
 import sys
-import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import pandas as pd
-import numpy as np
 
 # Setup logging
 logger = logging.getLogger(__name__)
@@ -25,11 +23,17 @@ try:
         sys.path.insert(0, str(project_root))
 
     from projects.quant_trading.backtest.data_manager import DataManager, MissingDataError
-    from projects.quant_trading.backtest.stock_filter import StockFilter, FilterCriteria, FilterPresets
-    from projects.quant_trading.backtest.portfolio import Portfolio, TransactionCost, Order, OrderSide, Trade
+    from projects.quant_trading.backtest.stock_filter import (
+        StockFilter,
+        FilterPresets,
+    )
+    from projects.quant_trading.backtest.portfolio import (
+        Portfolio,
+        TransactionCost,
+    )
     from projects.quant_trading.backtest.strategy import BaseStrategy
     from projects.quant_trading.backtest.risk_manager import RiskManager, RiskConfig
-    from projects.quant_trading.backtest.metrics import MetricsCalculator, PerformanceMetrics
+    from projects.quant_trading.backtest.metrics import MetricsCalculator
 except ImportError as e:
     logger.error(f"Failed to import required modules: {e}")
     raise
@@ -37,6 +41,7 @@ except ImportError as e:
 
 class RebalanceFrequency(Enum):
     """调仓频率"""
+
     DAILY = "daily"
     WEEKLY = "weekly"
     MONTHLY = "monthly"
@@ -45,6 +50,7 @@ class RebalanceFrequency(Enum):
 
 class BacktestEvent(Enum):
     """回测事件类型"""
+
     BACKTEST_START = auto()
     BACKTEST_END = auto()
     DAY_START = auto()
@@ -58,27 +64,28 @@ class BacktestEvent(Enum):
 
 class BacktestError(Exception):
     """回测引擎异常"""
-    pass
+
 
 
 @dataclass
 class BacktestConfig:
     """回测配置"""
+
     start_date: datetime
     end_date: datetime
-    initial_cash: float = 200000.0             # 初始资金20万
-    max_positions: int = 10                    # 最大持仓10只
-    min_positions: int = 3                     # 最小持仓3只
-    rebalance_freq: str = 'weekly'             # 调仓频率: daily/weekly/monthly
-    commission_rate: float = 0.00015           # 手续费万1.5
-    slippage_rate: float = 0.0002              # 滑点万2
-    benchmark: str = '000300.SH'               # 沪深300基准
-    enable_risk_control: bool = True           # 启用风控
-    risk_config: Optional[RiskConfig] = None   # 风控配置
-    max_lookback_days: int = 60                # 最大回看天数
-    data_preload: bool = True                  # 是否预加载数据
-    parallel_loading: bool = False             # 是否并行加载数据
-    log_level: str = 'INFO'                    # 日志级别
+    initial_cash: float = 200000.0  # 初始资金20万
+    max_positions: int = 10  # 最大持仓10只
+    min_positions: int = 3  # 最小持仓3只
+    rebalance_freq: str = "weekly"  # 调仓频率: daily/weekly/monthly
+    commission_rate: float = 0.00015  # 手续费万1.5
+    slippage_rate: float = 0.0002  # 滑点万2
+    benchmark: str = "000300.SH"  # 沪深300基准
+    enable_risk_control: bool = True  # 启用风控
+    risk_config: Optional[RiskConfig] = None  # 风控配置
+    max_lookback_days: int = 60  # 最大回看天数
+    data_preload: bool = True  # 是否预加载数据
+    parallel_loading: bool = False  # 是否并行加载数据
+    log_level: str = "INFO"  # 日志级别
 
     def __post_init__(self) -> None:
         """验证配置"""
@@ -97,13 +104,16 @@ class BacktestConfig:
         try:
             return RebalanceFrequency(self.rebalance_freq.lower())
         except ValueError:
-            logger.warning(f"Unknown rebalance frequency: {self.rebalance_freq}, defaulting to WEEKLY")
+            logger.warning(
+                f"Unknown rebalance frequency: {self.rebalance_freq}, defaulting to WEEKLY"
+            )
             return RebalanceFrequency.WEEKLY
 
 
 @dataclass
 class BacktestStats:
     """回测统计信息"""
+
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
     total_days: int = 0
@@ -123,13 +133,13 @@ class BacktestStats:
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典"""
         return {
-            'duration_seconds': self.duration_seconds,
-            'total_days': self.total_days,
-            'rebalance_count': self.rebalance_count,
-            'trade_count': self.trade_count,
-            'error_count': self.error_count,
-            'data_requests': self.data_requests,
-            'cache_hits': self.cache_hits
+            "duration_seconds": self.duration_seconds,
+            "total_days": self.total_days,
+            "rebalance_count": self.rebalance_count,
+            "trade_count": self.trade_count,
+            "error_count": self.error_count,
+            "data_requests": self.data_requests,
+            "cache_hits": self.cache_hits,
         }
 
 
@@ -152,7 +162,7 @@ class BacktestEngine:
         data_manager: Optional[DataManager] = None,
         stock_filter: Optional[StockFilter] = None,
         risk_manager: Optional[RiskManager] = None,
-        event_handlers: Optional[Dict[BacktestEvent, List[EventHandler]]] = None
+        event_handlers: Optional[Dict[BacktestEvent, List[EventHandler]]] = None,
     ):
         """
         初始化回测引擎
@@ -184,13 +194,12 @@ class BacktestEngine:
 
         # Initialize portfolio
         tx_cost = TransactionCost(
-            commission_rate=config.commission_rate,
-            slip_rate=config.slippage_rate
+            commission_rate=config.commission_rate, slip_rate=config.slippage_rate
         )
         self.portfolio = Portfolio(
             initial_cash=config.initial_cash,
             commission_rate=config.commission_rate,
-            slip_rate=config.slippage_rate
+            slip_rate=config.slippage_rate,
         )
 
         # Initialize risk manager
@@ -222,12 +231,14 @@ class BacktestEngine:
         # Results
         self._results: Optional[Dict[str, Any]] = None
 
-        logger.info(f"BacktestEngine initialized: {config.start_date.date()} ~ {config.end_date.date()}")
+        logger.info(
+            f"BacktestEngine initialized: {config.start_date.date()} ~ {config.end_date.date()}"
+        )
 
     def _setup_logging(self, log_level: str) -> None:
         """设置日志级别"""
         level = getattr(logging, log_level.upper(), logging.INFO)
-        logging.getLogger('backtest').setLevel(level)
+        logging.getLogger("backtest").setLevel(level)
         logger.setLevel(level)
 
     def register_event_handler(self, event: BacktestEvent, handler: EventHandler) -> None:
@@ -241,8 +252,9 @@ class BacktestEngine:
         """设置进度回调函数"""
         self._progress_callback = callback
 
-    def _emit_event(self, event: BacktestEvent, date: Optional[datetime] = None,
-                   data: Optional[Any] = None) -> None:
+    def _emit_event(
+        self, event: BacktestEvent, date: Optional[datetime] = None, data: Optional[Any] = None
+    ) -> None:
         """触发事件"""
         handlers = self._event_handlers.get(event, [])
         for handler in handlers:
@@ -285,7 +297,9 @@ class BacktestEngine:
 
             self.stats.total_days = len(self.trade_dates)
 
-            logger.info(f"回测区间: {self.trade_dates[0].strftime('%Y%m%d')} ~ {self.trade_dates[-1].strftime('%Y%m%d')}")
+            logger.info(
+                f"回测区间: {self.trade_dates[0].strftime('%Y%m%d')} ~ {self.trade_dates[-1].strftime('%Y%m%d')}"
+            )
             logger.info(f"交易日数量: {len(self.trade_dates)}")
             logger.info(f"初始资金: ¥{self.config.initial_cash:,.2f}")
             logger.info(f"策略: {self.strategy.get_name()}")
@@ -341,7 +355,7 @@ class BacktestEngine:
                 except Exception as e:
                     self.stats.error_count += 1
                     logger.error(f"Error on {date.strftime('%Y%m%d')}: {e}")
-                    self._emit_event(BacktestEvent.ERROR, date, {'error': str(e)})
+                    self._emit_event(BacktestEvent.ERROR, date, {"error": str(e)})
                     if self.stats.error_count > 10:
                         raise BacktestError(f"Too many errors ({self.stats.error_count}), aborting")
 
@@ -373,8 +387,10 @@ class BacktestEngine:
         """报告进度"""
         # 打印进度（每20个交易日）
         if index % 20 == 0 or index == len(self.trade_dates) - 1:
-            logger.info(f"[{index+1}/{len(self.trade_dates)}] {date.strftime('%Y%m%d')} - "
-                       f"净值: ¥{self.portfolio.total_value:,.2f}")
+            logger.info(
+                f"[{index+1}/{len(self.trade_dates)}] {date.strftime('%Y%m%d')} - "
+                f"净值: ¥{self.portfolio.total_value:,.2f}"
+            )
 
         # 调用回调
         if self._progress_callback:
@@ -386,11 +402,8 @@ class BacktestEngine:
     def _get_trade_dates(self) -> List[datetime]:
         """获取交易日列表"""
         try:
-            dates = self.data_manager.get_trade_dates(
-                self.config.start_date,
-                self.config.end_date
-            )
-            return [datetime.strptime(d, '%Y%m%d') for d in dates]
+            dates = self.data_manager.get_trade_dates(self.config.start_date, self.config.end_date)
+            return [datetime.strptime(d, "%Y%m%d") for d in dates]
         except Exception as e:
             logger.error(f"Failed to get trade dates: {e}")
             raise BacktestError(f"Failed to get trade dates: {e}")
@@ -398,13 +411,11 @@ class BacktestEngine:
     def _load_benchmark_data(self) -> None:
         """加载基准数据"""
         try:
-            start_str = self.config.start_date.strftime('%Y%m%d')
-            end_str = self.config.end_date.strftime('%Y%m%d')
+            start_str = self.config.start_date.strftime("%Y%m%d")
+            end_str = self.config.end_date.strftime("%Y%m%d")
 
             self._benchmark_data = self.data_manager.get_index_data(
-                self.config.benchmark,
-                start_str,
-                end_str
+                self.config.benchmark, start_str, end_str
             )
             self.stats.data_requests += 1
             logger.info(f"[基准] 已加载 {self.config.benchmark}")
@@ -451,7 +462,7 @@ class BacktestEngine:
 
     def _rebalance(self, date: datetime) -> None:
         """执行调仓"""
-        date_str = date.strftime('%Y%m%d')
+        date_str = date.strftime("%Y%m%d")
 
         # 1. 前置筛选
         try:
@@ -459,7 +470,7 @@ class BacktestEngine:
             self.stats.data_requests += 1
         except MissingDataError:
             logger.warning(f"[警告] {date_str} 无股票数据")
-            self._emit_event(BacktestEvent.DATA_MISSING, date, {'reason': 'no_stock_data'})
+            self._emit_event(BacktestEvent.DATA_MISSING, date, {"reason": "no_stock_data"})
             return
 
         available_stocks = self.stock_filter.filter_stocks(
@@ -492,25 +503,27 @@ class BacktestEngine:
                 continue
 
         if len(stock_data) < self.config.min_positions:
-            logger.warning(f"[调仓] 可用股票数量 {len(stock_data)} 少于最小持仓 {self.config.min_positions}")
+            logger.warning(
+                f"[调仓] 可用股票数量 {len(stock_data)} 少于最小持仓 {self.config.min_positions}"
+            )
             return
 
         # 3. 调用策略生成信号
         try:
             target_stocks = self.strategy.generate_signals(
-                data=stock_data,
-                current_date=date,
-                available_stocks=list(stock_data.keys())
+                data=stock_data, current_date=date, available_stocks=list(stock_data.keys())
             )
         except Exception as e:
             logger.error(f"Strategy signal generation failed: {e}")
             return
 
         # 限制持仓数量
-        target_stocks = target_stocks[:self.config.max_positions]
+        target_stocks = target_stocks[: self.config.max_positions]
 
         if len(target_stocks) < self.config.min_positions:
-            logger.warning(f"[调仓] 选股数量 {len(target_stocks)} 少于最小持仓 {self.config.min_positions}，跳过")
+            logger.warning(
+                f"[调仓] 选股数量 {len(target_stocks)} 少于最小持仓 {self.config.min_positions}，跳过"
+            )
             return
 
         # 4. 构建目标权重（等权）
@@ -518,16 +531,15 @@ class BacktestEngine:
 
         # 5. 执行调仓
         trades = self.portfolio.rebalance(
-            target_weights=target_weights,
-            current_prices=current_prices,
-            date=date
+            target_weights=target_weights, current_prices=current_prices, date=date
         )
 
         if trades:
             logger.info(f"[调仓] {date_str} 执行 {len(trades)} 笔交易")
 
-    def _get_stock_data(self, ts_code: str, start_date: datetime,
-                        end_date: datetime) -> Optional[pd.DataFrame]:
+    def _get_stock_data(
+        self, ts_code: str, start_date: datetime, end_date: datetime
+    ) -> Optional[pd.DataFrame]:
         """获取股票数据（带缓存）"""
         cache_key = f"{ts_code}_{start_date.strftime('%Y%m%d')}_{end_date.strftime('%Y%m%d')}"
 
@@ -557,17 +569,17 @@ class BacktestEngine:
     def _extract_price(self, df: pd.DataFrame, date: datetime) -> Optional[float]:
         """从DataFrame中提取指定日期的价格"""
         try:
-            date_str = date.strftime('%Y%m%d')
-            row = df[df['trade_date'] == date]
+            date_str = date.strftime("%Y%m%d")
+            row = df[df["trade_date"] == date]
             if not row.empty:
-                return float(row['close'].values[0])
+                return float(row["close"].values[0])
 
             # Try different date formats
-            for col in ['trade_date', 'date']:
+            for col in ["trade_date", "date"]:
                 if col in df.columns:
                     row = df[df[col] == date_str]
                     if not row.empty:
-                        return float(row['close'].values[0])
+                        return float(row["close"].values[0])
 
             return None
         except Exception as e:
@@ -610,7 +622,7 @@ class BacktestEngine:
             # 检查是否需要清仓
             if self.risk_manager.should_clear_position():
                 logger.warning(f"[风控] {date.strftime('%Y%m%d')} 触发清仓线，清空所有持仓")
-                self._emit_event(BacktestEvent.RISK_TRIGGERED, date, {'action': 'clear_all'})
+                self._emit_event(BacktestEvent.RISK_TRIGGERED, date, {"action": "clear_all"})
 
                 # Get current prices for all positions
                 prices: Dict[str, float] = {}
@@ -652,10 +664,12 @@ class BacktestEngine:
         benchmark_nav = None
         if self._benchmark_data is not None:
             try:
-                benchmark_nav = list(zip(
-                    pd.to_datetime(self._benchmark_data['trade_date']),
-                    self._benchmark_data['close'].values
-                ))
+                benchmark_nav = list(
+                    zip(
+                        pd.to_datetime(self._benchmark_data["trade_date"]),
+                        self._benchmark_data["close"].values,
+                    )
+                )
             except Exception as e:
                 logger.warning(f"Failed to process benchmark data: {e}")
 
@@ -663,19 +677,21 @@ class BacktestEngine:
         metrics = calculator.calculate(nav_history, benchmark_nav, trades_df)
 
         results = {
-            'nav_history': nav_history,
-            'trades': trades_df,
-            'positions': self.portfolio.get_state_df(),
-            'summary': self.portfolio.summary(),
-            'metrics': metrics,
-            'risk_alerts': self.risk_manager.get_alerts_df() if self.risk_manager else pd.DataFrame(),
-            'stats': self.stats.to_dict(),
-            'config': {
-                'start_date': self.config.start_date,
-                'end_date': self.config.end_date,
-                'initial_cash': self.config.initial_cash,
-                'strategy': self.strategy.get_name()
-            }
+            "nav_history": nav_history,
+            "trades": trades_df,
+            "positions": self.portfolio.get_state_df(),
+            "summary": self.portfolio.summary(),
+            "metrics": metrics,
+            "risk_alerts": (
+                self.risk_manager.get_alerts_df() if self.risk_manager else pd.DataFrame()
+            ),
+            "stats": self.stats.to_dict(),
+            "config": {
+                "start_date": self.config.start_date,
+                "end_date": self.config.end_date,
+                "initial_cash": self.config.initial_cash,
+                "strategy": self.strategy.get_name(),
+            },
         }
 
         return results
@@ -696,29 +712,29 @@ class BacktestEngine:
         results = self._results
 
         # 保存净值历史
-        if results['nav_history']:
-            nav_df = pd.DataFrame(results['nav_history'], columns=['date', 'nav'])
-            nav_df.to_csv(output_path / 'nav_history.csv', index=False)
+        if results["nav_history"]:
+            nav_df = pd.DataFrame(results["nav_history"], columns=["date", "nav"])
+            nav_df.to_csv(output_path / "nav_history.csv", index=False)
 
         # 保存交易记录
-        if not results['trades'].empty:
-            results['trades'].to_csv(output_path / 'trades.csv', index=False)
+        if not results["trades"].empty:
+            results["trades"].to_csv(output_path / "trades.csv", index=False)
 
         # 保存持仓
-        if not results['positions'].empty:
-            results['positions'].to_csv(output_path / 'positions.csv', index=False)
+        if not results["positions"].empty:
+            results["positions"].to_csv(output_path / "positions.csv", index=False)
 
         # 保存风控警报
-        if not results['risk_alerts'].empty:
-            results['risk_alerts'].to_csv(output_path / 'risk_alerts.csv', index=False)
+        if not results["risk_alerts"].empty:
+            results["risk_alerts"].to_csv(output_path / "risk_alerts.csv", index=False)
 
         # 保存绩效指标
-        if 'metrics' in results and results['metrics']:
-            metrics_dict = results['metrics'].to_dict()
-            pd.Series(metrics_dict).to_csv(output_path / 'metrics.csv', header=['value'])
+        if "metrics" in results and results["metrics"]:
+            metrics_dict = results["metrics"].to_dict()
+            pd.Series(metrics_dict).to_csv(output_path / "metrics.csv", header=["value"])
 
         # 保存统计信息
-        pd.Series(results['stats']).to_csv(output_path / 'stats.csv', header=['value'])
+        pd.Series(results["stats"]).to_csv(output_path / "stats.csv", header=["value"])
 
         logger.info(f"[保存] 结果已保存到: {output_dir}")
 
@@ -730,8 +746,7 @@ class BacktestEngine:
 if __name__ == "__main__":
     # Setup logging for testing
     logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
 
     # Test backtest engine
@@ -743,7 +758,7 @@ if __name__ == "__main__":
             end_date=datetime(2024, 1, 31),
             initial_cash=200000,
             max_positions=5,
-            rebalance_freq='weekly'
+            rebalance_freq="weekly",
         )
 
         strategy = BuyAndHoldStrategy()

@@ -2,15 +2,14 @@
 数据管理模块 - 负责MySQL数据查询、前复权计算、数据完整性检测
 使用LRU缓存和批量获取优化性能
 """
+
 from dataclasses import dataclass
-from datetime import datetime, timedelta
-from typing import List, Dict, Optional, Set, Tuple, Union, Any
-from functools import lru_cache
+from datetime import datetime
+from typing import List, Dict, Optional, Set, Tuple, Any
 from collections import OrderedDict
 import logging
 
 import pandas as pd
-import numpy as np
 
 from core.storage.relational.connection import DatabaseManager
 
@@ -33,7 +32,7 @@ class MissingDataError(Exception):
         message: str,
         ts_code: Optional[str] = None,
         start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None
+        end_date: Optional[datetime] = None,
     ):
         super().__init__(message)
         self.message = message
@@ -55,6 +54,7 @@ class MissingDataError(Exception):
 @dataclass
 class StockData:
     """个股日线数据"""
+
     ts_code: str
     trade_date: datetime
     open: float
@@ -76,6 +76,7 @@ class StockData:
 @dataclass
 class IndexData:
     """指数日线数据"""
+
     ts_code: str
     trade_date: datetime
     open: float
@@ -182,8 +183,8 @@ class DataManager:
               AND is_open = 1
             ORDER BY cal_date ASC
         """
-        start_str = start_date.strftime('%Y%m%d')
-        end_str = end_date.strftime('%Y%m%d')
+        start_str = start_date.strftime("%Y%m%d")
+        end_str = end_date.strftime("%Y%m%d")
 
         try:
             results = DatabaseManager.fetchall(self.db_name, sql, (start_str, end_str))
@@ -195,20 +196,16 @@ class DataManager:
             raise MissingDataError(
                 f"未找到交易日数据: {start_str} 至 {end_str}",
                 start_date=start_date,
-                end_date=end_date
+                end_date=end_date,
             )
 
-        trade_dates = [datetime.strptime(r['cal_date'], '%Y%m%d') for r in results]
+        trade_dates = [datetime.strptime(r["cal_date"], "%Y%m%d") for r in results]
         self._trade_dates = trade_dates
         logger.debug(f"获取交易日数据: {start_str} 至 {end_str}, 共 {len(trade_dates)} 天")
         return trade_dates
 
     def get_stock_data(
-        self,
-        ts_code: str,
-        start_date: datetime,
-        end_date: datetime,
-        adjust: bool = True
+        self, ts_code: str, start_date: datetime, end_date: datetime, adjust: bool = True
     ) -> pd.DataFrame:
         """获取个股日线数据，支持前复权，使用LRU缓存
 
@@ -226,10 +223,7 @@ class DataManager:
             DatabaseError: 数据库连接异常
         """
         cache_key = self._get_cache_key(
-            "stock", ts_code,
-            start_date.strftime('%Y%m%d'),
-            end_date.strftime('%Y%m%d'),
-            adjust
+            "stock", ts_code, start_date.strftime("%Y%m%d"), end_date.strftime("%Y%m%d"), adjust
         )
 
         cached = self._get_from_cache(cache_key)
@@ -237,8 +231,8 @@ class DataManager:
             logger.debug(f"缓存命中: {ts_code} ({start_date.date()} ~ {end_date.date()})")
             return cached.copy()
 
-        start_str = start_date.strftime('%Y%m%d')
-        end_str = end_date.strftime('%Y%m%d')
+        start_str = start_date.strftime("%Y%m%d")
+        end_str = end_date.strftime("%Y%m%d")
 
         # 查询日线数据
         sql_daily = """
@@ -263,13 +257,15 @@ class DataManager:
                 f"股票 {ts_code} 在 {start_str} 至 {end_str} 期间无数据",
                 ts_code=ts_code,
                 start_date=start_date,
-                end_date=end_date
+                end_date=end_date,
             )
 
-        logger.debug(f"数据库查询: {ts_code} ({start_str} ~ {end_str}), 返回 {len(daily_results)} 条记录")
+        logger.debug(
+            f"数据库查询: {ts_code} ({start_str} ~ {end_str}), 返回 {len(daily_results)} 条记录"
+        )
 
         df = pd.DataFrame(daily_results)
-        df['trade_date'] = pd.to_datetime(df['trade_date'], format='%Y%m%d')
+        df["trade_date"] = pd.to_datetime(df["trade_date"], format="%Y%m%d")
 
         # 查询复权因子
         if adjust:
@@ -290,46 +286,42 @@ class DataManager:
 
             if adj_results:
                 adj_df = pd.DataFrame(adj_results)
-                adj_df['trade_date'] = pd.to_datetime(adj_df['trade_date'], format='%Y%m%d')
-                df = df.merge(adj_df, on='trade_date', how='left')
-                df['adj_factor'] = df['adj_factor'].fillna(1.0)
+                adj_df["trade_date"] = pd.to_datetime(adj_df["trade_date"], format="%Y%m%d")
+                df = df.merge(adj_df, on="trade_date", how="left")
+                df["adj_factor"] = df["adj_factor"].fillna(1.0)
 
-                latest_adj = df['adj_factor'].iloc[-1]
-                df['adj_factor_ratio'] = df['adj_factor'] / latest_adj
+                latest_adj = df["adj_factor"].iloc[-1]
+                df["adj_factor_ratio"] = df["adj_factor"] / latest_adj
 
-                df['adj_open'] = df['open'] * df['adj_factor_ratio']
-                df['adj_high'] = df['high'] * df['adj_factor_ratio']
-                df['adj_low'] = df['low'] * df['adj_factor_ratio']
-                df['adj_close'] = df['close'] * df['adj_factor_ratio']
-                df['adj_pre_close'] = df['pre_close'] * df['adj_factor_ratio']
-                df = df.drop(columns=['adj_factor_ratio'])
+                df["adj_open"] = df["open"] * df["adj_factor_ratio"]
+                df["adj_high"] = df["high"] * df["adj_factor_ratio"]
+                df["adj_low"] = df["low"] * df["adj_factor_ratio"]
+                df["adj_close"] = df["close"] * df["adj_factor_ratio"]
+                df["adj_pre_close"] = df["pre_close"] * df["adj_factor_ratio"]
+                df = df.drop(columns=["adj_factor_ratio"])
             else:
-                df['adj_factor'] = 1.0
-                df['adj_open'] = df['open']
-                df['adj_high'] = df['high']
-                df['adj_low'] = df['low']
-                df['adj_close'] = df['close']
-                df['adj_pre_close'] = df['pre_close']
+                df["adj_factor"] = 1.0
+                df["adj_open"] = df["open"]
+                df["adj_high"] = df["high"]
+                df["adj_low"] = df["low"]
+                df["adj_close"] = df["close"]
+                df["adj_pre_close"] = df["pre_close"]
         else:
-            df['adj_factor'] = 1.0
-            df['adj_open'] = df['open']
-            df['adj_high'] = df['high']
-            df['adj_low'] = df['low']
-            df['adj_close'] = df['close']
-            df['adj_pre_close'] = df['pre_close']
+            df["adj_factor"] = 1.0
+            df["adj_open"] = df["open"]
+            df["adj_high"] = df["high"]
+            df["adj_low"] = df["low"]
+            df["adj_close"] = df["close"]
+            df["adj_pre_close"] = df["pre_close"]
 
-        df = df.set_index('trade_date')
+        df = df.set_index("trade_date")
         df = df.sort_index()
 
         self._set_cache(cache_key, df)
         return df.copy()
 
     def get_batch_stock_data(
-        self,
-        ts_codes: List[str],
-        start_date: datetime,
-        end_date: datetime,
-        adjust: bool = True
+        self, ts_codes: List[str], start_date: datetime, end_date: datetime, adjust: bool = True
     ) -> Dict[str, pd.DataFrame]:
         """批量获取多只股票数据
 
@@ -356,10 +348,7 @@ class DataManager:
         # 先从缓存查找
         for ts_code in ts_codes:
             cache_key = self._get_cache_key(
-                "stock", ts_code,
-                start_date.strftime('%Y%m%d'),
-                end_date.strftime('%Y%m%d'),
-                adjust
+                "stock", ts_code, start_date.strftime("%Y%m%d"), end_date.strftime("%Y%m%d"), adjust
             )
             cached = self._get_from_cache(cache_key)
             if cached is not None:
@@ -374,11 +363,11 @@ class DataManager:
         if not missing_codes:
             return result
 
-        start_str = start_date.strftime('%Y%m%d')
-        end_str = end_date.strftime('%Y%m%d')
+        start_str = start_date.strftime("%Y%m%d")
+        end_str = end_date.strftime("%Y%m%d")
 
         # 批量查询日线数据
-        placeholders = ','.join(['%s'] * len(missing_codes))
+        placeholders = ",".join(["%s"] * len(missing_codes))
         sql_daily = f"""
             SELECT
                 ts_code, trade_date, open, high, low, close,
@@ -400,7 +389,9 @@ class DataManager:
             logger.warning(f"批量查询无数据返回: {len(missing_codes)} 只股票")
             return result
 
-        logger.debug(f"批量查询数据库: {len(missing_codes)} 只股票, 返回 {len(daily_results)} 条记录")
+        logger.debug(
+            f"批量查询数据库: {len(missing_codes)} 只股票, 返回 {len(daily_results)} 条记录"
+        )
 
         # 批量查询复权因子
         adj_dict: Dict[str, List[Dict]] = {}
@@ -415,7 +406,7 @@ class DataManager:
             try:
                 adj_results = DatabaseManager.fetchall(self.db_name, sql_adj, tuple(params))
                 for r in adj_results:
-                    key = r['ts_code']
+                    key = r["ts_code"]
                     if key not in adj_dict:
                         adj_dict[key] = []
                     adj_dict[key].append(r)
@@ -425,46 +416,43 @@ class DataManager:
         # 按股票分组处理
         df_dict: Dict[str, List[Dict]] = {}
         for r in daily_results:
-            key = r['ts_code']
+            key = r["ts_code"]
             if key not in df_dict:
                 df_dict[key] = []
             df_dict[key].append(r)
 
         for ts_code, records in df_dict.items():
             df = pd.DataFrame(records)
-            df['trade_date'] = pd.to_datetime(df['trade_date'], format='%Y%m%d')
+            df["trade_date"] = pd.to_datetime(df["trade_date"], format="%Y%m%d")
 
             if adjust and ts_code in adj_dict:
                 adj_df = pd.DataFrame(adj_dict[ts_code])
-                adj_df['trade_date'] = pd.to_datetime(adj_df['trade_date'], format='%Y%m%d')
-                df = df.merge(adj_df, on='trade_date', how='left')
-                df['adj_factor'] = df['adj_factor'].fillna(1.0)
+                adj_df["trade_date"] = pd.to_datetime(adj_df["trade_date"], format="%Y%m%d")
+                df = df.merge(adj_df, on="trade_date", how="left")
+                df["adj_factor"] = df["adj_factor"].fillna(1.0)
 
-                latest_adj = df['adj_factor'].iloc[-1]
-                df['adj_factor_ratio'] = df['adj_factor'] / latest_adj
+                latest_adj = df["adj_factor"].iloc[-1]
+                df["adj_factor_ratio"] = df["adj_factor"] / latest_adj
 
-                df['adj_open'] = df['open'] * df['adj_factor_ratio']
-                df['adj_high'] = df['high'] * df['adj_factor_ratio']
-                df['adj_low'] = df['low'] * df['adj_factor_ratio']
-                df['adj_close'] = df['close'] * df['adj_factor_ratio']
-                df['adj_pre_close'] = df['pre_close'] * df['adj_factor_ratio']
-                df = df.drop(columns=['adj_factor_ratio'])
+                df["adj_open"] = df["open"] * df["adj_factor_ratio"]
+                df["adj_high"] = df["high"] * df["adj_factor_ratio"]
+                df["adj_low"] = df["low"] * df["adj_factor_ratio"]
+                df["adj_close"] = df["close"] * df["adj_factor_ratio"]
+                df["adj_pre_close"] = df["pre_close"] * df["adj_factor_ratio"]
+                df = df.drop(columns=["adj_factor_ratio"])
             else:
-                df['adj_factor'] = 1.0
-                df['adj_open'] = df['open']
-                df['adj_high'] = df['high']
-                df['adj_low'] = df['low']
-                df['adj_close'] = df['close']
-                df['adj_pre_close'] = df['pre_close']
+                df["adj_factor"] = 1.0
+                df["adj_open"] = df["open"]
+                df["adj_high"] = df["high"]
+                df["adj_low"] = df["low"]
+                df["adj_close"] = df["close"]
+                df["adj_pre_close"] = df["pre_close"]
 
-            df = df.set_index('trade_date')
+            df = df.set_index("trade_date")
             df = df.sort_index()
 
             cache_key = self._get_cache_key(
-                "stock", ts_code,
-                start_date.strftime('%Y%m%d'),
-                end_date.strftime('%Y%m%d'),
-                adjust
+                "stock", ts_code, start_date.strftime("%Y%m%d"), end_date.strftime("%Y%m%d"), adjust
             )
             self._set_cache(cache_key, df)
             result[ts_code] = df.copy()
@@ -476,7 +464,7 @@ class DataManager:
         self,
         ts_code: str = "000300.SH",
         start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None
+        end_date: Optional[datetime] = None,
     ) -> pd.DataFrame:
         """获取指数日线数据（沪深300等），使用LRU缓存
 
@@ -493,9 +481,10 @@ class DataManager:
             DatabaseError: 数据库连接异常
         """
         cache_key = self._get_cache_key(
-            "index", ts_code,
-            start_date.strftime('%Y%m%d') if start_date else "all",
-            end_date.strftime('%Y%m%d') if end_date else "all"
+            "index",
+            ts_code,
+            start_date.strftime("%Y%m%d") if start_date else "all",
+            end_date.strftime("%Y%m%d") if end_date else "all",
         )
 
         cached = self._get_from_cache(cache_key)
@@ -514,10 +503,10 @@ class DataManager:
 
         if start_date:
             sql += " AND trade_date >= %s"
-            params.append(start_date.strftime('%Y%m%d'))
+            params.append(start_date.strftime("%Y%m%d"))
         if end_date:
             sql += " AND trade_date <= %s"
-            params.append(end_date.strftime('%Y%m%d'))
+            params.append(end_date.strftime("%Y%m%d"))
 
         sql += " ORDER BY trade_date ASC"
 
@@ -529,15 +518,12 @@ class DataManager:
 
         if not results:
             raise MissingDataError(
-                f"指数 {ts_code} 无数据",
-                ts_code=ts_code,
-                start_date=start_date,
-                end_date=end_date
+                f"指数 {ts_code} 无数据", ts_code=ts_code, start_date=start_date, end_date=end_date
             )
 
         df = pd.DataFrame(results)
-        df['trade_date'] = pd.to_datetime(df['trade_date'], format='%Y%m%d')
-        df = df.set_index('trade_date')
+        df["trade_date"] = pd.to_datetime(df["trade_date"], format="%Y%m%d")
+        df = df.set_index("trade_date")
         df = df.sort_index()
 
         self._set_cache(cache_key, df)
@@ -556,13 +542,13 @@ class DataManager:
         Raises:
             DatabaseError: 数据库连接异常
         """
-        cache_key = self._get_cache_key("st", date.strftime('%Y%m%d'))
+        cache_key = self._get_cache_key("st", date.strftime("%Y%m%d"))
         cached = self._stock_info_cache.get(cache_key)
         if cached is not None:
             logger.debug(f"ST列表缓存命中: {date.strftime('%Y%m%d')}")
             return cached
 
-        date_str = date.strftime('%Y%m%d')
+        date_str = date.strftime("%Y%m%d")
         sql = """
             SELECT ts_code
             FROM t_stock_st_list
@@ -575,7 +561,7 @@ class DataManager:
             logger.error(f"获取ST列表失败: {e}")
             raise DatabaseError(f"数据库查询失败: {e}") from e
 
-        st_set: Set[str] = set(r['ts_code'] for r in results)
+        st_set: Set[str] = set(r["ts_code"] for r in results)
         self._stock_info_cache[cache_key] = st_set
         logger.debug(f"ST列表已缓存: {date_str}, 共 {len(st_set)} 只")
         return st_set
@@ -592,7 +578,7 @@ class DataManager:
         Raises:
             DatabaseError: 数据库连接异常
         """
-        date_str = date.strftime('%Y%m%d')
+        date_str = date.strftime("%Y%m%d")
         sql = """
             SELECT DISTINCT ts_code
             FROM t_stock_dailymarketdata
@@ -604,7 +590,7 @@ class DataManager:
             logger.error(f"获取全市场股票列表失败: {e}")
             raise DatabaseError(f"数据库查询失败: {e}") from e
 
-        stocks = [r['ts_code'] for r in results]
+        stocks = [r["ts_code"] for r in results]
         logger.debug(f"全市场股票数量: {len(stocks)} ({date_str})")
         return stocks
 
@@ -636,7 +622,7 @@ class DataManager:
             return result
 
         # 批量查询
-        placeholders = ','.join(['%s'] * len(missing_codes))
+        placeholders = ",".join(["%s"] * len(missing_codes))
         sql = f"""
             SELECT ts_code, name, industry, market, area
             FROM t_stock_basic
@@ -649,8 +635,8 @@ class DataManager:
             raise DatabaseError(f"数据库查询失败: {e}") from e
 
         for r in results:
-            self._stock_info_cache[r['ts_code']] = r
-            result[r['ts_code']] = r
+            self._stock_info_cache[r["ts_code"]] = r
+            result[r["ts_code"]] = r
 
         logger.debug(f"批量获取股票信息: {len(results)}/{len(missing_codes)} 只")
         return result
@@ -683,9 +669,7 @@ class DataManager:
         return result or {}
 
     def get_market_data_for_date(
-        self,
-        date: datetime,
-        fields: Optional[List[str]] = None
+        self, date: datetime, fields: Optional[List[str]] = None
     ) -> pd.DataFrame:
         """获取指定日期的全市场数据
 
@@ -699,11 +683,20 @@ class DataManager:
         Raises:
             DatabaseError: 数据库连接异常
         """
-        date_str = date.strftime('%Y%m%d')
+        date_str = date.strftime("%Y%m%d")
 
         if fields is None:
-            fields = ['ts_code', 'open', 'high', 'low', 'close',
-                     'pre_close', 'vol', 'amount', 'pct_chg']
+            fields = [
+                "ts_code",
+                "open",
+                "high",
+                "low",
+                "close",
+                "pre_close",
+                "vol",
+                "amount",
+                "pct_chg",
+            ]
 
         sql = f"""
             SELECT {', '.join(fields)}
@@ -724,9 +717,7 @@ class DataManager:
         return pd.DataFrame(results)
 
     def get_batch_market_data(
-        self,
-        dates: List[datetime],
-        fields: Optional[List[str]] = None
+        self, dates: List[datetime], fields: Optional[List[str]] = None
     ) -> Dict[datetime, pd.DataFrame]:
         """
         批量获取多个日期的市场数据
@@ -745,11 +736,20 @@ class DataManager:
             return {}
 
         if fields is None:
-            fields = ['ts_code', 'open', 'high', 'low', 'close',
-                     'pre_close', 'vol', 'amount', 'pct_chg']
+            fields = [
+                "ts_code",
+                "open",
+                "high",
+                "low",
+                "close",
+                "pre_close",
+                "vol",
+                "amount",
+                "pct_chg",
+            ]
 
-        date_strs = [d.strftime('%Y%m%d') for d in dates]
-        placeholders = ','.join(['%s'] * len(date_strs))
+        date_strs = [d.strftime("%Y%m%d") for d in dates]
+        placeholders = ",".join(["%s"] * len(date_strs))
 
         sql = f"""
             SELECT trade_date, {', '.join(fields)}
@@ -769,22 +769,18 @@ class DataManager:
             return result_dict
 
         df = pd.DataFrame(results)
-        df['trade_date'] = pd.to_datetime(df['trade_date'], format='%Y%m%d')
+        df["trade_date"] = pd.to_datetime(df["trade_date"], format="%Y%m%d")
 
         for date in dates:
-            date_data = df[df['trade_date'] == date]
+            date_data = df[df["trade_date"] == date]
             if not date_data.empty:
-                result_dict[date] = date_data.drop(columns=['trade_date'])
+                result_dict[date] = date_data.drop(columns=["trade_date"])
 
         logger.debug(f"批量市场数据: {len(results)} 条记录，{len(dates)} 个日期")
         return result_dict
 
     def check_data_integrity(
-        self,
-        ts_code: str,
-        start_date: datetime,
-        end_date: datetime,
-        trade_dates: List[datetime]
+        self, ts_code: str, start_date: datetime, end_date: datetime, trade_dates: List[datetime]
     ) -> Tuple[bool, List[datetime]]:
         """检查股票数据完整性
 
@@ -818,7 +814,7 @@ class DataManager:
         stock_list: List[str],
         start_date: datetime,
         end_date: datetime,
-        min_data_ratio: float = 0.95
+        min_data_ratio: float = 0.95,
     ) -> Tuple[List[str], Dict[str, List[datetime]]]:
         """验证多只股票的数据完整性
 
@@ -868,7 +864,9 @@ class DataManager:
 
         # 支持 datetime 和 pd.Timestamp
         date_normalized = pd.Timestamp(date).normalize()
-        valid_dates = [d for d in self._trade_dates if pd.Timestamp(d).normalize() < date_normalized]
+        valid_dates = [
+            d for d in self._trade_dates if pd.Timestamp(d).normalize() < date_normalized
+        ]
 
         if len(valid_dates) >= n:
             return valid_dates[-n]
@@ -889,7 +887,9 @@ class DataManager:
 
         # 支持 datetime 和 pd.Timestamp
         date_normalized = pd.Timestamp(date).normalize()
-        valid_dates = [d for d in self._trade_dates if pd.Timestamp(d).normalize() > date_normalized]
+        valid_dates = [
+            d for d in self._trade_dates if pd.Timestamp(d).normalize() > date_normalized
+        ]
 
         if len(valid_dates) >= n:
             return valid_dates[n - 1]

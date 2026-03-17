@@ -7,10 +7,9 @@ XGBoost模型实现 - 梯度提升树预测
 - 特征重要性分析
 """
 
-import warnings
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any, Union
+from typing import Dict, List, Optional, Any
 
 import numpy as np
 import pandas as pd
@@ -28,6 +27,7 @@ logger = get_logger(__name__)
 @dataclass
 class XGBoostConfig:
     """XGBoost模型配置"""
+
     # 模型参数
     n_estimators: int = 100
     max_depth: int = 6
@@ -43,10 +43,10 @@ class XGBoostConfig:
 
     # 训练参数
     early_stopping_rounds: int = 20
-    eval_metric: str = 'rmse'  # 或 'logloss', 'auc', 'mae'
+    eval_metric: str = "rmse"  # 或 'logloss', 'auc', 'mae'
 
     # 任务类型
-    objective: str = 'reg:squarederror'  # 或 'binary:logistic', 'multi:softprob'
+    objective: str = "reg:squarederror"  # 或 'binary:logistic', 'multi:softprob'
     num_class: int = 1  # 分类任务的类别数
 
     # 时序参数
@@ -56,25 +56,25 @@ class XGBoostConfig:
 def get_xgb_params(config: XGBoostConfig) -> Dict[str, Any]:
     """从配置生成XGBoost参数"""
     params = {
-        'n_estimators': config.n_estimators,
-        'max_depth': config.max_depth,
-        'learning_rate': config.learning_rate,
-        'subsample': config.subsample,
-        'colsample_bytree': config.colsample_bytree,
-        'colsample_bylevel': config.colsample_bylevel,
-        'min_child_weight': config.min_child_weight,
-        'gamma': config.gamma,
-        'reg_alpha': config.reg_alpha,
-        'reg_lambda': config.reg_lambda,
-        'scale_pos_weight': config.scale_pos_weight,
-        'objective': config.objective,
-        'random_state': 42,
-        'n_jobs': -1,
-        'early_stopping_rounds': config.early_stopping_rounds,
+        "n_estimators": config.n_estimators,
+        "max_depth": config.max_depth,
+        "learning_rate": config.learning_rate,
+        "subsample": config.subsample,
+        "colsample_bytree": config.colsample_bytree,
+        "colsample_bylevel": config.colsample_bylevel,
+        "min_child_weight": config.min_child_weight,
+        "gamma": config.gamma,
+        "reg_alpha": config.reg_alpha,
+        "reg_lambda": config.reg_lambda,
+        "scale_pos_weight": config.scale_pos_weight,
+        "objective": config.objective,
+        "random_state": 42,
+        "n_jobs": -1,
+        "early_stopping_rounds": config.early_stopping_rounds,
     }
 
     if config.num_class > 1:
-        params['num_class'] = config.num_class
+        params["num_class"] = config.num_class
 
     return params
 
@@ -95,9 +95,9 @@ class XGBoostModel:
         """根据配置创建模型实例"""
         params = get_xgb_params(self.config)
 
-        if self.config.objective.startswith('reg'):
+        if self.config.objective.startswith("reg"):
             model = xgb.XGBRegressor(**params)
-        elif self.config.objective.startswith('multi'):
+        elif self.config.objective.startswith("multi"):
             model = xgb.XGBClassifier(**params)
         else:
             model = xgb.XGBClassifier(**params)
@@ -110,7 +110,7 @@ class XGBoostModel:
         y_train: pd.Series,
         X_val: Optional[pd.DataFrame] = None,
         y_val: Optional[pd.Series] = None,
-        verbose: bool = True
+        verbose: bool = True,
     ) -> Dict:
         """
         训练模型
@@ -138,14 +138,14 @@ class XGBoostModel:
         # 训练
         logger.info(f"开始XGBoost训练: {len(X_train)}样本, {len(self.feature_names)}特征")
 
-        self.model.fit(
-            X_train, y_train,
-            eval_set=eval_set,
-            verbose=verbose
-        )
+        self.model.fit(X_train, y_train, eval_set=eval_set, verbose=verbose)
 
         # 记录最佳迭代次数
-        best_iteration = self.model.best_iteration if hasattr(self.model, 'best_iteration') else self.config.n_estimators
+        best_iteration = (
+            self.model.best_iteration
+            if hasattr(self.model, "best_iteration")
+            else self.config.n_estimators
+        )
         logger.info(f"训练完成. Best iteration: {best_iteration}")
 
         # 计算特征重要性
@@ -155,15 +155,12 @@ class XGBoostModel:
         train_pred = self.model.predict(X_train)
         train_metrics = self._calculate_metrics(y_train, train_pred)
 
-        results = {
-            'best_iteration': best_iteration,
-            'train_metrics': train_metrics
-        }
+        results = {"best_iteration": best_iteration, "train_metrics": train_metrics}
 
         if X_val is not None:
             val_pred = self.model.predict(X_val)
             val_metrics = self._calculate_metrics(y_val, val_pred)
-            results['val_metrics'] = val_metrics
+            results["val_metrics"] = val_metrics
 
         return results
 
@@ -172,15 +169,15 @@ class XGBoostModel:
         metrics = {}
 
         # 基础指标
-        metrics['mse'] = mean_squared_error(y_true, y_pred)
-        metrics['rmse'] = np.sqrt(metrics['mse'])
-        metrics['mae'] = mean_absolute_error(y_true, y_pred)
+        metrics["mse"] = mean_squared_error(y_true, y_pred)
+        metrics["rmse"] = np.sqrt(metrics["mse"])
+        metrics["mae"] = mean_absolute_error(y_true, y_pred)
 
         # 方向准确率
         if len(y_true) > 1 and y_true.dtype != object:
             true_direction = np.sign(y_true)
             pred_direction = np.sign(y_pred)
-            metrics['direction_accuracy'] = np.mean(true_direction == pred_direction)
+            metrics["direction_accuracy"] = np.mean(true_direction == pred_direction)
 
         return metrics
 
@@ -198,7 +195,7 @@ class XGBoostModel:
         if self.model is None:
             raise ValueError("模型未训练")
 
-        if return_proba and hasattr(self.model, 'predict_proba'):
+        if return_proba and hasattr(self.model, "predict_proba"):
             return self.model.predict_proba(X)
 
         return self.model.predict(X)
@@ -215,9 +212,9 @@ class XGBoostModel:
         metrics = self._calculate_metrics(y_test.values, predictions)
 
         # 分类任务额外指标
-        if self.config.objective != 'reg:squarederror' or len(np.unique(y_test)) <= 5:
+        if self.config.objective != "reg:squarederror" or len(np.unique(y_test)) <= 5:
             pred_classes = np.round(predictions).astype(int)
-            metrics['accuracy'] = accuracy_score(y_test, pred_classes)
+            metrics["accuracy"] = accuracy_score(y_test, pred_classes)
 
         return metrics
 
@@ -228,10 +225,9 @@ class XGBoostModel:
 
         importance = self.model.feature_importances_
 
-        importance_df = pd.DataFrame({
-            'feature': self.feature_names,
-            'importance': importance
-        }).sort_values('importance', ascending=False)
+        importance_df = pd.DataFrame(
+            {"feature": self.feature_names, "importance": importance}
+        ).sort_values("importance", ascending=False)
 
         self.feature_importance = importance_df
 
@@ -245,11 +241,7 @@ class XGBoostModel:
         return self.feature_importance.head(n)
 
     def time_series_cv(
-        self,
-        X: pd.DataFrame,
-        y: pd.Series,
-        n_splits: int = 5,
-        test_size: Optional[int] = None
+        self, X: pd.DataFrame, y: pd.Series, n_splits: int = 5, test_size: Optional[int] = None
     ) -> Dict[str, List[float]]:
         """
         时序交叉验证
@@ -263,11 +255,7 @@ class XGBoostModel:
         Returns:
             各折评估指标
         """
-        results = {
-            'rmse': [],
-            'mae': [],
-            'direction_accuracy': []
-        }
+        results = {"rmse": [], "mae": [], "direction_accuracy": []}
 
         # 时序分割
         if test_size is None:
@@ -293,8 +281,8 @@ class XGBoostModel:
                     results[key].append(fold_metrics[key])
 
         # 计算平均值
-        summary = {f'{k}_mean': np.mean(v) for k, v in results.items()}
-        summary.update({f'{k}_std': np.std(v) for k, v in results.items()})
+        summary = {f"{k}_mean": np.mean(v) for k, v in results.items()}
+        summary.update({f"{k}_std": np.std(v) for k, v in results.items()})
 
         return {**results, **summary}
 
@@ -304,7 +292,7 @@ class XGBoostModel:
         y: pd.Series,
         window_size: int = 252 * 3,
         step_size: int = 63,
-        min_train_size: int = 252
+        min_train_size: int = 252,
     ) -> List[Dict]:
         """
         滚动窗口训练
@@ -318,14 +306,13 @@ class XGBoostModel:
         start_idx = min_train_size
 
         while start_idx + window_size < n:
-            train_end = start_idx
             test_end = min(start_idx + window_size, n)
 
             window_date = X.index[start_idx]
             logger.info(f"滚动窗口训练: {window_date}")
 
-            X_train = X.iloc[start_idx - min_train_size:start_idx]
-            y_train = y.iloc[start_idx - min_train_size:start_idx]
+            X_train = X.iloc[start_idx - min_train_size : start_idx]
+            y_train = y.iloc[start_idx - min_train_size : start_idx]
             X_test = X.iloc[start_idx:test_end]
             y_test = y.iloc[start_idx:test_end]
 
@@ -335,13 +322,13 @@ class XGBoostModel:
 
             # 评估
             metrics = self.evaluate(X_test, y_test)
-            metrics['window_date'] = str(window_date)
-            metrics['train_size'] = len(X_train)
-            metrics['test_size'] = len(X_test)
+            metrics["window_date"] = str(window_date)
+            metrics["train_size"] = len(X_train)
+            metrics["test_size"] = len(X_test)
 
             # 保存特征重要性
             top_features = self.get_top_features(5)
-            metrics['top_features'] = top_features['feature'].tolist()
+            metrics["top_features"] = top_features["feature"].tolist()
 
             results.append(metrics)
 
@@ -361,12 +348,10 @@ class XGBoostModel:
 
         # 保存配置和特征名
         import json
-        config_path = Path(path).with_suffix('.config.json')
-        with open(config_path, 'w') as f:
-            json.dump({
-                'feature_names': self.feature_names,
-                'config': self.config.__dict__
-            }, f)
+
+        config_path = Path(path).with_suffix(".config.json")
+        with open(config_path, "w") as f:
+            json.dump({"feature_names": self.feature_names, "config": self.config.__dict__}, f)
 
         logger.info(f"模型已保存到: {path}")
 
@@ -374,13 +359,14 @@ class XGBoostModel:
         """加载模型"""
         # 先加载配置，以便创建正确类型的模型
         import json
-        config_path = Path(path).with_suffix('.config.json')
+
+        config_path = Path(path).with_suffix(".config.json")
         if config_path.exists():
-            with open(config_path, 'r') as f:
+            with open(config_path, "r") as f:
                 data = json.load(f)
-                self.feature_names = data['feature_names']
+                self.feature_names = data["feature_names"]
                 # 恢复配置
-                for key, value in data['config'].items():
+                for key, value in data["config"].items():
                     if hasattr(self.config, key):
                         setattr(self.config, key, value)
 

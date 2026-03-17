@@ -9,7 +9,7 @@
 """
 
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Tuple
 
 import numpy as np
 import pandas as pd
@@ -57,10 +57,7 @@ class CointegrationTester:
         self.significance_level = significance_level
 
     def test_pair(
-        self,
-        price_a: pd.Series,
-        price_b: pd.Series,
-        method: str = "ols"
+        self, price_a: pd.Series, price_b: pd.Series, method: str = "ols"
     ) -> CointegrationResult:
         """
         对两个价格序列进行协整检验
@@ -87,7 +84,7 @@ class CointegrationTester:
                 adf_statistic=0.0,
                 adf_pvalue=1.0,
                 half_life=np.inf,
-                confidence_level=self.significance_level
+                confidence_level=self.significance_level,
             )
 
         # 第一步：OLS回归计算对冲比例
@@ -100,9 +97,7 @@ class CointegrationTester:
         spread = data["a"] - beta * data["b"]
 
         # 第二步：对价差进行ADF检验
-        adf_stat, adf_pvalue, _, _, critical_values, _ = adfuller(
-            spread, autolag="AIC"
-        )
+        adf_stat, adf_pvalue, _, _, critical_values, _ = adfuller(spread, autolag="AIC")
 
         # 判断是否协整
         is_cointegrated = adf_pvalue < self.significance_level
@@ -118,19 +113,16 @@ class CointegrationTester:
             adf_statistic=adf_stat,
             adf_pvalue=adf_pvalue,
             half_life=half_life,
-            confidence_level=self.significance_level
+            confidence_level=self.significance_level,
         )
 
-        logger.debug(f"协整检验: β={beta:.3f}, p-value={adf_pvalue:.4f}, "
-                    f"半衰期={half_life:.1f}天")
+        logger.debug(
+            f"协整检验: β={beta:.3f}, p-value={adf_pvalue:.4f}, " f"半衰期={half_life:.1f}天"
+        )
 
         return result
 
-    def _calculate_hedge_ratio_ols(
-        self,
-        price_a: pd.Series,
-        price_b: pd.Series
-    ) -> float:
+    def _calculate_hedge_ratio_ols(self, price_a: pd.Series, price_b: pd.Series) -> float:
         """
         使用OLS回归计算对冲比例
 
@@ -144,11 +136,7 @@ class CointegrationTester:
 
         return beta
 
-    def _calculate_hedge_ratio_tls(
-        self,
-        price_a: pd.Series,
-        price_b: pd.Series
-    ) -> float:
+    def _calculate_hedge_ratio_tls(self, price_a: pd.Series, price_b: pd.Series) -> float:
         """
         使用总体最小二乘法(TLS)计算对冲比例
 
@@ -203,11 +191,7 @@ class CointegrationTester:
 
         return half_life
 
-    def calculate_zscore(
-        self,
-        spread: pd.Series,
-        lookback: int = 20
-    ) -> pd.Series:
+    def calculate_zscore(self, spread: pd.Series, lookback: int = 20) -> pd.Series:
         """
         计算价差的Z-score
 
@@ -226,10 +210,7 @@ class CointegrationTester:
         return zscore
 
     def calculate_dynamic_hedge_ratio(
-        self,
-        price_a: pd.Series,
-        price_b: pd.Series,
-        window: int = 60
+        self, price_a: pd.Series, price_b: pd.Series, window: int = 60
     ) -> pd.Series:
         """
         计算动态对冲比例（滚动窗口Kalman Filter）
@@ -252,7 +233,7 @@ class CointegrationTester:
             initial_state_covariance=np.eye(2),
             observation_matrices=np.expand_dims(
                 np.vstack([price_b, np.ones(len(price_b))]).T, axis=1
-            )
+            ),
         )
 
         # 使用Kalman Filter估计状态
@@ -263,10 +244,7 @@ class CointegrationTester:
 
         return beta_series
 
-    def get_cointegration_summary(
-        self,
-        result: CointegrationResult
-    ) -> dict:
+    def get_cointegration_summary(self, result: CointegrationResult) -> dict:
         """
         获取协整检验结果摘要
 
@@ -284,7 +262,7 @@ class CointegrationTester:
             "ADF统计量": f"{result.adf_statistic:.4f}",
             "p值": f"{result.adf_pvalue:.4f}",
             "半衰期(天)": f"{result.half_life:.1f}",
-            "建议": self._get_recommendation(result)
+            "建议": self._get_recommendation(result),
         }
 
     def _get_recommendation(self, result: CointegrationResult) -> str:
@@ -301,9 +279,7 @@ class CointegrationTester:
 
 
 def quick_test(
-    price_a: pd.Series,
-    price_b: pd.Series,
-    significance: float = 0.05
+    price_a: pd.Series, price_b: pd.Series, significance: float = 0.05
 ) -> Tuple[bool, float, float]:
     """
     快速协整检验

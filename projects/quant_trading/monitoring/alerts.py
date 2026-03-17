@@ -3,13 +3,14 @@
 
 提供告警规则配置、告警触发和通知功能。
 """
+
 import json
 import smtplib
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, List, Optional, Callable, Any, Set
-from enum import Enum, auto
+from typing import Dict, List, Optional, Callable, Any
+from enum import Enum
 from collections import deque
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -21,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 class AlertLevel(Enum):
     """告警级别"""
+
     INFO = "info"
     WARNING = "warning"
     CRITICAL = "critical"
@@ -28,6 +30,7 @@ class AlertLevel(Enum):
 
 class AlertChannel(Enum):
     """告警渠道"""
+
     LOG = "log"
     EMAIL = "email"
     CONSOLE = "console"
@@ -49,6 +52,7 @@ class Alert:
         acknowledged: 是否已确认
         resolved: 是否已解决
     """
+
     name: str
     level: AlertLevel
     message: str
@@ -98,6 +102,7 @@ class AlertRule:
         channels: 通知渠道
         cooldown_minutes: 冷却时间（分钟）
     """
+
     name: str
     condition: AlertCondition
     level: AlertLevel
@@ -378,7 +383,6 @@ class AlertManager:
     def _send_to_dashboard(self, alert: Alert):
         """发送到Dashboard（保存到内存供查询）"""
         # Dashboard可以通过get_active_alerts获取活跃告警
-        pass
 
     def _send_webhook(self, alert: Alert):
         """发送到Webhook"""
@@ -511,7 +515,6 @@ class AlertManager:
     def enable_rule(self, name: str):
         """启用规则"""
         # 规则默认启用，可以通过重新添加来实现
-        pass
 
     def disable_rule(self, name: str):
         """禁用规则"""

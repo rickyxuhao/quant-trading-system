@@ -10,7 +10,6 @@
 from dataclasses import dataclass
 from typing import Optional
 
-import numpy as np
 import pandas as pd
 from scipy.spatial.distance import euclidean
 from scipy.stats import pearsonr
@@ -69,9 +68,7 @@ class PairSelector:
         self.candidates: list[PairCandidate] = []
 
     def select_by_correlation(
-        self,
-        price_data: pd.DataFrame,
-        window: int = 60
+        self, price_data: pd.DataFrame, window: int = 60
     ) -> list[PairCandidate]:
         """
         基于相关系数筛选配对
@@ -103,12 +100,12 @@ class PairSelector:
 
                 if corr >= self.criteria.min_correlation:
                     # 计算价格比率
-                    price_ratio = (
-                        pair_data[stock_a].mean() / pair_data[stock_b].mean()
-                    )
+                    price_ratio = pair_data[stock_a].mean() / pair_data[stock_b].mean()
 
-                    if price_ratio > self.criteria.max_price_ratio or \
-                       price_ratio < 1 / self.criteria.max_price_ratio:
+                    if (
+                        price_ratio > self.criteria.max_price_ratio
+                        or price_ratio < 1 / self.criteria.max_price_ratio
+                    ):
                         continue
 
                     candidate = PairCandidate(
@@ -116,7 +113,7 @@ class PairSelector:
                         stock_b=stock_b,
                         correlation=corr,
                         distance=0.0,  # 稍后计算
-                        price_ratio=price_ratio
+                        price_ratio=price_ratio,
                     )
                     candidates.append(candidate)
 
@@ -126,9 +123,7 @@ class PairSelector:
         return sorted(candidates, key=lambda x: x.correlation, reverse=True)
 
     def select_by_distance(
-        self,
-        price_data: pd.DataFrame,
-        normalize: bool = True
+        self, price_data: pd.DataFrame, normalize: bool = True
     ) -> list[PairCandidate]:
         """
         基于距离法（欧氏距离）筛选配对
@@ -174,7 +169,7 @@ class PairSelector:
                         stock_b=stock_b,
                         correlation=corr,
                         distance=distance,
-                        price_ratio=pair_data[stock_a].mean() / pair_data[stock_b].mean()
+                        price_ratio=pair_data[stock_a].mean() / pair_data[stock_b].mean(),
                     )
                     candidates.append(candidate)
 
@@ -185,10 +180,7 @@ class PairSelector:
         return sorted(candidates, key=lambda x: x.distance)
 
     def combine_methods(
-        self,
-        price_data: pd.DataFrame,
-        corr_weight: float = 0.6,
-        dist_weight: float = 0.4
+        self, price_data: pd.DataFrame, corr_weight: float = 0.6, dist_weight: float = 0.4
     ) -> list[PairCandidate]:
         """
         综合相关系数法和距离法筛选
@@ -202,10 +194,12 @@ class PairSelector:
             综合评分后的配对候选列表
         """
         # 分别计算两种方法
-        corr_candidates = {f"{c.stock_a}-{c.stock_b}": c for c in
-                          self.select_by_correlation(price_data)}
-        dist_candidates = {f"{c.stock_a}-{c.stock_b}": c for c in
-                          self.select_by_distance(price_data)}
+        corr_candidates = {
+            f"{c.stock_a}-{c.stock_b}": c for c in self.select_by_correlation(price_data)
+        }
+        dist_candidates = {
+            f"{c.stock_a}-{c.stock_b}": c for c in self.select_by_distance(price_data)
+        }
 
         # 合并候选
         all_pairs = set(corr_candidates.keys()) | set(dist_candidates.keys())
@@ -218,8 +212,9 @@ class PairSelector:
             if corr_cand and dist_cand:
                 # 同时满足两种方法，计算综合得分
                 # 相关系数越高越好，距离越小越好
-                corr_score = (corr_cand.correlation - self.criteria.min_correlation) / \
-                            (1 - self.criteria.min_correlation)
+                corr_score = (corr_cand.correlation - self.criteria.min_correlation) / (
+                    1 - self.criteria.min_correlation
+                )
                 dist_score = 1 - (dist_cand.distance / self.criteria.max_distance)
 
                 total_score = corr_weight * corr_score + dist_weight * dist_score
@@ -230,7 +225,7 @@ class PairSelector:
                     correlation=corr_cand.correlation,
                     distance=dist_cand.distance,
                     price_ratio=corr_cand.price_ratio,
-                    score=total_score
+                    score=total_score,
                 )
                 combined.append(candidate)
 
@@ -240,9 +235,7 @@ class PairSelector:
         return sorted(combined, key=lambda x: x.score, reverse=True)
 
     def filter_by_sector(
-        self,
-        candidates: list[PairCandidate],
-        sector_mapping: dict[str, str]
+        self, candidates: list[PairCandidate], sector_mapping: dict[str, str]
     ) -> list[PairCandidate]:
         """
         按行业过滤，只保留同行业配对
@@ -271,16 +264,18 @@ class PairSelector:
 
     def to_dataframe(self) -> pd.DataFrame:
         """转换为DataFrame"""
-        return pd.DataFrame([
-            {
-                "stock_a": c.stock_a,
-                "stock_b": c.stock_b,
-                "correlation": c.correlation,
-                "distance": c.distance,
-                "price_ratio": c.price_ratio,
-                "half_life": c.half_life,
-                "cointegration_pvalue": c.cointegration_pvalue,
-                "score": c.score,
-            }
-            for c in self.candidates
-        ])
+        return pd.DataFrame(
+            [
+                {
+                    "stock_a": c.stock_a,
+                    "stock_b": c.stock_b,
+                    "correlation": c.correlation,
+                    "distance": c.distance,
+                    "price_ratio": c.price_ratio,
+                    "half_life": c.half_life,
+                    "cointegration_pvalue": c.cointegration_pvalue,
+                    "score": c.score,
+                }
+                for c in self.candidates
+            ]
+        )

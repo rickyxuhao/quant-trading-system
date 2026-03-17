@@ -28,11 +28,12 @@ logger = get_logger(__name__)
 
 class PositionSizingMethod(Enum):
     """仓位计算方法枚举"""
-    FIXED = "fixed"                    # 固定比例
-    KELLY = "kelly"                    # Kelly公式
-    RISK_PARITY = "risk_parity"        # 风险平价
-    VOL_TARGET = "vol_target"          # 波动率目标
-    EQUAL_WEIGHT = "equal_weight"      # 等权重
+
+    FIXED = "fixed"  # 固定比例
+    KELLY = "kelly"  # Kelly公式
+    RISK_PARITY = "risk_parity"  # 风险平价
+    VOL_TARGET = "vol_target"  # 波动率目标
+    EQUAL_WEIGHT = "equal_weight"  # 等权重
 
 
 @dataclass
@@ -47,6 +48,7 @@ class SizingResult:
         expected_risk: 预期风险
         metadata: 额外信息
     """
+
     method: str
     weights: Dict[str, float]
     total_exposure: float
@@ -83,7 +85,7 @@ class SizingResult:
             weights=new_weights,
             total_exposure=self.total_exposure,
             expected_risk=self.expected_risk,
-            metadata=self.metadata
+            metadata=self.metadata,
         )
 
 
@@ -101,9 +103,10 @@ class BasePositionSizer(ABC):
         Returns:
             SizingResult
         """
-        pass
 
-    def validate_weights(self, weights: Dict[str, float], max_weight: float = 1.0) -> Dict[str, float]:
+    def validate_weights(
+        self, weights: Dict[str, float], max_weight: float = 1.0
+    ) -> Dict[str, float]:
         """
         验证并限制权重
 
@@ -144,12 +147,7 @@ class FixedPositionSizer(BasePositionSizer):
         """
         n = len(assets)
         if n == 0:
-            return SizingResult(
-                method=self.name,
-                weights={},
-                total_exposure=0.0,
-                expected_risk=0.0
-            )
+            return SizingResult(method=self.name, weights={}, total_exposure=0.0, expected_risk=0.0)
 
         weight = min(self.position_pct, 1.0 / n)
         weights = {asset: weight for asset in assets}
@@ -159,7 +157,7 @@ class FixedPositionSizer(BasePositionSizer):
             weights=weights,
             total_exposure=sum(weights.values()),
             expected_risk=0.0,
-            metadata={'position_pct': self.position_pct}
+            metadata={"position_pct": self.position_pct},
         )
 
 
@@ -189,13 +187,7 @@ class KellyPositionSizer(BasePositionSizer):
         self.fraction = fraction
         self.max_position = max_position
 
-    def calculate(
-        self,
-        win_rate: float,
-        avg_win: float,
-        avg_loss: float,
-        **kwargs
-    ) -> SizingResult:
+    def calculate(self, win_rate: float, avg_win: float, avg_loss: float, **kwargs) -> SizingResult:
         """
         计算Kelly仓位
 
@@ -211,10 +203,10 @@ class KellyPositionSizer(BasePositionSizer):
             logger.warning(f"[Kelly] 无效参数: win_rate={win_rate}, avg_loss={avg_loss}")
             return SizingResult(
                 method=self.name,
-                weights={'default': 0.0},
+                weights={"default": 0.0},
                 total_exposure=0.0,
                 expected_risk=0.0,
-                metadata={'kelly_pct': 0.0, 'fraction': self.fraction}
+                metadata={"kelly_pct": 0.0, "fraction": self.fraction},
             )
 
         # 计算盈亏比
@@ -231,22 +223,23 @@ class KellyPositionSizer(BasePositionSizer):
         # 限制在[0, max_position]范围内
         kelly_final = max(0.0, min(kelly_adjusted, self.max_position))
 
-        logger.debug(f"[Kelly] 原始={kelly_raw:.4f}, 调整后={kelly_adjusted:.4f}, "
-                    f"最终={kelly_final:.4f}")
+        logger.debug(
+            f"[Kelly] 原始={kelly_raw:.4f}, 调整后={kelly_adjusted:.4f}, " f"最终={kelly_final:.4f}"
+        )
 
         return SizingResult(
             method=self.name,
-            weights={'default': kelly_final},
+            weights={"default": kelly_final},
             total_exposure=kelly_final,
             expected_risk=kelly_final * avg_loss,  # 预期风险 = 仓位 × 平均亏损
             metadata={
-                'kelly_raw': kelly_raw,
-                'kelly_fraction': self.fraction,
-                'win_rate': win_rate,
-                'profit_loss_ratio': b,
-                'avg_win': avg_win,
-                'avg_loss': avg_loss
-            }
+                "kelly_raw": kelly_raw,
+                "kelly_fraction": self.fraction,
+                "win_rate": win_rate,
+                "profit_loss_ratio": b,
+                "avg_win": avg_win,
+                "avg_loss": avg_loss,
+            },
         )
 
     def calculate_from_trades(self, trades: List[Dict[str, Any]], **kwargs) -> SizingResult:
@@ -261,13 +254,10 @@ class KellyPositionSizer(BasePositionSizer):
         """
         if not trades:
             return SizingResult(
-                method=self.name,
-                weights={'default': 0.0},
-                total_exposure=0.0,
-                expected_risk=0.0
+                method=self.name, weights={"default": 0.0}, total_exposure=0.0, expected_risk=0.0
             )
 
-        pnls = [t.get('pnl', 0) for t in trades]
+        pnls = [t.get("pnl", 0) for t in trades]
 
         wins = [p for p in pnls if p > 0]
         losses = [p for p in pnls if p < 0]
@@ -297,7 +287,7 @@ class RiskParityPositionSizer(BasePositionSizer):
         target_risk: float = 0.10,
         risk_budget: Optional[Dict[str, float]] = None,
         max_weight: float = 0.5,
-        min_weight: float = 0.0
+        min_weight: float = 0.0,
     ):
         """
         初始化风险平价仓位计算器
@@ -315,10 +305,7 @@ class RiskParityPositionSizer(BasePositionSizer):
         self.min_weight = min_weight
 
     def calculate(
-        self,
-        cov_matrix: pd.DataFrame,
-        returns: Optional[pd.DataFrame] = None,
-        **kwargs
+        self, cov_matrix: pd.DataFrame, returns: Optional[pd.DataFrame] = None, **kwargs
     ) -> SizingResult:
         """
         计算风险平价权重
@@ -334,12 +321,7 @@ class RiskParityPositionSizer(BasePositionSizer):
         n = len(assets)
 
         if n == 0:
-            return SizingResult(
-                method=self.name,
-                weights={},
-                total_exposure=0.0,
-                expected_risk=0.0
-            )
+            return SizingResult(method=self.name, weights={}, total_exposure=0.0, expected_risk=0.0)
 
         # 风险预算（默认等风险预算）
         if self.risk_budget is None:
@@ -347,8 +329,7 @@ class RiskParityPositionSizer(BasePositionSizer):
         else:
             # 归一化风险预算
             total_budget = sum(self.risk_budget.get(a, 0) for a in assets)
-            risk_budget = {asset: self.risk_budget.get(asset, 0) / total_budget
-                          for asset in assets}
+            risk_budget = {asset: self.risk_budget.get(asset, 0) / total_budget for asset in assets}
 
         # 初始权重（等权重）
         x0 = np.array([1.0 / n] * n)
@@ -371,9 +352,7 @@ class RiskParityPositionSizer(BasePositionSizer):
             return np.sum((rc - target_rc) ** 2)
 
         # 约束条件
-        constraints = [
-            {'type': 'eq', 'fun': lambda w: np.sum(w) - 1.0}  # 权重和为1
-        ]
+        constraints = [{"type": "eq", "fun": lambda w: np.sum(w) - 1.0}]  # 权重和为1
 
         # 边界
         bounds = [(self.min_weight, self.max_weight) for _ in range(n)]
@@ -383,10 +362,10 @@ class RiskParityPositionSizer(BasePositionSizer):
             result = minimize(
                 risk_budget_objective,
                 x0,
-                method='SLSQP',
+                method="SLSQP",
                 bounds=bounds,
                 constraints=constraints,
-                options={'maxiter': 1000, 'ftol': 1e-9}
+                options={"maxiter": 1000, "ftol": 1e-9},
             )
 
             if result.success:
@@ -418,18 +397,15 @@ class RiskParityPositionSizer(BasePositionSizer):
             total_exposure=sum(abs(v) for v in adjusted_weights.values()),
             expected_risk=portfolio_vol * np.sqrt(252),  # 年化波动率
             metadata={
-                'target_risk': self.target_risk,
-                'portfolio_volatility': portfolio_vol * np.sqrt(252),
-                'risk_budget': risk_budget,
-                'leverage': leverage if portfolio_vol > 0 else 1.0
-            }
+                "target_risk": self.target_risk,
+                "portfolio_volatility": portfolio_vol * np.sqrt(252),
+                "risk_budget": risk_budget,
+                "leverage": leverage if portfolio_vol > 0 else 1.0,
+            },
         )
 
     def calculate_from_returns(
-        self,
-        returns: pd.DataFrame,
-        lookback: int = 252,
-        **kwargs
+        self, returns: pd.DataFrame, lookback: int = 252, **kwargs
     ) -> SizingResult:
         """
         从收益率数据计算风险平价权重
@@ -461,7 +437,7 @@ class VolatilityTargetSizer(BasePositionSizer):
         target_vol: float = 0.10,
         max_leverage: float = 2.0,
         min_position: float = 0.0,
-        lookback: int = 20
+        lookback: int = 20,
     ):
         """
         初始化波动率目标仓位计算器
@@ -478,11 +454,7 @@ class VolatilityTargetSizer(BasePositionSizer):
         self.min_position = min_position
         self.lookback = lookback
 
-    def calculate(
-        self,
-        current_vol: float,
-        **kwargs
-    ) -> SizingResult:
+    def calculate(self, current_vol: float, **kwargs) -> SizingResult:
         """
         计算波动率目标仓位
 
@@ -499,29 +471,22 @@ class VolatilityTargetSizer(BasePositionSizer):
             position_scale = self.target_vol / current_vol
 
         # 限制范围
-        position_scale = max(
-            self.min_position,
-            min(position_scale, self.max_leverage)
-        )
+        position_scale = max(self.min_position, min(position_scale, self.max_leverage))
 
         return SizingResult(
             method=self.name,
-            weights={'default': position_scale},
+            weights={"default": position_scale},
             total_exposure=position_scale,
             expected_risk=current_vol * position_scale,
             metadata={
-                'target_volatility': self.target_vol,
-                'current_volatility': current_vol,
-                'position_scale': position_scale,
-                'max_leverage': self.max_leverage
-            }
+                "target_volatility": self.target_vol,
+                "current_volatility": current_vol,
+                "position_scale": position_scale,
+                "max_leverage": self.max_leverage,
+            },
         )
 
-    def calculate_from_returns(
-        self,
-        returns: pd.Series,
-        **kwargs
-    ) -> SizingResult:
+    def calculate_from_returns(self, returns: pd.Series, **kwargs) -> SizingResult:
         """
         从收益率序列计算波动率目标仓位
 
@@ -539,10 +504,7 @@ class VolatilityTargetSizer(BasePositionSizer):
         return self.calculate(annual_vol, **kwargs)
 
     def calculate_for_portfolio(
-        self,
-        returns: pd.DataFrame,
-        weights: Optional[Dict[str, float]] = None,
-        **kwargs
+        self, returns: pd.DataFrame, weights: Optional[Dict[str, float]] = None, **kwargs
     ) -> SizingResult:
         """
         计算组合层面的波动率目标仓位
@@ -583,7 +545,7 @@ class DrawdownController(BasePositionSizer):
         normal_scale: float = 1.0,
         warning_scale: float = 0.5,
         limit_scale: float = 0.0,
-        recovery_threshold: float = 0.05
+        recovery_threshold: float = 0.05,
     ):
         """
         初始化回撤控制器
@@ -608,11 +570,7 @@ class DrawdownController(BasePositionSizer):
         self._current_scale = normal_scale
         self._in_drawdown = False
 
-    def calculate(
-        self,
-        current_drawdown: float,
-        **kwargs
-    ) -> SizingResult:
+    def calculate(self, current_drawdown: float, **kwargs) -> SizingResult:
         """
         计算回撤控制仓位
 
@@ -628,7 +586,9 @@ class DrawdownController(BasePositionSizer):
             new_scale = self.limit_scale
             status = "limit"
             if not self._in_drawdown:
-                logger.warning(f"[DrawdownController] 触发限制状态: 回撤{current_drawdown*100:.1f}%")
+                logger.warning(
+                    f"[DrawdownController] 触发限制状态: 回撤{current_drawdown*100:.1f}%"
+                )
                 self._in_drawdown = True
 
         elif current_drawdown >= self.warning_drawdown:
@@ -636,7 +596,9 @@ class DrawdownController(BasePositionSizer):
             new_scale = self.warning_scale
             status = "warning"
             if not self._in_drawdown:
-                logger.warning(f"[DrawdownController] 触发预警状态: 回撤{current_drawdown*100:.1f}%")
+                logger.warning(
+                    f"[DrawdownController] 触发预警状态: 回撤{current_drawdown*100:.1f}%"
+                )
                 self._in_drawdown = True
 
         else:
@@ -645,7 +607,9 @@ class DrawdownController(BasePositionSizer):
                 if current_drawdown <= self.recovery_threshold:
                     new_scale = self.normal_scale
                     status = "normal"
-                    logger.info(f"[DrawdownController] 恢复正常状态: 回撤{current_drawdown*100:.1f}%")
+                    logger.info(
+                        f"[DrawdownController] 恢复正常状态: 回撤{current_drawdown*100:.1f}%"
+                    )
                     self._in_drawdown = False
                 else:
                     # 保持当前缩放比例
@@ -659,16 +623,16 @@ class DrawdownController(BasePositionSizer):
 
         return SizingResult(
             method=self.name,
-            weights={'default': new_scale},
+            weights={"default": new_scale},
             total_exposure=new_scale,
             expected_risk=current_drawdown,  # 这里用回撤作为风险指标
             metadata={
-                'current_drawdown': current_drawdown,
-                'status': status,
-                'position_scale': new_scale,
-                'max_drawdown': self.max_drawdown,
-                'warning_drawdown': self.warning_drawdown
-            }
+                "current_drawdown": current_drawdown,
+                "status": status,
+                "position_scale": new_scale,
+                "max_drawdown": self.max_drawdown,
+                "warning_drawdown": self.warning_drawdown,
+            },
         )
 
     def reset(self):
@@ -690,7 +654,7 @@ class CompositePositionSizer(BasePositionSizer):
     def __init__(
         self,
         sizers: List[Tuple[BasePositionSizer, float]],
-        composition_method: str = "multiply"  # multiply, min, max
+        composition_method: str = "multiply",  # multiply, min, max
     ):
         """
         初始化复合仓位计算器
@@ -722,16 +686,13 @@ class CompositePositionSizer(BasePositionSizer):
 
         if not results:
             return SizingResult(
-                method=self.name,
-                weights={'default': 0.0},
-                total_exposure=0.0,
-                expected_risk=0.0
+                method=self.name, weights={"default": 0.0}, total_exposure=0.0, expected_risk=0.0
             )
 
         # 组合权重
         final_weight = 1.0
         for result in results:
-            w = result.get_weight('default')
+            w = result.get_weight("default")
             if self.composition_method == "multiply":
                 final_weight *= w
             elif self.composition_method == "min":
@@ -741,20 +702,18 @@ class CompositePositionSizer(BasePositionSizer):
 
         return SizingResult(
             method=self.name,
-            weights={'default': final_weight},
+            weights={"default": final_weight},
             total_exposure=final_weight,
             expected_risk=results[0].expected_risk if results else 0.0,
             metadata={
-                'composition_method': self.composition_method,
-                'component_results': [r.metadata for r in results]
-            }
+                "composition_method": self.composition_method,
+                "component_results": [r.metadata for r in results],
+            },
         )
 
 
 def create_kelly_vol_composite(
-    kelly_fraction: float = 0.5,
-    target_vol: float = 0.15,
-    max_leverage: float = 2.0
+    kelly_fraction: float = 0.5, target_vol: float = 0.15, max_leverage: float = 2.0
 ) -> CompositePositionSizer:
     """
     创建Kelly+波动率目标复合仓位计算器
@@ -771,8 +730,7 @@ def create_kelly_vol_composite(
     vol_target = VolatilityTargetSizer(target_vol=target_vol, max_leverage=max_leverage)
 
     return CompositePositionSizer(
-        sizers=[(kelly, 1.0), (vol_target, 1.0)],
-        composition_method="multiply"
+        sizers=[(kelly, 1.0), (vol_target, 1.0)], composition_method="multiply"
     )
 
 
@@ -780,7 +738,7 @@ def create_full_risk_controlled_sizer(
     kelly_fraction: float = 0.5,
     target_vol: float = 0.15,
     max_drawdown: float = 0.15,
-    warning_drawdown: float = 0.10
+    warning_drawdown: float = 0.10,
 ) -> CompositePositionSizer:
     """
     创建完整的的风控仓位计算器（Kelly + 波动率目标 + 回撤控制）
@@ -796,14 +754,10 @@ def create_full_risk_controlled_sizer(
     """
     kelly = KellyPositionSizer(fraction=kelly_fraction)
     vol_target = VolatilityTargetSizer(target_vol=target_vol)
-    drawdown = DrawdownController(
-        max_drawdown=max_drawdown,
-        warning_drawdown=warning_drawdown
-    )
+    drawdown = DrawdownController(max_drawdown=max_drawdown, warning_drawdown=warning_drawdown)
 
     return CompositePositionSizer(
-        sizers=[(kelly, 1.0), (vol_target, 1.0), (drawdown, 1.0)],
-        composition_method="multiply"
+        sizers=[(kelly, 1.0), (vol_target, 1.0), (drawdown, 1.0)], composition_method="multiply"
     )
 
 
@@ -821,11 +775,13 @@ if __name__ == "__main__":
     # 2. 风险平价测试
     print("2. 风险平价测试")
     np.random.seed(42)
-    returns = pd.DataFrame({
-        'A': np.random.normal(0.001, 0.02, 252),
-        'B': np.random.normal(0.0005, 0.015, 252),
-        'C': np.random.normal(0.0008, 0.025, 252),
-    })
+    returns = pd.DataFrame(
+        {
+            "A": np.random.normal(0.001, 0.02, 252),
+            "B": np.random.normal(0.0005, 0.015, 252),
+            "C": np.random.normal(0.0008, 0.025, 252),
+        }
+    )
     cov_matrix = returns.cov() * 252  # 年化协方差
 
     rp = RiskParityPositionSizer(target_risk=0.10)
@@ -847,7 +803,9 @@ if __name__ == "__main__":
     dd = DrawdownController(max_drawdown=0.15, warning_drawdown=0.10)
     for drawdown in [0.05, 0.12, 0.18, 0.08, 0.03]:
         result = dd.calculate(drawdown)
-        print(f"   回撤{drawdown*100:.0f}%: 仓位比例={result.get_weight('default')*100:.0f}%, "
-              f"状态={result.metadata['status']}")
+        print(
+            f"   回撤{drawdown*100:.0f}%: 仓位比例={result.get_weight('default')*100:.0f}%, "
+            f"状态={result.metadata['status']}"
+        )
 
     print("\n测试完成!")

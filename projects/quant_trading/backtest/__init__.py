@@ -155,8 +155,6 @@ from projects.quant_trading.backtest.risk_manager import (
     RiskAlert,
     RiskSeverity,
     RiskAlertType,
-    create_conservative_config,
-    create_aggressive_config,
 )
 
 from projects.quant_trading.backtest.engine import (
@@ -182,13 +180,11 @@ __all__ = [
     "create_aggressive_risk_config",
     "create_trend_following_config",
     "create_mean_reversion_config",
-
     # 风险管理
     "EnhancedRiskManager",
     "ExitSignal",
     "PositionTracker",
     "SubPosition",
-
     # 仓位管理
     "BasePositionSizer",
     "SizingResult",
@@ -199,7 +195,6 @@ __all__ = [
     "VolatilityTargetSizer",
     "DrawdownController",
     "CompositePositionSizer",
-
     # 交易成本
     "CostModel",
     "CostBreakdown",
@@ -212,7 +207,6 @@ __all__ = [
     "OptionsCostModel",
     "CryptocurrencyCostModel",
     "CompositeCostModel",
-
     # 滑点
     "SlippageModel",
     "FixedSlippage",
@@ -223,18 +217,15 @@ __all__ = [
     "TimeBasedSlippage",
     "CompositeSlippage",
     "AdaptiveSlippage",
-
     # Backtrader集成
     "EnhancedChinaCommInfo",
     "CostModelCommInfo",
     "SlippageCommissionInfo",
     "MultiAssetCommInfo",
-
     # 数据源
     "MySQLDataFeed",
     "MultiSymbolDataFeed",
     "PandasDataFeed",
-
     # 分析器
     "CalmarRatio",
     "SortinoRatio",
@@ -242,7 +233,6 @@ __all__ = [
     "ModelPredictionAnalyzer",
     "ReturnAttribution",
     "EnhancedTradeAnalyzer",
-
     # 多策略回测
     "BacktestResult",
     "BacktestConfig",
@@ -252,7 +242,6 @@ __all__ = [
     "save_results_to_csv",
     "save_results_to_database",
     "quick_backtest_comparison",
-
     # 原有导出
     "RiskConfig",
     "RiskManager",

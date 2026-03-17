@@ -1,16 +1,19 @@
 """
 策略基类单元测试
 """
+
 import pytest
 from datetime import datetime
-from unittest.mock import MagicMock
 
 import pandas as pd
-import numpy as np
 
 from projects.quant_trading.backtest.strategy import (
-    BaseStrategy, Signal, SignalType, BuyAndHoldStrategy,
-    equal_weight_allocator, score_weight_allocator
+    BaseStrategy,
+    Signal,
+    SignalType,
+    BuyAndHoldStrategy,
+    equal_weight_allocator,
+    score_weight_allocator,
 )
 
 
@@ -24,7 +27,7 @@ class TestSignal:
             signal_type=SignalType.BUY,
             weight=0.2,
             score=0.8,
-            reason="Test signal"
+            reason="Test signal",
         )
 
         assert signal.ts_code == "000001.SZ"
@@ -34,19 +37,11 @@ class TestSignal:
 
     def test_signal_weight_clamping(self):
         """测试权重限制在[0,1]范围内"""
-        signal = Signal(
-            ts_code="000001.SZ",
-            signal_type=SignalType.BUY,
-            weight=1.5  # 超出范围
-        )
+        signal = Signal(ts_code="000001.SZ", signal_type=SignalType.BUY, weight=1.5)  # 超出范围
 
         assert signal.weight == 1.0
 
-        signal = Signal(
-            ts_code="000002.SZ",
-            signal_type=SignalType.BUY,
-            weight=-0.5  # 负数
-        )
+        signal = Signal(ts_code="000002.SZ", signal_type=SignalType.BUY, weight=-0.5)  # 负数
 
         assert signal.weight == 0.0
 
@@ -142,6 +137,7 @@ class TestBaseStrategy:
 
     def test_generate_signals_abstract(self):
         """测试抽象方法必须实现"""
+
         class IncompleteStrategy(BaseStrategy):
             pass
 
@@ -151,10 +147,7 @@ class TestBaseStrategy:
     def test_on_backtest_start(self):
         """测试回测开始回调"""
         strategy = self.ConcreteStrategy()
-        strategy.on_backtest_start(
-            start_date=datetime(2023, 1, 1),
-            end_date=datetime(2023, 12, 31)
-        )
+        strategy.on_backtest_start(start_date=datetime(2023, 1, 1), end_date=datetime(2023, 12, 31))
         # 方法应该正常执行不报错
 
     def test_on_backtest_end(self):
@@ -194,9 +187,7 @@ class TestBuyAndHoldStrategy:
         available_stocks = ["000001.SZ", "000002.SZ", "600000.SH"]
 
         signals = strategy.generate_signals(
-            data=data,
-            current_date=datetime(2023, 1, 5),
-            available_stocks=available_stocks
+            data=data, current_date=datetime(2023, 1, 5), available_stocks=available_stocks
         )
 
         assert len(signals) == 2
@@ -226,9 +217,7 @@ class TestBuyAndHoldStrategy:
         available_stocks = ["000001.SZ"]  # 999999.SZ 不可用
 
         signals = strategy.generate_signals(
-            data=data,
-            current_date=datetime(2023, 1, 5),
-            available_stocks=available_stocks
+            data=data, current_date=datetime(2023, 1, 5), available_stocks=available_stocks
         )
 
         assert len(signals) == 1
@@ -242,9 +231,7 @@ class TestBuyAndHoldStrategy:
         available_stocks = list(data.keys())
 
         signals = strategy.generate_signals(
-            data=data,
-            current_date=datetime(2023, 1, 5),
-            available_stocks=available_stocks
+            data=data, current_date=datetime(2023, 1, 5), available_stocks=available_stocks
         )
 
         assert len(signals) == 10
@@ -274,7 +261,7 @@ class TestWeightAllocators:
         result = equal_weight_allocator(signals)
 
         assert len(result) == 3
-        assert all(s.weight == pytest.approx(1/3, 0.001) for s in result)
+        assert all(s.weight == pytest.approx(1 / 3, 0.001) for s in result)
 
     def test_equal_weight_allocator_empty(self):
         """测试空信号列表"""

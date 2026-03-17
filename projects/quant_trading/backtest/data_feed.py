@@ -19,9 +19,8 @@ Example:
     >>> cerebro.adddata(data)
 """
 
-from datetime import datetime, date
-from typing import Optional, List, Dict, Any, Callable
-import logging
+from datetime import datetime
+from typing import Optional, List, Dict, Any
 
 import pandas as pd
 import backtrader as bt
@@ -65,16 +64,16 @@ class MySQLDataFeed(bt.feeds.PandasData):
     """
 
     params = (
-        ('symbol', None),
-        ('fromdate', None),
-        ('todate', None),
-        ('adj_type', 'qfq'),           # qfq:前复权, bfq:后复权, none:不复权
-        ('handle_suspend', 'skip'),     # skip:跳过, ffill:前向填充
-        ('fetch_kwargs', {}),
+        ("symbol", None),
+        ("fromdate", None),
+        ("todate", None),
+        ("adj_type", "qfq"),  # qfq:前复权, bfq:后复权, none:不复权
+        ("handle_suspend", "skip"),  # skip:跳过, ffill:前向填充
+        ("fetch_kwargs", {}),
     )
 
     # 定义lines
-    lines = ('adj_factor',)  # 额外添加复权因子line
+    lines = ("adj_factor",)  # 额外添加复权因子line
 
     def __init__(self):
         super().__init__()
@@ -83,11 +82,13 @@ class MySQLDataFeed(bt.feeds.PandasData):
         if self.p.symbol is None:
             raise ValueError("必须指定symbol参数")
 
-        if self.p.adj_type not in ['qfq', 'bfq', 'none']:
+        if self.p.adj_type not in ["qfq", "bfq", "none"]:
             raise ValueError(f"无效的adj_type: {self.p.adj_type}, 必须是'qfq', 'bfq'或'none'")
 
-        if self.p.handle_suspend not in ['skip', 'ffill']:
-            raise ValueError(f"无效的handle_suspend: {self.p.handle_suspend}, 必须是'skip'或'ffill'")
+        if self.p.handle_suspend not in ["skip", "ffill"]:
+            raise ValueError(
+                f"无效的handle_suspend: {self.p.handle_suspend}, 必须是'skip'或'ffill'"
+            )
 
         # 初始化DataManager
         self._data_manager = DataManager()
@@ -109,20 +110,22 @@ class MySQLDataFeed(bt.feeds.PandasData):
         Returns:
             包含K线数据的DataFrame
         """
-        logger.info(f"[MySQLDataFeed] 加载数据: {self.p.symbol}, "
-                   f"{self.p.fromdate.date()} ~ {self.p.todate.date()}, "
-                   f"复权={self.p.adj_type}")
+        logger.info(
+            f"[MySQLDataFeed] 加载数据: {self.p.symbol}, "
+            f"{self.p.fromdate.date()} ~ {self.p.todate.date()}, "
+            f"复权={self.p.adj_type}"
+        )
 
         try:
             # 调用DataManager获取数据
-            adjust = self.p.adj_type == 'qfq'  # 是否前复权
+            adjust = self.p.adj_type == "qfq"  # 是否前复权
 
             df = self._data_manager.get_stock_data(
                 ts_code=self.p.symbol,
                 start_date=self.p.fromdate,
                 end_date=self.p.todate,
                 adjust=adjust,
-                **self.p.fetch_kwargs
+                **self.p.fetch_kwargs,
             )
 
             if df is None or df.empty:
@@ -130,7 +133,7 @@ class MySQLDataFeed(bt.feeds.PandasData):
                     f"{self.p.symbol} 在指定时间段无数据",
                     ts_code=self.p.symbol,
                     start_date=self.p.fromdate,
-                    end_date=self.p.todate
+                    end_date=self.p.todate,
                 )
 
             # 处理数据格式
@@ -156,50 +159,50 @@ class MySQLDataFeed(bt.feeds.PandasData):
             处理后的DataFrame
         """
         # 确保必要的列存在
-        required_cols = ['open', 'high', 'low', 'close', 'vol']
+        required_cols = ["open", "high", "low", "close", "vol"]
         for col in required_cols:
-            adj_col = f'adj_{col}' if col != 'vol' and self.p.adj_type == 'qfq' else col
+            adj_col = f"adj_{col}" if col != "vol" and self.p.adj_type == "qfq" else col
             if adj_col in df.columns:
-                if col == 'vol':
-                    df['volume'] = df[col]
+                if col == "vol":
+                    df["volume"] = df[col]
                 else:
                     df[col] = df[adj_col]
             elif col not in df.columns:
                 raise ValueError(f"数据缺少必要列: {col}")
 
         # 添加openinterest列（股票为0）
-        df['openinterest'] = 0
+        df["openinterest"] = 0
 
         # 确保复权因子列存在
-        if 'adj_factor' not in df.columns:
-            df['adj_factor'] = 1.0
+        if "adj_factor" not in df.columns:
+            df["adj_factor"] = 1.0
 
         # 重置索引，确保日期列为datetime类型
-        if 'trade_date' in df.columns:
+        if "trade_date" in df.columns:
             df = df.reset_index()
         elif not isinstance(df.index, pd.DatetimeIndex):
             df = df.reset_index()
 
         # 确保datetime列存在
-        if 'datetime' not in df.columns:
-            if 'trade_date' in df.columns:
-                df['datetime'] = pd.to_datetime(df['trade_date'])
+        if "datetime" not in df.columns:
+            if "trade_date" in df.columns:
+                df["datetime"] = pd.to_datetime(df["trade_date"])
             elif isinstance(df.index, pd.DatetimeIndex):
-                df['datetime'] = df.index
+                df["datetime"] = df.index
             else:
                 raise ValueError("无法确定日期列")
 
         # 选择需要的列
-        cols = ['datetime', 'open', 'high', 'low', 'close', 'volume', 'openinterest', 'adj_factor']
+        cols = ["datetime", "open", "high", "low", "close", "volume", "openinterest", "adj_factor"]
         df = df[[c for c in cols if c in df.columns]]
 
         # 按日期排序
-        df = df.sort_values('datetime')
+        df = df.sort_values("datetime")
 
         # 处理停牌日
-        if self.p.handle_suspend == 'skip':
+        if self.p.handle_suspend == "skip":
             df = self._handle_suspended_days_skip(df)
-        elif self.p.handle_suspend == 'ffill':
+        elif self.p.handle_suspend == "ffill":
             df = self._handle_suspended_days_ffill(df)
 
         return df
@@ -215,16 +218,18 @@ class MySQLDataFeed(bt.feeds.PandasData):
             处理后的DataFrame
         """
         # 停牌判断：成交量为0或价格无变化
-        if 'vol' in df.columns and 'volume' not in df.columns:
-            df['volume'] = df['vol']
+        if "vol" in df.columns and "volume" not in df.columns:
+            df["volume"] = df["vol"]
 
-        if 'volume' in df.columns:
+        if "volume" in df.columns:
             # 成交量为0视为停牌
-            suspended = df['volume'] == 0
+            suspended = df["volume"] == 0
             if suspended.any():
-                suspended_dates = df.loc[suspended, 'datetime'].tolist()
+                suspended_dates = df.loc[suspended, "datetime"].tolist()
                 self._suspended_dates = set(suspended_dates)
-                logger.warning(f"[MySQLDataFeed] {self.p.symbol} 跳过 {len(suspended_dates)} 个停牌日")
+                logger.warning(
+                    f"[MySQLDataFeed] {self.p.symbol} 跳过 {len(suspended_dates)} 个停牌日"
+                )
                 df = df[~suspended].copy()
 
         return df
@@ -239,24 +244,26 @@ class MySQLDataFeed(bt.feeds.PandasData):
         Returns:
             处理后的DataFrame
         """
-        if 'vol' in df.columns and 'volume' not in df.columns:
-            df['volume'] = df['vol']
+        if "vol" in df.columns and "volume" not in df.columns:
+            df["volume"] = df["vol"]
 
-        if 'volume' in df.columns:
+        if "volume" in df.columns:
             # 识别停牌日
-            suspended = df['volume'] == 0
+            suspended = df["volume"] == 0
             if suspended.any():
                 # 对OHLC进行前向填充
-                price_cols = ['open', 'high', 'low', 'close']
+                price_cols = ["open", "high", "low", "close"]
                 for col in price_cols:
                     if col in df.columns:
                         df[col] = df[col].replace(0, pd.NA).ffill()
 
                 # 成交量填充为0
-                df.loc[suspended, 'volume'] = 0
+                df.loc[suspended, "volume"] = 0
 
                 suspended_count = suspended.sum()
-                logger.warning(f"[MySQLDataFeed] {self.p.symbol} 前向填充 {suspended_count} 个停牌日")
+                logger.warning(
+                    f"[MySQLDataFeed] {self.p.symbol} 前向填充 {suspended_count} 个停牌日"
+                )
 
         return df
 
@@ -282,17 +289,17 @@ class MySQLDataFeed(bt.feeds.PandasData):
             idx, row = next(self._data_iter)
 
             # 设置数据
-            self.lines.datetime[0] = bt.date2num(row['datetime'])
-            self.lines.open[0] = row['open']
-            self.lines.high[0] = row['high']
-            self.lines.low[0] = row['low']
-            self.lines.close[0] = row['close']
-            self.lines.volume[0] = row['volume']
-            self.lines.openinterest[0] = row.get('openinterest', 0)
+            self.lines.datetime[0] = bt.date2num(row["datetime"])
+            self.lines.open[0] = row["open"]
+            self.lines.high[0] = row["high"]
+            self.lines.low[0] = row["low"]
+            self.lines.close[0] = row["close"]
+            self.lines.volume[0] = row["volume"]
+            self.lines.openinterest[0] = row.get("openinterest", 0)
 
             # 复权因子
-            if 'adj_factor' in row:
-                self.lines.adj_factor[0] = row['adj_factor']
+            if "adj_factor" in row:
+                self.lines.adj_factor[0] = row["adj_factor"]
 
             return True
 
@@ -331,9 +338,9 @@ class MultiSymbolDataFeed:
         symbols: List[str],
         fromdate: datetime,
         todate: datetime,
-        adj_type: str = 'qfq',
-        handle_suspend: str = 'skip',
-        name_mapping: Optional[Dict[str, str]] = None
+        adj_type: str = "qfq",
+        handle_suspend: str = "skip",
+        name_mapping: Optional[Dict[str, str]] = None,
     ):
         """
         初始化多标的管理器
@@ -371,7 +378,7 @@ class MultiSymbolDataFeed:
                     fromdate=self.fromdate,
                     todate=self.todate,
                     adj_type=self.adj_type,
-                    handle_suspend=self.handle_suspend
+                    handle_suspend=self.handle_suspend,
                 )
 
                 # 设置数据名称（用于策略中识别）
@@ -384,7 +391,9 @@ class MultiSymbolDataFeed:
             except Exception as e:
                 logger.error(f"[MultiSymbolDataFeed] 加载 {symbol} 失败: {e}")
 
-        logger.info(f"[MultiSymbolDataFeed] 成功加载 {len(self._data_feeds)}/{len(self.symbols)} 个标的")
+        logger.info(
+            f"[MultiSymbolDataFeed] 成功加载 {len(self._data_feeds)}/{len(self.symbols)} 个标的"
+        )
         return self._data_feeds
 
     def add_to_cerebro(self, cerebro: bt.Cerebro):
@@ -425,11 +434,11 @@ class PandasDataFeed(bt.feeds.PandasData):
     """
 
     params = (
-        ('symbol', None),
-        ('adj_type', 'none'),
+        ("symbol", None),
+        ("adj_type", "none"),
     )
 
-    lines = ('adj_factor',)
+    lines = ("adj_factor",)
 
     def __init__(self, dataframe: pd.DataFrame, **kwargs):
         """
@@ -444,12 +453,12 @@ class PandasDataFeed(bt.feeds.PandasData):
 
         super().__init__(dataname=df, **kwargs)
 
-        self._name = kwargs.get('symbol', 'data')
+        self._name = kwargs.get("symbol", "data")
 
     def _preprocess_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
         """预处理DataFrame"""
         # 确保必要的列存在
-        required_cols = ['open', 'high', 'low', 'close', 'volume']
+        required_cols = ["open", "high", "low", "close", "volume"]
 
         # 列名映射（处理大小写问题）
         col_mapping = {}
@@ -461,8 +470,8 @@ class PandasDataFeed(bt.feeds.PandasData):
                 # 尝试首字母大写
                 elif req_col.capitalize() in df.columns:
                     col_mapping[req_col.capitalize()] = req_col
-                elif req_col == 'volume' and 'vol' in df.columns:
-                    col_mapping['vol'] = 'volume'
+                elif req_col == "volume" and "vol" in df.columns:
+                    col_mapping["vol"] = "volume"
 
         if col_mapping:
             df = df.rename(columns=col_mapping)
@@ -473,20 +482,20 @@ class PandasDataFeed(bt.feeds.PandasData):
             raise ValueError(f"DataFrame缺少必要列: {missing_cols}")
 
         # 添加openinterest列
-        if 'openinterest' not in df.columns:
-            df['openinterest'] = 0
+        if "openinterest" not in df.columns:
+            df["openinterest"] = 0
 
         # 处理日期索引
         if not isinstance(df.index, pd.DatetimeIndex):
-            if 'datetime' in df.columns:
-                df['datetime'] = pd.to_datetime(df['datetime'])
-                df = df.set_index('datetime')
-            elif 'date' in df.columns:
-                df['date'] = pd.to_datetime(df['date'])
-                df = df.set_index('date')
-            elif 'trade_date' in df.columns:
-                df['trade_date'] = pd.to_datetime(df['trade_date'])
-                df = df.set_index('trade_date')
+            if "datetime" in df.columns:
+                df["datetime"] = pd.to_datetime(df["datetime"])
+                df = df.set_index("datetime")
+            elif "date" in df.columns:
+                df["date"] = pd.to_datetime(df["date"])
+                df = df.set_index("date")
+            elif "trade_date" in df.columns:
+                df["trade_date"] = pd.to_datetime(df["trade_date"])
+                df = df.set_index("trade_date")
 
         # 确保索引是DatetimeIndex
         if not isinstance(df.index, pd.DatetimeIndex):
@@ -497,11 +506,7 @@ class PandasDataFeed(bt.feeds.PandasData):
 
 # 便捷函数
 def create_data_feed(
-    symbol: str,
-    fromdate: datetime,
-    todate: datetime,
-    adj_type: str = 'qfq',
-    **kwargs
+    symbol: str, fromdate: datetime, todate: datetime, adj_type: str = "qfq", **kwargs
 ) -> MySQLDataFeed:
     """
     创建MySQL数据源
@@ -517,19 +522,12 @@ def create_data_feed(
         MySQLDataFeed
     """
     return MySQLDataFeed(
-        symbol=symbol,
-        fromdate=fromdate,
-        todate=todate,
-        adj_type=adj_type,
-        **kwargs
+        symbol=symbol, fromdate=fromdate, todate=todate, adj_type=adj_type, **kwargs
     )
 
 
 def load_stock_data(
-    symbols: List[str],
-    fromdate: datetime,
-    todate: datetime,
-    adj_type: str = 'qfq'
+    symbols: List[str], fromdate: datetime, todate: datetime, adj_type: str = "qfq"
 ) -> Dict[str, pd.DataFrame]:
     """
     批量加载股票数据
@@ -548,12 +546,9 @@ def load_stock_data(
 
     for symbol in symbols:
         try:
-            adjust = adj_type == 'qfq'
+            adjust = adj_type == "qfq"
             df = data_manager.get_stock_data(
-                ts_code=symbol,
-                start_date=fromdate,
-                end_date=todate,
-                adjust=adjust
+                ts_code=symbol, start_date=fromdate, end_date=todate, adjust=adjust
             )
             result[symbol] = df
             logger.debug(f"[load_stock_data] 加载 {symbol} 成功")
@@ -576,11 +571,11 @@ if __name__ == "__main__":
         start_date = end_date - timedelta(days=30)
 
         data_feed = MySQLDataFeed(
-            symbol='000001.SZ',
+            symbol="000001.SZ",
             fromdate=start_date,
             todate=end_date,
-            adj_type='qfq',
-            handle_suspend='skip'
+            adj_type="qfq",
+            handle_suspend="skip",
         )
 
         print(f"   创建成功: {data_feed.p.symbol}")
@@ -602,13 +597,10 @@ if __name__ == "__main__":
     # 测试2: 多标的管理器
     print("2. 测试多标的管理器")
     try:
-        symbols = ['000001.SZ', '000002.SZ']
+        symbols = ["000001.SZ", "000002.SZ"]
 
         manager = MultiSymbolDataFeed(
-            symbols=symbols,
-            fromdate=start_date,
-            todate=end_date,
-            adj_type='qfq'
+            symbols=symbols, fromdate=start_date, todate=end_date, adj_type="qfq"
         )
 
         data_feeds = manager.load_all()

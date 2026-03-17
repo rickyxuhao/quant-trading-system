@@ -7,20 +7,24 @@ LSTM模型实现 - 时序预测
 - 防止未来信息泄露
 """
 
-import warnings
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-from tensorflow.keras.models import Sequential, load_model, Model
+from tensorflow.keras.models import load_model, Model
 from tensorflow.keras.layers import (
-    LSTM, Dense, Dropout, BatchNormalization,
-    Input, Bidirectional, Attention, Concatenate
+    LSTM,
+    Dense,
+    Dropout,
+    BatchNormalization,
+    Input,
+    Bidirectional,
+    Attention,
 )
-from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
+from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from tensorflow.keras.optimizers import Adam
 
 from core.logger import get_logger
@@ -28,12 +32,13 @@ from core.logger import get_logger
 logger = get_logger(__name__)
 
 # 设置TensorFlow日志级别
-tf.get_logger().setLevel('ERROR')
+tf.get_logger().setLevel("ERROR")
 
 
 @dataclass
 class LSTMConfig:
     """LSTM模型配置"""
+
     # 网络结构
     lstm_units: List[int] = None  # 每层的单元数
     num_layers: int = 2
@@ -86,9 +91,7 @@ class LSTMModel:
             return_sequences = (i < len(self.config.lstm_units) - 1) or self.config.use_attention
 
             if self.config.use_bidirectional:
-                x = Bidirectional(
-                    LSTM(units, return_sequences=return_sequences)
-                )(x)
+                x = Bidirectional(LSTM(units, return_sequences=return_sequences))(x)
             else:
                 x = LSTM(units, return_sequences=return_sequences)(x)
 
@@ -106,14 +109,14 @@ class LSTMModel:
 
         # 输出层
         if num_outputs == 1:
-            outputs = Dense(1, activation='linear', name='output')(x)
-            loss = 'mse'
-            metrics = ['mae']
+            outputs = Dense(1, activation="linear", name="output")(x)
+            loss = "mse"
+            metrics = ["mae"]
         else:
             # 分类任务
-            outputs = Dense(num_outputs, activation='softmax', name='output')(x)
-            loss = 'sparse_categorical_crossentropy'
-            metrics = ['accuracy']
+            outputs = Dense(num_outputs, activation="softmax", name="output")(x)
+            loss = "sparse_categorical_crossentropy"
+            metrics = ["accuracy"]
 
         model = Model(inputs=inputs, outputs=outputs)
 
@@ -126,10 +129,7 @@ class LSTMModel:
         return model
 
     def prepare_sequences(
-        self,
-        X: pd.DataFrame,
-        y: Optional[pd.Series] = None,
-        sequence_length: Optional[int] = None
+        self, X: pd.DataFrame, y: Optional[pd.Series] = None, sequence_length: Optional[int] = None
     ) -> Tuple[np.ndarray, Optional[np.ndarray]]:
         """
         准备序列数据
@@ -149,7 +149,7 @@ class LSTMModel:
         targets = []
 
         for i in range(len(X_values) - seq_len + 1):
-            seq = X_values[i:i + seq_len]
+            seq = X_values[i : i + seq_len]
             sequences.append(seq)
 
             if y is not None:
@@ -166,7 +166,7 @@ class LSTMModel:
         y_train: pd.Series,
         X_val: Optional[pd.DataFrame] = None,
         y_val: Optional[pd.Series] = None,
-        verbose: int = 1
+        verbose: int = 1,
     ) -> Dict:
         """
         训练模型
@@ -205,19 +205,19 @@ class LSTMModel:
 
         if validation_data is not None:
             early_stopping = EarlyStopping(
-                monitor='val_loss',
+                monitor="val_loss",
                 patience=self.config.early_stopping_patience,
                 restore_best_weights=True,
-                verbose=verbose
+                verbose=verbose,
             )
             callbacks.append(early_stopping)
 
             reduce_lr = ReduceLROnPlateau(
-                monitor='val_loss',
+                monitor="val_loss",
                 factor=0.5,
                 patience=self.config.reduce_lr_patience,
                 min_lr=1e-6,
-                verbose=verbose
+                verbose=verbose,
             )
             callbacks.append(reduce_lr)
 
@@ -225,20 +225,21 @@ class LSTMModel:
         logger.info(f"开始训练: {len(X_train_seq)}个序列样本")
 
         self.history = self.model.fit(
-            X_train_seq, y_train_seq,
+            X_train_seq,
+            y_train_seq,
             batch_size=self.config.batch_size,
             epochs=self.config.epochs,
             validation_data=validation_data,
             callbacks=callbacks,
-            verbose=verbose
+            verbose=verbose,
         )
 
         # 训练总结
-        final_loss = self.history.history['loss'][-1]
+        final_loss = self.history.history["loss"][-1]
         logger.info(f"训练完成. Final loss: {final_loss:.4f}")
 
         if validation_data is not None:
-            val_loss = self.history.history['val_loss'][-1]
+            val_loss = self.history.history["val_loss"][-1]
             logger.info(f"Validation loss: {val_loss:.4f}")
 
         return self.history.history
@@ -295,12 +296,12 @@ class LSTMModel:
                 # 分类任务
                 pred_classes = np.sign(predictions) if predictions.dtype == float else predictions
                 actual_classes = y_seq
-                metrics['direction_accuracy'] = np.mean(pred_classes == actual_classes)
+                metrics["direction_accuracy"] = np.mean(pred_classes == actual_classes)
             else:
                 # 回归任务 - 计算方向准确率
                 pred_direction = np.sign(predictions)
                 actual_direction = np.sign(y_seq)
-                metrics['direction_accuracy'] = np.mean(pred_direction == actual_direction)
+                metrics["direction_accuracy"] = np.mean(pred_direction == actual_direction)
 
         return metrics
 
@@ -310,7 +311,7 @@ class LSTMModel:
         y: pd.Series,
         window_size: int = 252 * 3,  # 3年训练窗口
         step_size: int = 63,  # 季度滚动
-        min_train_size: int = 252
+        min_train_size: int = 252,
     ) -> List[Dict]:
         """
         滚动窗口训练
@@ -324,13 +325,12 @@ class LSTMModel:
         start_idx = min_train_size
 
         while start_idx + window_size < n:
-            train_end = start_idx
             test_end = min(start_idx + window_size, n)
 
             logger.info(f"滚动窗口训练: {X.index[start_idx]} - {X.index[test_end-1]}")
 
-            X_train = X.iloc[start_idx - min_train_size:start_idx]
-            y_train = y.iloc[start_idx - min_train_size:start_idx]
+            X_train = X.iloc[start_idx - min_train_size : start_idx]
+            y_train = y.iloc[start_idx - min_train_size : start_idx]
             X_test = X.iloc[start_idx:test_end]
             y_test = y.iloc[start_idx:test_end]
 
@@ -340,8 +340,8 @@ class LSTMModel:
 
             # 评估
             metrics = self.evaluate(X_test, y_test)
-            metrics['window_start'] = str(X.index[start_idx])
-            metrics['window_end'] = str(X.index[test_end-1])
+            metrics["window_start"] = str(X.index[start_idx])
+            metrics["window_end"] = str(X.index[test_end - 1])
 
             results.append(metrics)
 
@@ -358,13 +358,11 @@ class LSTMModel:
         self.model.save(path)
 
         # 保存配置
-        config_path = Path(path).with_suffix('.config.pkl')
+        config_path = Path(path).with_suffix(".config.pkl")
         import pickle
-        with open(config_path, 'wb') as f:
-            pickle.dump({
-                'config': self.config,
-                'feature_names': self.feature_names
-            }, f)
+
+        with open(config_path, "wb") as f:
+            pickle.dump({"config": self.config, "feature_names": self.feature_names}, f)
 
         logger.info(f"模型已保存到: {path}")
 
@@ -373,12 +371,13 @@ class LSTMModel:
         self.model = load_model(path)
 
         # 加载配置
-        config_path = Path(path).with_suffix('.config.pkl')
+        config_path = Path(path).with_suffix(".config.pkl")
         if config_path.exists():
             import pickle
-            with open(config_path, 'rb') as f:
+
+            with open(config_path, "rb") as f:
                 data = pickle.load(f)
-                self.config = data['config']
-                self.feature_names = data['feature_names']
+                self.config = data["config"]
+                self.feature_names = data["feature_names"]
 
         logger.info(f"模型已从{path}加载")
