@@ -10,9 +10,17 @@
 """
 
 from .feature_engineering import FeatureEngineer, TechnicalFeatureConfig
-from .lstm_model import LSTMModel, LSTMConfig
 from .xgboost_model import XGBoostModel, XGBoostConfig
-from .ml_strategy import MLStrategy, MLStrategyConfig
+
+# Lazy imports for TensorFlow-dependent modules
+def __getattr__(name):
+    if name in ("LSTMModel", "LSTMConfig"):
+        from .lstm_model import LSTMModel, LSTMConfig
+        return locals()[name]
+    if name in ("MLStrategy", "MLStrategyConfig"):
+        from .ml_strategy import MLStrategy, MLStrategyConfig
+        return locals()[name]
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 __all__ = [
     "FeatureEngineer",

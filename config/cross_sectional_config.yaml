@@ -1,0 +1,324 @@
+# Cross-Sectional ML Strategy Configuration
+# 横截面机器学习策略配置文件
+
+# =============================================================================
+# 1. 数据配置 (Data Configuration)
+# =============================================================================
+data:
+  # 数据库配置
+  database:
+    db_name: "tushare_biz"
+    start_date: "20150101"
+    end_date: "20241231"
+
+  # 数据完整性检查
+  integrity_check:
+    enabled: true
+    check_daily_coverage: true
+    check_valuation: true
+    check_financial: true
+    check_moneyflow: true
+
+# =============================================================================
+# 2. 股票池配置 (Universe Configuration)
+# =============================================================================
+universe:
+  # 股票池类型: csi300 | csi500 | csi1000 | all | sector
+  type: "csi300"
+
+  # 质量过滤器
+  quality_filter:
+    exclude_st: true
+    exclude_suspended: true
+    min_listing_days: 180  # 上市至少180天
+
+  # 流动性过滤器
+  liquidity_filter:
+    enabled: true
+    min_20d_avg_amount: 100000000  # 最小20日平均成交额(1亿元)
+    min_20d_avg_volume: 1000000    # 最小20日平均成交量(100万股)
+
+  # 市值过滤器
+  market_cap_filter:
+    enabled: true
+    min_market_cap: 5000000000     # 最小市值(50亿元)
+    max_market_cap: 500000000000   # 最大市值(5000亿元)
+
+  # 行业过滤器（仅在type=sector时使用）
+  sector_filter:
+    sectors: []
+    # 示例: ["电子", "医药生物", "食品饮料"]
+
+# =============================================================================
+# 3. 特征工程配置 (Feature Engineering)
+# =============================================================================
+features:
+  # 特征列表
+  enabled_groups:
+    - fundamental    # 基本面因子
+    - moneyflow      # 资金流因子
+    - technical      # 技术面因子
+    - cross_sectional # 横截面相对特征
+
+  # 行业中性化方法: NONE | INDUSTRY_MEAN | INDUSTRY_ZSCORE | MARKET_CAP | INDUSTRY_CAP
+  neutralize_method: "INDUSTRY_ZSCORE"
+
+  # 基本面因子配置
+  fundamental:
+    valuation:
+      - pe_ttm
+      - pb
+      - ps_ttm
+      - pcf_ncf_ttm
+      - total_mv
+    profitability:
+      - roe
+      - roa
+      - grossprofit_margin
+      - netprofit_margin
+    growth:
+      - revenue_yoy
+      - profit_yoy
+      - netprofit_yoy
+
+  # 资金流因子配置
+  moneyflow:
+    periods: [1, 5, 10, 20]
+    features:
+      - net_mf_amount_ratio    # 净流入金额占比
+      - buy_elg_amount_ratio   # 特大单买入占比
+      - buy_lg_amount_ratio    # 大单买入占比
+
+  # 技术面因子配置
+  technical:
+    momentum:
+      periods: [5, 10, 20, 60]
+    volatility:
+      periods: [20, 60]
+    volume:
+      periods: [5, 20]
+
+# =============================================================================
+# 4. 市场状态检测配置 (Regime Detection)
+# =============================================================================
+regime_detection:
+  enabled: true
+
+  # 检测方法: VOLATILITY_TREND | GMM | HMM
+  method: "VOLATILITY_TREND"
+
+  # 波动率阈值
+  volatility:
+    high_threshold: 0.25      # 25%年化波动率
+    low_threshold: 0.15       # 15%年化波动率
+    lookback_days: 60
+
+  # 趋势阈值
+  trend:
+    positive_threshold: 0.05  # 5%正趋势
+    negative_threshold: -0.05 # 5%负趋势
+    lookback_days: 20
+
+  # 各状态对应模型配置
+  models:
+    bull_trend:
+      model_type: "xgboost"
+      params:
+        n_estimators: 200
+        max_depth: 5
+        learning_rate: 0.1
+    bear_trend:
+      model_type: "xgboost"
+      params:
+        n_estimators: 200
+        max_depth: 3
+        learning_rate: 0.05
+    high_volatility:
+      model_type: "lstm"
+      params:
+        hidden_size: 64
+        num_layers: 2
+        dropout: 0.3
+    normal:
+      model_type: "xgboost"
+      params:
+        n_estimators: 150
+        max_depth: 4
+        learning_rate: 0.08
+
+# =============================================================================
+# 5. 模型配置 (Model Configuration)
+# =============================================================================
+model:
+  # 默认模型类型: xgboost | lstm | ensemble
+  default_type: "xgboost"
+
+  # XGBoost配置
+  xgboost:
+    n_estimators: 200
+    max_depth: 5
+    learning_rate: 0.1
+    subsample: 0.8
+    colsample_bytree: 0.8
+    random_state: 42
+
+  # LSTM配置
+  lstm:
+    hidden_size: 64
+    num_layers: 2
+    dropout: 0.2
+    sequence_length: 20
+    epochs: 50
+    batch_size: 32
+    learning_rate: 0.001
+
+  # 多周期预测配置
+  multi_horizon:
+    enabled: true
+    horizons: [1, 5, 10]
+    weights:
+      1: 0.5    # 1日预测权重
+      5: 0.3    # 5日预测权重
+      10: 0.2   # 10日预测权重
+
+  # 滚动训练配置
+  rolling_train:
+    enabled: true
+    retrain_frequency: 63  # 每63个交易日重新训练
+    lookback_days: 252     # 使用过去1年数据训练
+
+# =============================================================================
+# 6. 组合优化配置 (Portfolio Optimization)
+# =============================================================================
+portfolio:
+  # 优化目标: MAX_SHARPE | MIN_VARIANCE | RISK_PARITY | MAX_RETURN
+  objective: "MAX_SHARPE"
+
+  # 选股数量
+  top_n: 30
+
+  # 权重约束
+  weight_constraints:
+    min_weight: 0.0
+    max_weight: 0.10        # 单股最大10%
+    long_only: true
+
+  # 持仓金额约束（针对A股账户）
+  position_value:
+    enabled: true
+    min_position: 20000     # 最小持仓2万元
+    max_position: 100000    # 最大持仓10万元
+    total_capital: 1000000  # 总资金100万元
+
+  # 行业约束
+  sector_constraints:
+    enabled: true
+    max_sector_weight: 0.20  # 单行业最大20%
+
+  # 风险约束
+  risk_constraints:
+    target_volatility: 0.15  # 目标年化波动率15%
+    max_tracking_error: 0.05 # 最大跟踪误差5%
+
+# =============================================================================
+# 7. 再平衡配置 (Rebalancing)
+# =============================================================================
+rebalancing:
+  # 频率: daily | weekly | monthly
+  frequency: "weekly"
+  day: 1  # 周一(0=周一, 6=周日) 或 每月几号
+
+  # 基于偏离阈值的触发
+  threshold:
+    enabled: true
+    weight_deviation: 0.05  # 权重偏离5%触发再平衡
+
+# =============================================================================
+# 8. 风险控制配置 (Risk Management)
+# =============================================================================
+risk_management:
+  # 回撤控制
+  drawdown_control:
+    enabled: true
+    warning_drawdown: 0.10    # 10%警告
+    trigger_drawdown: 0.10    # 10%触发减仓
+    reduction_ratio: 0.50     # 减仓50%
+    max_drawdown: 0.15        # 15%最大回撤清仓
+
+  # 波动率目标
+  volatility_targeting:
+    enabled: true
+    target_volatility: 0.15   # 15%年化目标
+    max_leverage: 2.0
+    min_leverage: 0.5
+    lookback_days: 20
+
+  # 止损止盈
+  stop_loss:
+    enabled: true
+    loss_threshold: 0.08      # 8%止损
+    profit_threshold: 0.20    # 20%止盈
+    trailing_stop: 0.10       # 10%回撤止盈
+
+# =============================================================================
+# 9. 回测配置 (Backtest)
+# =============================================================================
+backtest:
+  # 初始资金
+  initial_capital: 1000000
+
+  # 交易成本
+  transaction_cost:
+    commission_rate: 0.00025   # 佣金0.025%
+    min_commission: 5.0        # 最低5元
+    stamp_duty: 0.001          # 印花税0.1%（仅卖出）
+    transfer_fee: 0.00002      # 过户费0.002%
+    slippage: 0.0002           # 滑点0.02%
+
+  # 基准指数
+  benchmark: "000300.SH"  # 沪深300
+
+# =============================================================================
+# 10. 验证配置 (Validation)
+# =============================================================================
+validation:
+  # IC分析
+  ic_analysis:
+    enabled: true
+    ic_type: "spearman"  # pearson | spearman
+
+  # Bootstrap验证
+  bootstrap:
+    enabled: true
+    n_bootstrap: 1000
+    confidence_level: 0.95
+    method: "block"      # standard | block | stationary | circular
+
+  # 分位数分析
+  quantile_analysis:
+    enabled: true
+    n_quantiles: 5
+
+  # 滚动窗口验证
+  walk_forward:
+    enabled: true
+    train_window: 252    # 1年训练
+    test_window: 63      # 季度测试
+    step_size: 63        # 季度滚动
+
+# =============================================================================
+# 11. 输出配置 (Output)
+# =============================================================================
+output:
+  # 报告路径
+  report_path: "reports/cross_sectional_backtest.txt"
+
+  # 图表路径
+  plot_path: "reports/plots/"
+
+  # 详细数据输出
+  save_detailed_results: true
+  detailed_results_path: "results/"
+
+  # 日志级别: DEBUG | INFO | WARNING | ERROR
+  log_level: "INFO"

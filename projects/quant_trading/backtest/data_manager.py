@@ -495,8 +495,8 @@ class DataManager:
         sql = """
             SELECT
                 ts_code, trade_date, open, high, low, close,
-                pre_close, `change`, pct_chg, vol, amount
-            FROM t_index_dailymarketdata
+                pre_close, chng as `change`, pct_chg, vol, amount
+            FROM t_index_daily
             WHERE ts_code = %s
         """
         params: List[Any] = [ts_code]
@@ -552,11 +552,10 @@ class DataManager:
         sql = """
             SELECT ts_code
             FROM t_stock_st_list
-            WHERE start_date <= %s
-              AND (end_date >= %s OR end_date IS NULL OR end_date = '')
+            WHERE trade_date = %s
         """
         try:
-            results = DatabaseManager.fetchall(self.db_name, sql, (date_str, date_str))
+            results = DatabaseManager.fetchall(self.db_name, sql, (date_str,))
         except Exception as e:
             logger.error(f"获取ST列表失败: {e}")
             raise DatabaseError(f"数据库查询失败: {e}") from e
