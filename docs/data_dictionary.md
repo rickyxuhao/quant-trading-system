@@ -326,4 +326,104 @@ python3 scripts/sync/sync_t_stock_daily_basic.py \
 
 ---
 
-*最后更新: 2026-03-08*
+## 附录：表设计清单
+
+> 用户积分：8000分（可访问大部分接口，部分VIP接口需5000积分以上）
+
+### 基础数据表
+
+| 表名 | 对应接口 | 同步模式 | 备注 |
+|------|----------|----------|------|
+| t_stock_basic | stock_basic | full | 股票基础信息 |
+| t_stock_tradedate | trade_cal | full | 交易日历 |
+| t_stock_name_history | namechange | incremental | 股票曾用名 |
+| t_stock_hs_const | hs_const | full | 沪深股通成分股 |
+| t_stock_ipo | new_share | incremental | IPO新股列表 |
+| t_stock_company | stock_company | full | 上市公司基本信息 |
+
+### 行情数据表
+
+| 表名 | 对应接口 | 同步模式 | 备注 |
+|------|----------|----------|------|
+| t_stock_dailymarketdata | daily | incremental | 日线行情（未复权） |
+| t_stock_adjfactor | adj_factor | incremental | 复权因子 |
+| t_stock_daily_basic | daily_basic | incremental | 每日指标（PE/PB/换手率） |
+| t_stock_st_list | stock_st | incremental | ST股票列表 |
+| t_stock_dailylimitprice | limit_list | incremental | 每日涨跌停价格 |
+| t_stock_moneyflow | moneyflow | incremental | 个股资金流向 |
+| t_stock_moneyflow_market | moneyflow_hsgt | incremental | 沪深港通资金流向 |
+
+### 财务数据表
+
+| 表名 | 对应接口 | 同步模式 | 备注 |
+|------|----------|----------|------|
+| t_stock_income | income | incremental | 利润表 |
+| t_stock_balancesheet | balancesheet | incremental | 资产负债表 |
+| t_stock_cashflow | cashflow | incremental | 现金流量表 |
+| t_stock_fina_indicator | fina_indicator | incremental | 财务指标数据（ROE/周转率等） |
+| t_stock_fina_audit | fina_audit | incremental | 财务审计意见 |
+| t_stock_fina_mainbz | fina_mainbz | incremental | 主营业务构成 |
+| t_stock_forecast | forecast | incremental | 业绩预告 |
+| t_stock_express | express | incremental | 业绩快报 |
+| t_stock_dividend | dividend | incremental | 分红送股 |
+
+### 股东数据表
+
+| 表名 | 对应接口 | 同步模式 | 备注 |
+|------|----------|----------|------|
+| t_stock_holder_number | stk_holdernumber | incremental | 股东人数 |
+| t_stock_holder_trade | stk_holdertrade | incremental | 股东增减持 |
+| t_stock_top10_holders | top10_holders | incremental | 前十大股东（按需同步） |
+| t_stock_top10_float_holders | top10_fh | incremental | 前十大流通股东（按需同步） |
+
+### 基金数据表
+
+| 表名 | 对应接口 | 同步模式 | 备注 |
+|------|----------|----------|------|
+| t_fund_basic | fund_basic | full | 公募基金基础信息 |
+| t_fund_nav | fund_nav | incremental | 基金净值（按需同步） |
+| t_fund_share | fund_share | incremental | 基金份额（按需同步） |
+| t_fund_portfolio | fund_portfolio | incremental | 基金持仓（按需同步） |
+
+### 指数数据表
+
+| 表名 | 对应接口 | 同步模式 | 备注 |
+|------|----------|----------|------|
+| t_index_basic | index_basic | full | 指数基础信息 |
+| t_index_daily | index_daily | incremental | 指数日线行情 |
+| t_index_weight | index_weight | incremental | 指数成分权重 |
+
+### Interface 库表
+
+| 表名 | 用途 | 更新频率 |
+|------|------|----------|
+| t_precomputed_factors | 预计算因子（40+因子） | 每日 |
+| quant_factor_score | 因子得分 | 每日 |
+| sync_log | 同步日志 | 每次同步 |
+| sync_state | 同步状态 | 每次同步 |
+
+---
+
+## 附录：空表状态
+
+### 保留的空表（按需同步）
+
+| 表名 | 用途 | 状态 | 备注 |
+|------|------|------|------|
+| t_stock_top10_holders | 前十大股东 | 空表 | 历史数据使用频率低，按需同步 |
+| t_stock_top10_float_holders | 前十大流通股东 | 空表 | 历史数据使用频率低，按需同步 |
+| t_fund_nav | 基金净值 | 空表 | 需逐个基金查询，按需同步 |
+| t_fund_share | 基金份额 | 空表 | 需逐个基金查询，按需同步 |
+| t_fund_portfolio | 基金持仓 | 空表 | 可按基金代码同步，按需获取 |
+
+### 已删除的表
+
+以下表已从数据库中删除：
+- t_stock_balancesheet_bank / insurance / securities → 数据在 balancesheet 表中
+- t_stock_cashflow_bank / insurance / securities → 数据在 cashflow 表中
+- t_stock_income_bank / insurance / securities → 数据在 income 表中
+- t_stock_cgq, t_stock_gdfx, t_stock_jgcc, t_stock_jgdy → API需高级权限
+
+---
+
+*最后更新: 2026-03-18*

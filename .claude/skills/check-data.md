@@ -2,6 +2,8 @@
 
 检查 MySQL 数据库中所有表的数据日期覆盖情况，识别缺失数据，并自动补齐。
 
+> **完整文档**: [docs/data_management_guide.md](../docs/data_management_guide.md)
+
 ## 使用方式
 
 ```bash
