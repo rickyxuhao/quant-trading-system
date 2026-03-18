@@ -242,11 +242,12 @@ class SQLFactorBuilder:
 
         placeholders = ','.join(['%s'] * len(stock_pool))
 
-        # 按数据源分组
-        price_factors = [f for f in factors if f.data_source == "t_stock_dailymarketdata"]
-        valuation_factors = [f for f in factors if f.data_source == "t_stock_daily_basic"]
-        moneyflow_factors = [f for f in factors if f.data_source == "t_stock_moneyflow"]
-        financial_factors = [f for f in factors if f.data_source == "t_stock_fina_indicator"]
+        # 按数据源分组（只包含SQL和HYBRID类型的因子）
+        sql_factors = [f for f in factors if f.factor_type in (FactorType.SQL, FactorType.HYBRID)]
+        price_factors = [f for f in sql_factors if f.data_source == "t_stock_dailymarketdata"]
+        valuation_factors = [f for f in sql_factors if f.data_source == "t_stock_daily_basic"]
+        moneyflow_factors = [f for f in sql_factors if f.data_source == "t_stock_moneyflow"]
+        financial_factors = [f for f in sql_factors if f.data_source == "t_stock_fina_indicator"]
 
         # 计算最大窗口需求
         max_window = 0
