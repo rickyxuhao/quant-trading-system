@@ -309,7 +309,7 @@ class FinancialAnalyzer:
                 score -= 5
 
         # 毛利率
-        gross_margin = latest.get('grossprofit_margin')
+        gross_margin = latest.get('gross_profit_margin')
         if gross_margin:
             if gross_margin > 40:
                 score += 15
@@ -317,7 +317,7 @@ class FinancialAnalyzer:
                 score += 5
 
         # 净利率
-        net_margin = latest.get('netprofit_margin')
+        net_margin = latest.get('net_profit_margin')
         if net_margin:
             if net_margin > 20:
                 score += 15
@@ -468,8 +468,8 @@ class FinancialAnalyzer:
                 peg=latest_daily.get('peg'),
                 roe=latest_income.get('roe') if latest_income else None,
                 roa=latest_income.get('roa') if latest_income else None,
-                gross_margin=latest_income.get('grossprofit_margin') if latest_income else None,
-                net_margin=latest_income.get('netprofit_margin') if latest_income else None,
+                gross_margin=latest_income.get('gross_profit_margin') if latest_income else None,
+                net_margin=latest_income.get('net_profit_margin') if latest_income else None,
                 revenue_growth=revenue_growth,
                 profit_growth=profit_growth,
                 debt_ratio=latest_balance.get('debt_to_assets') if latest_balance else None,

@@ -413,8 +413,12 @@ financial_data AS (
                 alias = "p"
             elif f.data_source == "t_stock_daily_basic":
                 alias = "v"
-            else:
+            elif f.data_source == "t_stock_moneyflow":
                 alias = "m"
+            elif f.data_source == "t_stock_fina_indicator":
+                alias = "f"
+            else:
+                alias = "p"  # default
             select_list.append(f"{alias}.{f.name}")
 
         sql = f"WITH {', '.join(ctes)}\nSELECT {', '.join(select_list)}\nFROM {from_clause}\n{where_clause}"
@@ -696,15 +700,16 @@ def create_full_registry() -> FactorRegistry:
     financial_factors = [
         ("roe", "roe", "净资产收益率ROE"),
         ("roa", "roa", "总资产收益率ROA"),
-        ("gross_margin", "grossprofit_margin", "销售毛利率"),
-        ("net_margin", "netprofit_margin", "销售净利率"),
+        ("gross_margin", "gross_profit_margin", "销售毛利率"),
+        ("net_margin", "net_profit_margin", "销售净利率"),
         ("debt_to_assets", "debt_to_assets", "资产负债率"),
         ("current_ratio", "current_ratio", "流动比率"),
         ("quick_ratio", "quick_ratio", "速动比率"),
-        ("asset_turnover", "assets_turn", "总资产周转率"),
-        ("inventory_turnover", "inv_turn", "存货周转率"),
-        ("eps", "eps", "每股收益"),
-        ("bps", "bps", "每股净资产"),
+        ("asset_turnover", "asset_turnover", "总资产周转率"),
+        # Note: inv_turn not available in t_stock_fina_indicator, using ca_turnover instead
+        ("ca_turnover", "ca_turnover", "流动资产周转率"),
+        ("eps", "basic_eps_yoy", "每股收益同比增长"),
+        ("bps", "bps_yoy", "每股净资产同比增长"),
     ]
 
     for name, expr, desc in financial_factors:

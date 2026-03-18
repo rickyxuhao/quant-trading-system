@@ -200,7 +200,7 @@ class LeadingStockStrategy(BaseStrategy):
             # 从数据库查询最近4个季度的财务指标
             try:
                 sql = """
-                    SELECT end_date, roe, roa, q_sales_yoy, grossprofit_margin
+                    SELECT end_date, roe, roa, q_sales_yoy, gross_profit_margin
                     FROM t_stock_fina_indicator
                     WHERE ts_code = %s
                     ORDER BY end_date DESC
@@ -229,8 +229,8 @@ class LeadingStockStrategy(BaseStrategy):
                 df["q_sales_yoy"].mean() / 100 if df["q_sales_yoy"].notna().any() else 0
             ),
             "gross_margin": (
-                df["grossprofit_margin"].mean() / 100
-                if df["grossprofit_margin"].notna().any()
+                df["gross_profit_margin"].mean() / 100
+                if df["gross_profit_margin"].notna().any()
                 else 0
             ),
         }

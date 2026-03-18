@@ -363,8 +363,8 @@ class CrossSectionalFeatureEngineer:
             # 盈利能力
             features["roe"] = fina_data.get("roe", np.nan)
             features["roa"] = fina_data.get("roa", np.nan)
-            features["gross_margin"] = fina_data.get("grossprofit_margin", np.nan)
-            features["net_margin"] = fina_data.get("netprofit_margin", np.nan)
+            features["gross_margin"] = fina_data.get("gross_profit_margin", np.nan)
+            features["net_margin"] = fina_data.get("net_profit_margin", np.nan)
             features["operating_margin"] = fina_data.get("op_yoy", np.nan)
 
         except Exception as e:
@@ -797,7 +797,7 @@ class CrossSectionalFeatureEngineer:
 
             sql = f"""
                 SELECT ts_code, end_date as ann_date,
-                       roe, roa, grossprofit_margin, netprofit_margin,
+                       roe, roa, gross_profit_margin, net_profit_margin,
                        op_yoy, or_yoy, netprofit_yoy, roe_yoy, assets_yoy
                 FROM t_stock_fina_indicator
                 WHERE ts_code IN ({placeholders})

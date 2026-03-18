@@ -74,8 +74,8 @@ features:
     profitability:
       - roe
       - roa
-      - grossprofit_margin
-      - netprofit_margin
+      - gross_profit_margin
+      - net_profit_margin
     growth:
       - revenue_yoy
       - profit_yoy

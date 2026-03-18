@@ -162,7 +162,7 @@ _记录 tushare_biz 数据库中所有表的用途、字段和对应的 Tushare 
 | **Tushare接口** | `fina_indicator` |
 | **更新频率** | 季报发布时增量更新 |
 | **主键** | `ts_code, end_date` |
-| **关键字段** | ts_code, ann_date, end_date, roe, roa, grossprofit_margin, netprofit_margin, debt_to_assets, current_ratio, quick_ratio, eps, bps, cfps, sale_npm |
+| **关键字段** | ts_code, ann_date, end_date, roe, roa, gross_profit_margin, net_profit_margin, debt_to_assets, current_ratio, quick_ratio, basic_eps_yoy, bps_yoy, cfps, sales_margin |
 
 ### t_stock_fina_audit - 财务审计意见
 | 项目 | 内容 |

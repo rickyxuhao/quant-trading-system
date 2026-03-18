@@ -116,3 +116,38 @@ CREATE TABLE t_sw_daily (
 
 CREATE INDEX idx_sw_daily_trade_date ON t_sw_daily(trade_date);
 CREATE INDEX idx_sw_daily_ts_code ON t_sw_daily(ts_code);
+
+-- ========================================================-- 申万行业分类表-- ========================================================DROP TABLE IF EXISTS t_sw_classify;
+CREATE TABLE t_sw_classify (
+    ts_code VARCHAR(20) NOT NULL COMMENT '行业代码',
+    name VARCHAR(100) COMMENT '行业名称',
+    industry_type VARCHAR(20) COMMENT '行业类型(1/2/3级)',
+    parent_code VARCHAR(20) COMMENT '上级行业代码',
+    level INT COMMENT '级别(1=一级,2=二级,3=三级)',    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (ts_code)
+) COMMENT='申万行业分类表 - 来自Tushare index_classify';
+
+CREATE INDEX idx_sw_classify_level ON t_sw_classify(level);
+CREATE INDEX idx_sw_classify_parent ON t_sw_classify(parent_code);
+
+-- ========================================================-- 申万行业成分股表-- ========================================================DROP TABLE IF EXISTS t_sw_member;
+CREATE TABLE t_sw_member (
+    index_code VARCHAR(20) NOT NULL COMMENT '行业代码',
+    index_name VARCHAR(100) COMMENT '行业名称',
+    con_code VARCHAR(20) NOT NULL COMMENT '成分股票代码',
+    con_name VARCHAR(100) COMMENT '成分股票名称',
+    trade_date VARCHAR(8) NOT NULL COMMENT '交易日期',
+    level VARCHAR(20) COMMENT '行业级别(L1/L2/L3)',
+    in_date VARCHAR(8) COMMENT '纳入日期',
+    out_date VARCHAR(8) COMMENT '剔除日期',
+    is_new INT DEFAULT 1 COMMENT '是否最新(1=是,0=否)',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (index_code, con_code, trade_date)
+) COMMENT='申万行业成分股表 - 来自Tushare index_member_all';
+
+CREATE INDEX idx_sw_member_code ON t_sw_member(index_code);
+CREATE INDEX idx_sw_member_con ON t_sw_member(con_code);
+CREATE INDEX idx_sw_member_date ON t_sw_member(trade_date);
+CREATE INDEX idx_sw_member_is_new ON t_sw_member(is_new);

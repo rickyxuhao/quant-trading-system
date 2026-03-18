@@ -67,6 +67,18 @@ class DataIntegrityChecker:
         logger.info("\n6. Checking ST stock records...")
         self.results["st_stocks"] = self.check_st_records()
 
+        # 7. 申万行业分类数据检查
+        logger.info("\n7. Checking SW industry classification...")
+        self.results["sw_classify"] = self.check_sw_classify()
+
+        # 8. 申万行业成分股数据检查
+        logger.info("\n8. Checking SW industry members...")
+        self.results["sw_member"] = self.check_sw_member()
+
+        # 9. 申万行业指数日线数据检查
+        logger.info("\n9. Checking SW industry daily prices...")
+        self.results["sw_daily"] = self.check_sw_daily()
+
         # 生成报告
         report = self.generate_report()
 
@@ -346,6 +358,110 @@ class DataIntegrityChecker:
             logger.error(f"Error checking ST records: {e}")
             return {}
 
+    def check_sw_classify(self) -> Dict[str, Any]:
+        """
+        检查申万行业分类数据
+        """
+        CHECK_SW_CLASSIFY = """
+        SELECT
+            level,
+            COUNT(*) as industry_count
+        FROM t_sw_classify
+        GROUP BY level
+        ORDER BY level
+        """
+
+        try:
+            results = DatabaseManager.fetchall(self.db_name, CHECK_SW_CLASSIFY)
+
+            if results:
+                logger.info("SW Industry Classification:")
+                total = 0
+                for row in results:
+                    level_name = {1: "一级", 2: "二级", 3: "三级"}.get(row['level'], f"Level {row['level']}")
+                    logger.info(f"  {level_name}: {row['industry_count']} industries")
+                    total += row['industry_count']
+                logger.info(f"  Total: {total} industries")
+                return {"levels": results, "total": total}
+
+            logger.warning("No SW industry classification data found")
+            return {}
+
+        except Exception as e:
+            logger.error(f"Error checking SW classification: {e}")
+            return {}
+
+    def check_sw_member(self) -> Dict[str, Any]:
+        """
+        检查申万行业成分股数据
+        """
+        CHECK_SW_MEMBER = """
+        SELECT
+            COUNT(*) as total_records,
+            COUNT(DISTINCT index_code) as industry_count,
+            COUNT(DISTINCT con_code) as unique_stocks,
+            COUNT(DISTINCT CASE WHEN is_new = 1 THEN con_code END) as current_stocks,
+            MAX(trade_date) as latest_date
+        FROM t_sw_member
+        """
+
+        try:
+            results = DatabaseManager.fetchall(self.db_name, CHECK_SW_MEMBER)
+
+            if results and results[0]['total_records']:
+                record = results[0]
+                logger.info("SW Industry Members:")
+                logger.info(f"  Total records: {record['total_records']}")
+                logger.info(f"  Industries: {record['industry_count']}")
+                logger.info(f"  Unique stocks (all time): {record['unique_stocks']}")
+                logger.info(f"  Current stocks: {record['current_stocks']}")
+                logger.info(f"  Latest date: {record['latest_date']}")
+                return record
+
+            logger.warning("No SW industry member data found")
+            return {}
+
+        except Exception as e:
+            logger.error(f"Error checking SW members: {e}")
+            return {}
+
+    def check_sw_daily(self) -> pd.DataFrame:
+        """
+        检查申万行业指数日线数据
+        """
+        CHECK_SW_DAILY = """
+        SELECT
+            SUBSTRING(trade_date, 1, 4) as year,
+            COUNT(DISTINCT trade_date) as trading_days,
+            COUNT(DISTINCT ts_code) as industry_count,
+            COUNT(*) as total_records
+        FROM t_sw_daily
+        GROUP BY SUBSTRING(trade_date, 1, 4)
+        ORDER BY year
+        """
+
+        try:
+            results = DatabaseManager.fetchall(self.db_name, CHECK_SW_DAILY)
+
+            if not results:
+                logger.warning("No SW industry daily data found")
+                return pd.DataFrame()
+
+            df = pd.DataFrame(results)
+
+            logger.info("SW Industry Daily Prices:")
+            for _, row in df.iterrows():
+                logger.info(
+                    f"  {row['year']}: {row['trading_days']} days, "
+                    f"{row['industry_count']} industries"
+                )
+
+            return df
+
+        except Exception as e:
+            logger.error(f"Error checking SW daily: {e}")
+            return pd.DataFrame()
+
     def check_data_gaps(self, ts_code: str, start_date: str, end_date: str) -> pd.DataFrame:
         """
         检查特定股票的数据缺口
@@ -449,6 +565,27 @@ class DataIntegrityChecker:
             lines.append("Stock Universe:")
             for record in self.results["universe"]:
                 lines.append(f"  Status {record['list_status']}: {record['count']} stocks")
+            lines.append("")
+
+        # 申万行业分类
+        if "sw_classify" in self.results and self.results["sw_classify"]:
+            lines.append("SW Industry Classification:")
+            lines.append(f"  Total industries: {self.results['sw_classify'].get('total', 0)}")
+            lines.append("")
+
+        # 申万行业成分股
+        if "sw_member" in self.results and self.results["sw_member"]:
+            lines.append("SW Industry Members:")
+            lines.append(f"  Industries: {self.results['sw_member'].get('industry_count', 0)}")
+            lines.append(f"  Current stocks: {self.results['sw_member'].get('current_stocks', 0)}")
+            lines.append("")
+
+        # 申万行业日线数据
+        if "sw_daily" in self.results and not self.results["sw_daily"].empty:
+            df = self.results["sw_daily"]
+            lines.append("SW Industry Daily Prices:")
+            lines.append(f"  Years covered: {df['year'].min()} - {df['year'].max()}")
+            lines.append(f"  Latest year days: {df['trading_days'].iloc[-1]}")
             lines.append("")
 
         lines.append("=" * 70)
