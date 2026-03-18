@@ -1,0 +1,1908 @@
+<!DOCTYPE html><html lang="zh-CN"><head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+    <title>A股因子挖掘库构建指南：从数据获取到机器学习应用</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&amp;family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #34495e;
+            --accent: #e74c3c;
+            --muted: #95a5a6;
+            --background: #f8f9fa;
+            --surface: #ffffff;
+            --text: #2c3e50;
+            --text-muted: #7f8c8d;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--background);
+            color: var(--text);
+            line-height: 1.7;
+            overflow-x: hidden;
+        }
+        
+        .serif {
+            font-family: 'Noto Serif SC', serif;
+        }
+        
+        .hero-gradient {
+            background: linear-gradient(135deg, rgba(44, 62, 80, 0.9) 0%, rgba(52, 73, 94, 0.8) 100%);
+        }
+        
+        .toc {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 280px;
+            height: 100vh;
+            background: var(--surface);
+            border-right: 1px solid #e1e8ed;
+            z-index: 1000;
+            overflow-y: auto;
+            padding: 2rem 1.5rem;
+        }
+        
+        .main-content {
+            margin-left: 280px;
+            min-height: 100vh;
+        }
+        
+        .toc a {
+            display: block;
+            padding: 0.5rem 0;
+            color: var(--text-muted);
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.2s ease;
+        }
+        
+        .toc a:hover {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+        
+        .toc .level-2 {
+            padding-left: 1rem;
+            font-size: 0.9em;
+        }
+        
+        .toc .level-3 {
+            padding-left: 2rem;
+            font-size: 0.85em;
+        }
+        
+        .section-divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--muted), transparent);
+            margin: 3rem 0;
+        }
+        
+        .citation {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .citation:hover {
+            text-decoration: underline;
+        }
+        
+        .highlight-box {
+            background: linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%);
+            border-left: 4px solid var(--accent);
+            padding: 1.5rem;
+            margin: 2rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .expandable {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .expandable:hover {
+            background-color: rgba(231, 76, 60, 0.05);
+        }
+        
+        .expanded-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        
+        .bento-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+        
+        .bento-item {
+            background: var(--surface);
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .hero-text {
+            padding: 3rem;
+            background: var(--primary);
+            color: white;
+        }
+        
+        .hero-visual {
+            height: 100%;
+            background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        @media (max-width: 768px) {
+            .hero-text {
+                padding: 1.5rem;
+            }
+        }
+        
+        .hero-visual::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>') repeat;
+            opacity: 0.3;
+        }
+        
+        @media (max-width: 1024px) {
+            .toc {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+            
+            .toc.open {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+            
+            .bento-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+  <base target="_blank">
+</head>
+
+  <body>
+    <!-- Table of Contents -->
+    <nav class="toc">
+      <div class="mb-8">
+        <h3 class="text-lg font-bold serif text-primary mb-4">目录导航</h3>
+        <a href="#hero" class="level-1">概述与核心观点</a>
+        <a href="#data-sources" class="level-1">1. 免费A股历史因子数据获取渠道</a>
+        <a href="#券商API" class="level-2">1.1 券商API接口</a>
+        <a href="#量化平台" class="level-2">1.2 量化投资平台</a>
+        <a href="#其他渠道" class="level-2">1.3 其他潜在渠道</a>
+        <a href="#factor-definitions" class="level-1">2. 因子定义与计算方法资源</a>
+        <a href="#券商文档" class="level-2">2.1 券商与数据商文档</a>
+        <a href="#专业书籍" class="level-2">2.2 专业书籍与出版物</a>
+        <a href="#学术白皮书" class="level-2">2.3 学术与行业白皮书</a>
+        <a href="#前沿研究" class="level-1">3. 前沿因子研究成果追踪渠道</a>
+        <a href="#国际前沿" class="level-2">3.1 国际学术前沿</a>
+        <a href="#国内动态" class="level-2">3.2 国内研究动态</a>
+        <a href="#新兴方向" class="level-2">3.3 新兴研究方向</a>
+        <a href="#researchers" class="level-1">4. 核心学术研究人员与著作</a>
+        <a href="#国际学者" class="level-2">4.1 国际奠基性学者</a>
+        <a href="#国内学者" class="level-2">4.2 国内重要研究者</a>
+        <a href="#validity-testing" class="level-1">5. 因子有效性检验体系</a>
+        <a href="#ic-analysis" class="level-2">5.1 信息系数分析</a>
+        <a href="#分层回测" class="level-2">5.2 分层回测方法</a>
+        <a href="#统计检验" class="level-2">5.3 统计显著性检验</a>
+        <a href="#dimension-reduction" class="level-1">6. 因子降维与特征工程</a>
+        <a href="#linear-methods" class="level-2">6.1 线性降维方法</a>
+        <a href="#ml-methods" class="level-2">6.2 机器学习方法</a>
+        <a href="#clustering" class="level-2">6.3 聚类与分组方法</a>
+        <a href="#ml-applications" class="level-1">7. 机器学习应用场景适配</a>
+        <a href="#regression" class="level-2">7.1 回归任务：预测涨跌幅度</a>
+        <a href="#classification" class="level-2">7.2 分类任务：市场状态判断</a>
+        <a href="#industry-rotation" class="level-2">7.3 行业轮动辅助判断</a>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Hero Section -->
+      <section id="hero" class="bento-grid max-w-7xl mx-auto px-4 sm:px-6 py-8">
+        <div class="bento-item hero-text">
+          <h1 class="text-3xl sm:text-4xl lg:text-5xl font-bold serif mb-6 leading-tight">
+            <em class="italic">A股因子挖掘库构建指南</em>
+            <br/>
+            从数据获取到机器学习应用
+          </h1>
+          <p class="text-lg sm:text-xl text-gray-200 mb-8 leading-relaxed">
+            构建A股因子挖掘库，免费数据可通过券商API、量化平台及高校开放数据集获取；
+            因子定义参考《因子投资：方法与实践》、Wind手册及清华大学白皮书；
+            前沿研究追踪国际顶刊、SSRN及AQR报告；核心学者包括Fama-French、Carhart及国内石川等；
+            因子有效性通过IC分析、分层回测和Fama-MacBeth回归检验；
+            降维采用PCA、LASSO及聚类方法，需平衡信息保留与可解释性。
+          </p>
+          <div class="flex flex-wrap gap-4">
+            <div class="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full text-sm">
+              <i class="fas fa-database mr-2"></i>数据获取
+            </div>
+            <div class="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full text-sm">
+              <i class="fas fa-chart-line mr-2"></i>因子检验
+            </div>
+            <div class="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full text-sm">
+              <i class="fas fa-brain mr-2"></i>机器学习
+            </div>
+          </div>
+        </div>
+        <div class="bento-item hero-visual">
+          <div class="absolute inset-0 flex items-center justify-center">
+            <img src="https://kimi-web-img.moonshot.cn/img/bpic.wotucdn.com/026a5d432fe5dddd5c0d9307c304d13dccd5826e.jpeg!waterxwebp320x556" alt="量化投资抽象网格背景图" class="w-full h-full object-cover opacity-60" size="wallpaper" aspect="wide" query="量化投资 抽象网格" referrerpolicy="no-referrer" data-modified="1" data-score="0.00"/>
+          </div>
+          <div class="absolute inset-0 bg-gradient-to-br from-primary/30 to-secondary/30"></div>
+        </div>
+      </section>
+
+      <!-- Key Highlights -->
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 mb-12">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center mb-4">
+              <i class="fas fa-database text-red-600 text-xl"></i>
+            </div>
+            <h3 class="font-bold text-lg mb-2">免费数据获取</h3>
+            <p class="text-gray-600 text-sm">通过券商API、量化平台及高校开放数据集获取高质量A股历史因子数据</p>
+          </div>
+          <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
+              <i class="fas fa-microscope text-blue-600 text-xl"></i>
+            </div>
+            <h3 class="font-bold text-lg mb-2">因子有效性检验</h3>
+            <p class="text-gray-600 text-sm">采用IC分析、分层回测和Fama-MacBeth回归等方法严格验证因子质量</p>
+          </div>
+          <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
+              <i class="fas fa-brain text-green-600 text-xl"></i>
+            </div>
+            <h3 class="font-bold text-lg mb-2">机器学习集成</h3>
+            <p class="text-gray-600 text-sm">结合PCA、LASSO及聚类方法实现降维，优化机器学习算法性能</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 1: Data Sources -->
+      <section id="data-sources" class="max-w-7xl mx-auto px-4 sm:px-6 py-12">
+        <h2 class="text-3xl font-bold serif mb-8 text-primary">1. 免费A股历史因子数据获取渠道</h2>
+
+        <div id="券商API" class="mb-12">
+          <h3 class="text-2xl font-semibold mb-6 text-secondary">1.1 券商API接口</h3>
+
+          <div class="expandable bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
+            <h4 class="text-xl font-semibold mb-4 flex items-center">
+              <i class="fas fa-university mr-3 text-accent"></i>
+              主流券商免费因子数据库覆盖范围
+            </h4>
+            <div class="expanded-content">
+              <p class="mb-4">
+                国内证券行业竞争日趋激烈，多家头部券商为吸引量化投资者开户，纷纷推出<strong>免费的因子数据库API服务</strong>。
+                这一商业模式的核心逻辑在于&#34;基础服务免费、增值服务收费&#34;——通过降低数据获取门槛吸引用户，
+                再通过交易佣金、融资融券利息及高端量化服务实现盈利<a href="https://adg.csdn.net/696f2d97437a6b40336996a9.html" class="citation">[648]</a>。
+              </p>
+
+              <div class="bg-gray-50 p-4 rounded-lg mb-4">
+                <h5 class="font-semibold mb-2">券商因子数据库覆盖特点：</h5>
+                <ul class="list-disc list-inside space-y-2 text-sm">
+                  <li><strong>头部券商</strong>（华泰、中信等）：500+因子，15年+历史数据</li>
+                  <li><strong>中型券商</strong>：300-500因子，10-15年数据</li>
+                  <li><strong>互联网券商</strong>：200-300因子，5-10年数据</li>
+                  <li>因子类别：量价因子40%-50%，财务因子25%-30%</li>
+                </ul>
+              </div>
+
+              <div class="highlight-box">
+                <i class="fas fa-exclamation-triangle mr-2"></i>
+                <strong>数据质量注意事项</strong>：不同券商对同一因子的命名和计算方式可能存在差异，
+                例如&#34;动量因子&#34;在一家券商可能采用20日收益率定义，而在另一家则使用60日收益率，
+                这种不一致性若未加核实直接应用，可能导致严重的回测偏差与实盘失效。
+              </div>
+            </div>
+          </div>
+
+          <div class="expandable bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
+            <h4 class="text-xl font-semibold mb-4 flex items-center">
+              <i class="fas fa-chart-line mr-3 text-accent"></i>
+              量价因子：MACD、RSI、布林带等技术指标
+            </h4>
+            <div class="expanded-content">
+              <p class="mb-4">
+                量价因子是券商免费API中最成熟、覆盖最全面的类别，主要源于技术分析领域的经典指标与现代量化研究的创新变体。
+                <strong>移动平均线类指标</strong>包括简单移动平均（SMA）、指数移动平均（EMA）、加权移动平均（WMA）及其组合形式，
+                时间窗口从5日到250日不等<a href="https://bigquant.com/doc/data_features.html" class="citation">[370]</a>。
+              </p>
+
+              <div class="grid md:grid-cols-2 gap-4 mb-4">
+                <div class="bg-blue-50 p-4 rounded-lg">
+                  <h5 class="font-semibold text-blue-800 mb-2">趋势动量指标</h5>
+                  <ul class="text-sm text-blue-700 space-y-1">
+                    <li>• MACD(12,26,9)：趋势跟踪核心工具</li>
+                    <li>• MOM(10,20,30)：价格变化率指标</li>
+                    <li>• MTM：动量指标变体</li>
+                  </ul>
+                </div>
+                <div class="bg-green-50 p-4 rounded-lg">
+                  <h5 class="font-semibold text-green-800 mb-2">超买超卖指标</h5>
+                  <ul class="text-sm text-green-700 space-y-1">
+                    <li>• RSI(14)：相对强弱指数</li>
+                    <li>• KDJ(9,3,3)：随机指标</li>
+                    <li>• CCI：商品通道指标</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="量化平台" class="mb-12">
+          <h3 class="text-2xl font-semibold mb-6 text-secondary">1.2 量化投资平台</h3>
+
+          <div class="expandable bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
+            <h4 class="text-xl font-semibold mb-4 flex items-center">
+              <i class="fas fa-cloud mr-3 text-accent"></i>
+              JoinQuant（聚宽）免费因子API与回测环境
+            </h4>
+            <div class="expanded-content">
+              <p class="mb-4">
+                JoinQuant（聚宽）是国内领先的量化投研平台，为个人研究者和中小型机构提供了完整的免费因子数据服务与在线回测环境。
+                平台的核心优势在于<strong>数据与工具的一体化</strong>：用户无需自行搭建数据获取和清洗流程，可直接调用丰富的因子数据进行策略研究和回测验证
+                <a href="https://www.joinquant.com/post/64c5f25b2aa1965b40b39cb3b0aa1d35" class="citation">[661]</a>。
+              </p>
+
+              <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+                <h5 class="font-semibold text-yellow-800 mb-2">JoinQuant核心特色</h5>
+                <ul class="text-sm text-yellow-700 space-y-1">
+                  <li>• 提供专业的单因子有效性检验工具和详细实现文档</li>
+                  <li>• 支持日度、分钟级甚至tick级别的策略回测</li>
+                  <li>• 丰富的社区资源和代码分享</li>
+                  <li>• 覆盖基础行情、技术指标、财务数据和特色因子</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="expandable bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
+            <h4 class="text-xl font-semibold mb-4 flex items-center">
+              <i class="fas fa-rocket mr-3 text-accent"></i>
+              RiceQuant（米筐）因子数据服务
+            </h4>
+            <div class="expanded-content">
+              <p class="mb-4">
+                RiceQuant（米筐）是另一家国内知名的量化投资平台，其因子数据服务以<strong>专业性和深度</strong>著称。
+                米筐的因子库规模超过<strong>2000个</strong>，除常规因子外，还包含大量基于另类数据构建的创新因子，如<strong>供应链数据、专利数据、诉讼数据</strong>等
+                <a href="https://blog.csdn.net/weixin_39257042/article/details/113533848" class="citation">[389]</a>。
+              </p>
+
+              <div class="grid md:grid-cols-3 gap-4 mb-4">
+                <div class="text-center p-4 bg-purple-50 rounded-lg">
+                  <div class="text-2xl font-bold text-purple-600 mb-1">2000+</div>
+                  <div class="text-sm text-purple-700">因子库规模</div>
+                </div>
+                <div class="text-center p-4 bg-indigo-50 rounded-lg">
+                  <div class="text-2xl font-bold text-indigo-600 mb-1">自定义</div>
+                  <div class="text-sm text-indigo-700">因子计算引擎</div>
+                </div>
+                <div class="text-center p-4 bg-pink-50 rounded-lg">
+                  <div class="text-2xl font-bold text-pink-600 mb-1">ML集成</div>
+                  <div class="text-sm text-pink-700">深度学习支持</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="其他渠道" class="mb-12">
+          <h3 class="text-2xl font-semibold mb-6 text-secondary">1.3 其他潜在渠道</h3>
+
+          <div class="expandable bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
+            <h4 class="text-xl font-semibold mb-4 flex items-center">
+              <i class="fas fa-graduation-cap mr-3 text-accent"></i>
+              高校与研究机构开放数据集
+            </h4>
+            <div class="expanded-content">
+              <p class="mb-4">
+                部分高校和研究机构为支持学术研究，会开放特定范围的金融数据集。例如，
+                <strong>清华大学五道口金融学院全球证券市场研究院</strong>发布的《中国股票风险因子模型白皮书》附带的数据集、
+                <strong>北京大学国家发展研究院</strong>的深度学习与因子研究相关数据等
+                <a href="https://igsm.tsinghua.edu.cn/docs/2023-05/546982c1d941432699d5194b8ea134c1.pdf" class="citation">[575]</a>。
+              </p>
+
+              <div class="bg-green-50 border border-green-200 p-4 rounded-lg">
+                <h5 class="font-semibold text-green-800 mb-2">开放数据集优势</h5>
+                <ul class="text-sm text-green-700 space-y-1">
+                  <li>• <strong>学术严谨性</strong>：通常附带详细的数据说明和研究论文</li>
+                  <li>• <strong>本土化适配</strong>：针对中国市场特点进行专门处理</li>
+                  <li>• <strong>免费获取</strong>：支持学术研究目的的数据使用</li>
+                  <li>• <strong>方法透明</strong>：详细记录数据处理过程和计算方法</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="section-divider"></div>
+
+      <!-- Section 2: Factor Definitions -->
+      <section id="factor-definitions" class="max-w-7xl mx-auto px-4 sm:px-6 py-12">
+        <h2 class="text-3xl font-bold serif mb-8 text-primary">2. 因子定义与计算方法资源</h2>
+
+        <div id="券商文档" class="mb-12">
+          <h3 class="text-2xl font-semibold mb-6 text-secondary">2.1 券商与数据商文档</h3>
+
+          <div class="expandable bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
+            <h4 class="text-xl font-semibold mb-4 flex items-center">
+              <i class="fas fa-book-open mr-3 text-accent"></i>
+              Wind金融终端因子计算手册
+            </h4>
+            <div class="expanded-content">
+              <p class="mb-4">
+                Wind（万得）作为国内金融数据服务的标杆企业，其金融终端和量化接口（Wind API）被广泛应用于券商、基金、保险等金融机构。
+                Wind的因子库规模庞大，涵盖<strong>超过8000个指标</strong>，其计算手册详细记录了每个因子的定义、公式、参数、数据来源和更新时序
+                <a href="https://qsdoc.readthedocs.io/zh-cn/latest/%E5%9B%A0%E5%AD%90%E6%95%B0%E6%8D%AE%E5%BA%93.html" class="citation">[553]</a>。
+              </p>
+
+              <div class="grid md:grid-cols-2 gap-6">
+                <div class="bg-blue-50 p-4 rounded-lg">
+                  <h5 class="font-semibold text-blue-800 mb-2">核心价值</h5>
+                  <ul class="text-sm text-blue-700 space-y-1">
+                    <li>• <strong>权威性</strong>：被国内金融机构广泛采用</li>
+                    <li>• <strong>标准化</strong>：确保与行业标准保持一致</li>
+                    <li>• <strong>完整性</strong>：涵盖8000+指标的全方位覆盖</li>
+                    <li>• <strong>系统性</strong>：清晰的分类体系和层级结构</li>
+                  </ul>
+                </div>
+                <div class="bg-orange-50 p-4 rounded-lg">
+                  <h5 class="font-semibold text-orange-800 mb-2">主要局限</h5>
+                  <ul class="text-sm text-orange-700 space-y-1">
+                    <li>• 部分复杂因子计算逻辑描述不够详细</li>
+                    <li>• 手册更新频率有限</li>
+                    <li>• 新兴因子（机器学习因子）覆盖不足</li>
+                    <li>• 需要付费订阅才能完整获取</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="专业书籍" class="mb-12">
+          <h3 class="text-2xl font-semibold mb-6 text-secondary">2.2 专业书籍与出版物</h3>
+
+          <div class="expandable bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
+            <h4 class="text-xl font-semibold mb-4 flex items-center">
+              <i class="fas fa-book mr-3 text-accent"></i>
+              《因子投资：方法与实践》（石川、刘洋溢、连祥斌）
+            </h4>
+            <div class="expanded-content">
+              <p class="mb-4">
+                《因子投资：方法与实践》是由石川、刘洋溢、连祥斌三位作者合著的专业书籍，被国内量化投资界广泛认可为
+                <strong>因子投资领域的系统性入门教材和参考手册</strong>
+                <a href="https://baike.baidu.com/item/%E5%9B%A0%E5%AD%90%E6%8A%95%E8%B5%84%EF%BC%9A%E6%96%B9%E6%B3%95%E4%B8%8E%E5%AE%9E%E8%B7%B5/53439312" class="citation">[534]</a>
+                <a href="https://asset.quant-wiki.com/pdf/%E7%9F%B3%E5%B7%9D_%20%E5%88%98%E6%B4%8B%E6%BA%A3_%20%E8%BF%9E%E7%A5%A5%E6%96%8C%20-%20%E5%9B%A0%E5%AD%90%E6%8A%95%E8%B5%84%EF%BC%9A%E6%96%B9%E6%B3%95%E4%B8%8E%E5%AE%9E%E8%B7%B5-%E7%94%B5%E5%AD%90%E5%B7%A5%E4%B8%9A%E5%87%BA%E7%89%88%E7%A4%BE%20%282020%29.pdf" class="citation">[535]</a>。
+              </p>
+
+              <div class="bg-purple-50 border-l-4 border-purple-400 p-4 mb-4">
+                <h5 class="font-semibold text-purple-800 mb-2">核心内容框架</h5>
+                <ol class="text-sm text-purple-700 space-y-1 list-decimal list-inside">
+                  <li>因子投资的历史演进与理论基础</li>
+                  <li>因子的分类体系与经济学解释</li>
+                  <li>因子的计算方法与数据处理</li>
+                  <li>因子的有效性检验方法</li>
+                  <li>多因子模型的构建与组合优化</li>
+                  <li>因子投资的实践案例与常见问题</li>
+                </ol>
+              </div>
+
+              <div class="highlight-box">
+                <i class="fas fa-star mr-2"></i>
+                <strong>A股因子实证发现</strong>：作者对主流因子在A股的表现进行了系统检验，发现：
+                <strong>市值因子是A股最强的风格因子，年化多空收益达22%</strong>；
+                <strong>价值因子（PE、PB）长期稳健，年化收益12%-13%</strong>；
+                <strong>动量因子具有明显的时间周期性，中期（6-12个月）效果最佳</strong>。
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="学术白皮书" class="mb-12">
+          <h3 class="text-2xl font-semibold mb-6 text-secondary">2.3 学术与行业白皮书</h3>
+
+          <div class="expandable bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
+            <h4 class="text-xl font-semibold mb-4 flex items-center">
+              <i class="fas fa-university mr-3 text-accent"></i>
+              清华大学《中国股票风险因子模型白皮书》
+            </h4>
+            <div class="expanded-content">
+              <p class="mb-4">
+                清华大学五道口金融学院全球证券市场研究院发布的《中国股票风险因子模型白皮书》，是
+                <strong>A股因子模型研究的重要里程碑文档</strong>，代表了学术界对中国本土化因子模型的系统性探索
+                <a href="https://igsm.tsinghua.edu.cn/docs/2023-05/546982c1d941432699d5194b8ea134c1.pdf" class="citation">[575]</a>。
+              </p>
+
+              <div class="bg-green-50 p-4 rounded-lg mb-4">
+                <h5 class="font-semibold text-green-800 mb-2">方法论创新</h5>
+                <ul class="text-sm text-green-700 space-y-1">
+                  <li>• 采用<strong>&#34;换手加权EM算法&#34;</strong>替代传统OLS估计</li>
+                  <li>• 臻选出12个具有强解释力的风格因子</li>
+                  <li>• 使用2012-2022年A股实际数据进行样本外验证</li>
+                  <li>• 严格的因子筛选标准（完备性、正态性、连续性等）</li>
+                </ul>
+              </div>
+
+              <div class="bg-blue-50 border border-blue-200 p-4 rounded-lg">
+                <h5 class="font-semibold text-blue-800 mb-2">实践意义</h5>
+                <p class="text-sm text-blue-700">
+                  该白皮书为A股量化投资提供了<strong>本土化因子体系</strong>的权威参考，
+                  其开源实现和数据共享为学术界和业界的后续研究奠定了重要基础。
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="section-divider"></div>
+
+      <!-- Section 3: Frontier Research -->
+      <section id="前沿研究" class="max-w-7xl mx-auto px-4 sm:px-6 py-12">
+        <h2 class="text-3xl font-bold serif mb-8 text-primary">3. 前沿因子研究成果追踪渠道</h2>
+
+        <div id="国际前沿" class="mb-12">
+          <h3 class="text-2xl font-semibold mb-6 text-secondary">3.1 国际学术前沿</h3>
+
+          <div class="expandable bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
+            <h4 class="text-xl font-semibold mb-4 flex items-center">
+              <i class="fas fa-journal-whills mr-3 text-accent"></i>
+              顶级金融期刊：《Journal of Finance》《Journal of Financial Economics》
+            </h4>
+            <div class="expanded-content">
+              <p class="mb-4">
+                国际顶级金融学术期刊是获取因子投资前沿研究成果的核心渠道。《<strong>Journal of Finance</strong>》（JF）和
+                《<strong>Journal of Financial Economics</strong>》（JFE）是金融学术界的两大顶级期刊，
+                发表的研究成果代表了因子投资领域的最高学术水平<a href="https://www.sciencedirect.com/science/article/pii/S105752192300491X" class="citation">[554]</a>。
+              </p>
+
+              <div class="grid md:grid-cols-2 gap-6">
+                <div class="bg-blue-50 p-4 rounded-lg">
+                  <h5 class="font-semibold text-blue-800 mb-2">近期研究主题</h5>
+                  <ul class="text-sm text-blue-700 space-y-1">
+                    <li>• 新因子的发现与验证</li>
+                    <li>• 因子拥挤与因子衰减</li>
+                    <li>• 机器学习在因子挖掘中的应用</li>
+                    <li>• 国际市场的因子有效性比较</li>
+                    <li>• 因子与宏观经济周期的关系</li>
+                  </ul>
+                </div>
+                <div class="bg-green-50 p-4 rounded-lg">
+                  <h5 class="font-semibold text-green-800 mb-2">获取途径</h5>
+                  <ul class="text-sm text-green-700 space-y-1">
+                    <li>• 高校和研究机构数据库订阅</li>
+                    <li>• 作者个人网站或SSRN工作论文</li>
+                    <li>• 学术社交网络（ResearchGate）</li>
+                    <li>• 工作论文版本通常可免费下载</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="expandable bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
+            <h4 class="text-xl font-semibold mb-4 flex items-center">
+              <i class="fas fa-file-alt mr-3 text-accent"></i>
+              工作论文平台：SSRN、NBER、ResearchGate
+            </h4>
+            <div class="expanded-content">
+              <p class="mb-4">
+                工作论文（Working Paper）是学术研究成果在正式发表前的版本，通常可以在工作论文平台上免费获取。
+                这些平台是<strong>追踪因子投资前沿研究的最快渠道</strong>，因为学术期刊的发表周期较长（通常1-3年），
+                而工作论文可以即时反映最新的研究动态。
+              </p>
+
+              <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+                <h5 class="font-semibold text-yellow-800 mb-2">主要工作论文平台</h5>
+                <div class="grid md:grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <strong class="text-yellow-700">SSRN</strong>
+                    <p class="text-yellow-600">最大的社会科学工作论文平台，涵盖经济学、金融学等</p>
+                  </div>
+                  <div>
+                    <strong class="text-yellow-700">NBER</strong>
+                    <p class="text-yellow-600">美国国家经济研究局工作论文系列，质量普遍较高</p>
+                  </div>
+                  <div>
+                    <strong class="text-yellow-700">ResearchGate</strong>
+                    <p class="text-yellow-600">学术社交网络平台，互动性强，可直接联系作者</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="国内动态" class="mb-12">
+          <h3 class="text-2xl font-semibold mb-6 text-secondary">3.2 国内研究动态</h3>
+
+          <div class="expandable bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
+            <h4 class="text-xl font-semibold mb-4 flex items-center">
+              <i class="fas fa-newspaper mr-3 text-accent"></i>
+              券商研究所深度报告：中泰证券、华泰证券、中信证券等
+            </h4>
+            <div class="expanded-content">
+              <p class="mb-4">
+                国内大型券商的研究所是因子投资研究的重要力量，其发布的深度研究报告具有<strong>时效性强、数据详实、实践导向</strong>等特点。
+                这些报告通常基于券商的数据资源和研究团队，对因子有效性、因子配置、因子创新等问题进行深入分析。
+              </p>
+
+              <div class="overflow-x-auto">
+                <table class="w-full text-sm border-collapse border border-gray-300 mb-4">
+                  <thead>
+                    <tr class="bg-gray-100">
+                      <th class="border border-gray-300 px-4 py-2 text-left">券商</th>
+                      <th class="border border-gray-300 px-4 py-2 text-left">核心产品</th>
+                      <th class="border border-gray-300 px-4 py-2 text-left">研究特色</th>
+                      <th class="border border-gray-300 px-4 py-2 text-left">获取渠道</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td class="border border-gray-300 px-4 py-2">中泰证券</td>
+                      <td class="border border-gray-300 px-4 py-2">因子投资系列、金工定期报告</td>
+                      <td class="border border-gray-300 px-4 py-2">因子有效性跟踪、新因子挖掘</td>
+                      <td class="border border-gray-300 px-4 py-2">慧博投研、Wind研报</td>
+                    </tr>
+                    <tr>
+                      <td class="border border-gray-300 px-4 py-2">华泰证券</td>
+                      <td class="border border-gray-300 px-4 py-2">量化投资周报、因子手册</td>
+                      <td class="border border-gray-300 px-4 py-2">前沿方法应用、机器学习因子</td>
+                      <td class="border border-gray-300 px-4 py-2">华泰研究平台、Wind</td>
+                    </tr>
+                    <tr>
+                      <td class="border border-gray-300 px-4 py-2">中信证券</td>
+                      <td class="border border-gray-300 px-4 py-2">量化策略专题、因子配置报告</td>
+                      <td class="border border-gray-300 px-4 py-2">宏观与量化结合、大类资产配置</td>
+                      <td class="border border-gray-300 px-4 py-2">中信研究平台、机构服务</td>
+                    </tr>
+                    <tr>
+                      <td class="border border-gray-300 px-4 py-2">国泰君安</td>
+                      <td class="border border-gray-300 px-4 py-2">191因子库、因子月报</td>
+                      <td class="border border-gray-300 px-4 py-2">系统化因子库、行业轮动模型</td>
+                      <td class="border border-gray-300 px-4 py-2">国君研究平台、量化客户群</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="新兴方向" class="mb-12">
+          <h3 class="text-2xl font-semibold mb-6 text-secondary">3.3 新兴研究方向</h3>
+
+          <div class="expandable bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
+            <h4 class="text-xl font-semibold mb-4 flex items-center">
+              <i class="fas fa-robot mr-3 text-accent"></i>
+              机器学习与深度学习在因子挖掘中的应用
+            </h4>
+            <div class="expanded-content">
+              <p class="mb-4">
+                机器学习技术正在<strong>深刻改变因子投资的范式</strong>。传统的因子挖掘依赖于研究者的经济学直觉和线性统计方法，
+                而机器学习方法可以从海量数据中自动发现复杂的非线性关系和交互效应，拓展因子挖掘的边界
+                <a href="https://www.atlantis-press.com/article/126012821.pdf" class="citation">[429]</a>。
+              </p>
+
+              <div class="grid md:grid-cols-2 gap-6 mb-4">
+                <div class="bg-blue-50 p-4 rounded-lg">
+                  <h5 class="font-semibold text-blue-800 mb-2">机器学习应用场景</h5>
+                  <ul class="text-sm text-blue-700 space-y-1">
+                    <li>• <strong>因子合成</strong>：随机森林、XGBoost、神经网络</li>
+                    <li>• <strong>因子选择</strong>：LASSO、Ridge、弹性网络</li>
+                    <li>• <strong>非线性因子挖掘</strong>：LSTM、Transformer、GAN</li>
+                    <li>• <strong>因子择时</strong>：强化学习、状态空间模型</li>
+                  </ul>
+                </div>
+                <div class="bg-red-50 p-4 rounded-lg">
+                  <h5 class="font-semibold text-red-800 mb-2">主要挑战</h5>
+                  <ul class="text-sm text-red-700 space-y-1">
+                    <li>• <strong>过拟合风险</strong>：模型复杂度高，容易过度拟合</li>
+                    <li>• <strong>可解释性降低</strong>：黑箱模型难以解释经济逻辑</li>
+                    <li>• <strong>计算成本增加</strong>：需要更多计算资源和技术投入</li>
+                    <li>• <strong>数据需求量大</strong>：深度学习方法需要大量训练数据</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div class="highlight-box">
+                <i class="fas fa-lightbulb mr-2"></i>
+                <strong>应用原则</strong>：在应用机器学习方法时，建议采取以下原则：
+                明确区分训练集、验证集和测试集，严格进行样本外检验；
+                使用正则化、早停、Dropout等技术控制模型复杂度；
+                关注模型的经济可解释性，避免纯粹的数据挖掘。
+              </div>
+            </div>
+          </div>
+
+          <div class="expandable bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
+            <h4 class="text-xl font-semibold mb-4 flex items-center">
+              <i class="fas fa-satellite mr-3 text-accent"></i>
+              另类数据因子：文本情绪、卫星图像、供应链数据
+            </h4>
+            <div class="expanded-content">
+              <p class="mb-4">
+                另类数据（Alternative Data）是指<strong>传统财务报表和行情数据之外的新型数据源</strong>，
+                如文本数据、图像数据、传感器数据等。另类数据因子的挖掘是因子投资创新的重要方向，
+                其核心逻辑是：另类数据包含了传统数据未涵盖的信息，如果能够有效提取和利用这些信息，就可以获得信息优势和投资收益
+                <a href="https://adg.csdn.net/696f2d97437a6b40336996a9.html" class="citation">[552]</a>。
+              </p>
+
+              <div class="grid md:grid-cols-3 gap-4 mb-4">
+                <div class="bg-purple-50 p-4 rounded-lg">
+                  <h5 class="font-semibold text-purple-800 mb-2">文本情绪因子</h5>
+                  <ul class="text-sm text-purple-700 space-y-1">
+                    <li>• 基于NLP技术分析财经新闻</li>
+                    <li>• 社交媒体情感分析</li>
+                    <li>• 分析师报告情绪量化</li>
+                    <li>• GPT等大语言模型应用</li>
+                  </ul>
+                </div>
+                <div class="bg-green-50 p-4 rounded-lg">
+                  <h5 class="font-semibold text-green-800 mb-2">卫星图像因子</h5>
+                  <ul class="text-sm text-green-700 space-y-1">
+                    <li>• 停车场车辆数量监测</li>
+                    <li>• 工厂烟囱烟雾分析</li>
+                    <li>• 农作物长势评估</li>
+                    <li>• 零售活动实时监控</li>
+                  </ul>
+                </div>
+                <div class="bg-orange-50 p-4 rounded-lg">
+                  <h5 class="font-semibold text-orange-800 mb-2">供应链数据因子</h5>
+                  <ul class="text-sm text-orange-700 space-y-1">
+                    <li>• 企业间供应链关系网络</li>
+                    <li>• 供应商订单变化预测</li>
+                    <li>• 客户财务状况分析</li>
+                    <li>• 产业链景气度评估</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="section-divider"></div>
+
+      <!-- Section 4: Researchers -->
+      <section id="researchers" class="max-w-7xl mx-auto px-4 sm:px-6 py-12">
+        <h2 class="text-3xl font-bold serif mb-8 text-primary">4. 核心学术研究人员与著作</h2>
+
+        <div id="国际学者" class="mb-12">
+          <h3 class="text-2xl font-semibold mb-6 text-secondary">4.1 国际奠基性学者</h3>
+
+          <div class="expandable bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
+            <h4 class="text-xl font-semibold mb-4 flex items-center">
+              <i class="fas fa-user-graduate mr-3 text-accent"></i>
+              Eugene Fama &amp; Kenneth French：三因子/五因子模型
+            </h4>
+            <div class="expanded-content">
+              <p class="mb-4">
+                <strong>Eugene Fama</strong>和<strong>Kenneth French</strong>是<strong>实证资产定价领域的奠基性学者</strong>，
+                他们提出的多因子模型对因子投资理论和实践产生了深远影响。Fama于2013年获得诺贝尔经济学奖，
+                以表彰其在资产价格实证分析方面的贡献<a href="https://baike.baidu.com/item/%E5%9B%A0%E5%AD%90%E6%8A%95%E8%B5%84%EF%BC%9A%E6%96%B9%E6%B3%95%E4%B8%8E%E5%AE%9E%E8%B7%B5/53439312" class="citation">[534]</a>。
+              </p>
+
+              <div class="grid md:grid-cols-2 gap-6 mb-4">
+                <div class="bg-blue-50 p-4 rounded-lg">
+                  <h5 class="font-semibold text-blue-800 mb-2">三因子模型 (1993)</h5>
+                  <ul class="text-sm text-blue-700 space-y-1">
+                    <li>• <strong>市场因子</strong>：CAPM基础因子</li>
+                    <li>• <strong>规模因子 (SMB)</strong>：小市值 vs 大市值</li>
+                    <li>• <strong>价值因子 (HML)</strong>：高账面市值比 vs 低账面市值比</li>
+                    <li>• 显著提升了模型解释能力</li>
+                  </ul>
+                </div>
+                <div class="bg-green-50 p-4 rounded-lg">
+                  <h5 class="font-semibold text-green-800 mb-2">五因子模型 (2015)</h5>
+                  <ul class="text-sm text-green-700 space-y-1">
+                    <li>• 在三因子基础上扩展</li>
+                    <li>• <strong>盈利能力因子 (RMW)</strong>：高盈利 vs 低盈利</li>
+                    <li>• <strong>投资因子 (CMA)</strong>：投资保守 vs 投资激进</li>
+                    <li>• 进一步改善模型表现</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div class="highlight-box">
+                <i class="fas fa-award mr-2"></i>
+                <strong>学术贡献</strong>：Fama和French的研究方法论对后续研究产生了深远影响：
+                <strong>基于投资组合排序的因子构建方法</strong>成为行业标准；
+                <strong>因子有效性的实证检验框架</strong>被广泛采用；
+                <strong>因子模型的扩展和改进</strong>成为持续的研究主题。
+              </div>
+            </div>
+          </div>
+
+          <div class="expandable bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
+            <h4 class="text-xl font-semibold mb-4 flex items-center">
+              <i class="fas fa-chart-line mr-3 text-accent"></i>
+              Mark Carhart：四因子模型（加入动量）
+            </h4>
+            <div class="expanded-content">
+              <p class="mb-4">
+                <strong>Mark Carhart</strong>于1997年提出了<strong>四因子模型</strong>，在Fama-French三因子的基础上加入了
+                <strong>动量因子（MOM，Momentum）</strong>，显著提升了模型对基金绩效评估的准确性
+                <a href="https://baike.baidu.com/item/%E5%9B%A0%E5%AD%90%E6%8A%95%E8%B5%84%EF%BC%9A%E6%96%B9%E6%B3%95%E4%B8%8E%E5%AE%9E%E8%B7%B5/53439312" class="citation">[534]</a>。
+              </p>
+
+              <div class="bg-purple-50 border-l-4 border-purple-400 p-4 mb-4">
+                <h5 class="font-semibold text-purple-800 mb-2">动量效应的重要性</h5>
+                <p class="text-sm text-purple-700">
+                  动量效应是实证资产定价中<strong>最稳健、最持久的市场异象之一</strong>，
+                  最早由Jegadeesh和Titman于1993年系统记录。动量效应的存在与有效市场假说相矛盾，
+                  引发了大量的学术研究，试图解释其来源和机制。
+                </p>
+              </div>
+
+              <div class="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
+                <h5 class="font-semibold text-yellow-800 mb-2">主要解释理论</h5>
+                <div class="grid md:grid-cols-3 gap-2 text-sm text-yellow-700">
+                  <div>
+                    <strong>行为金融学视角</strong>
+                    <br/>投资者反应不足和渐进信息扩散
+                  </div>
+                  <div>
+                    <strong>风险视角</strong>
+                    <br/>动量股票承担未被识别的系统性风险
+                  </div>
+                  <div>
+                    <strong>市场摩擦视角</strong>
+                    <br/>套利限制导致价格偏离持续存在
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="国内学者" class="mb-12">
+          <h3 class="text-2xl font-semibold mb-6 text-secondary">4.2 国内重要研究者</h3>
+
+          <div class="expandable bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
+            <h4 class="text-xl font-semibold mb-4 flex items-center">
+              <i class="fas fa-user-edit mr-3 text-accent"></i>
+              石川、刘洋溢、连祥斌：《因子投资：方法与实践》
+            </h4>
+            <div class="expanded-content">
+              <p class="mb-4">
+                <strong>石川、刘洋溢、连祥斌</strong>合著的《因子投资：方法与实践》是<strong>中文世界首部系统阐述因子投资方法论的专业著作</strong>，
+                填补了本土化教材的空白。三位作者均具有深厚的学术背景和丰富的业界经验
+                <a href="https://baike.baidu.com/item/%E5%9B%A0%E5%AD%90%E6%8A%95%E8%B5%84%EF%BC%9A%E6%96%B9%E6%B3%95%E4%B8%8E%E5%AE%9E%E8%B7%B5/53439312" class="citation">[534]</a>
+                <a href="https://asset.quant-wiki.com/pdf/%E7%9F%B3%E5%B7%9D_%20%E5%88%98%E6%B4%8B%E6%BA%A3_%20%E8%BF%9E%E7%A5%A5%E6%96%8C%20-%20%E5%9B%A0%E5%AD%90%E6%8A%95%E8%B5%84%EF%BC%9A%E6%96%B9%E6%B3%95%E4%B8%8E%E5%AE%9E%E8%B7%B5-%E7%94%B5%E5%AD%90%E5%B7%A5%E4%B8%9A%E5%87%BA%E7%89%88%E7%A4%BE%20%282020%29.pdf" class="citation">[535]</a>。
+              </p>
+
+              <div class="grid md:grid-cols-3 gap-4 mb-4">
+                <div class="bg-blue-50 p-4 rounded-lg">
+                  <h5 class="font-semibold text-blue-800 mb-2">石川</h5>
+                  <ul class="text-sm text-blue-700 space-y-1">
+                    <li>• 清华大学学士</li>
+                    <li>• 麻省理工学院博士</li>
+                    <li>• 曾任Citigroup、Oracle及P&amp;G</li>
+                    <li>• 北京量信投资创始合伙人</li>
+                  </ul>
+                </div>
+                <div class="bg-green-50 p-4 rounded-lg">
+                  <h5 class="font-semibold text-green-800 mb-2">刘洋溢</h5>
+                  <ul class="text-sm text-green-700 space-y-1">
+                    <li>• 西南财经大学金融学博士</li>
+                    <li>• 数年量化交易经验</li>
+                    <li>• FoF研究经验</li>
+                    <li>• 量化策略开发</li>
+                  </ul>
+                </div>
+                <div class="bg-purple-50 p-4 rounded-lg">
+                  <h5 class="font-semibold text-purple-800 mb-2">连祥斌</h5>
+                  <ul class="text-sm text-purple-700 space-y-1">
+                    <li>• 量化投资实践者</li>
+                    <li>• 因子模型专家</li>
+                    <li>• 风险管理专家</li>
+                    <li>• 投资策略顾问</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div class="highlight-box">
+                <i class="fas fa-book-open mr-2"></i>
+                <strong>核心贡献</strong>：该书建立了<strong>统一视角下的因子投资框架</strong>，从&#34;一个公式&#34;出发系统梳理了因子、多因子模型和异象的概念关系，
+                澄清了学术界与业界在术语使用上的混淆。所有结果均可通过公开数据源和提供的代码复现，
+                具有极高的<strong>可复现性</strong>和<strong>实用价值</strong>。
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="section-divider"></div>
+
+      <!-- Section 5: Validity Testing -->
+      <section id="validity-testing" class="max-w-7xl mx-auto px-4 sm:px-6 py-12">
+        <h2 class="text-3xl font-bold serif mb-8 text-primary">5. 因子有效性检验体系</h2>
+
+        <div id="ic-analysis" class="mb-12">
+          <h3 class="text-2xl font-semibold mb-6 text-secondary">5.1 信息系数分析</h3>
+
+          <div class="expandable bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
+            <h4 class="text-xl font-semibold mb-4 flex items-center">
+              <i class="fas fa-calculator mr-3 text-accent"></i>
+              IC（Information Coefficient）计算与解释
+            </h4>
+            <div class="expanded-content">
+              <p class="mb-4">
+                <strong>信息系数（Information Coefficient, IC）</strong>是衡量因子预测能力的<strong>核心指标</strong>，
+                定义为因子值与股票未来收益率之间的横截面相关系数<a href="https://www.joinquant.com/post/64c5f25b2aa1965b40b39cb3b0aa1d35" class="citation">[661]</a>
+                <a href="https://www.joinquant.com/post/64c5f25b2aa1965b40b39cb3b0aa1d35" class="citation">[644]</a>。
+              </p>
+
+              <div class="bg-gray-50 p-4 rounded-lg mb-4">
+                <h5 class="font-semibold mb-2">IC计算公式：</h5>
+                <div class="text-center text-lg font-mono bg-white p-3 border rounded mb-2">
+                  IC<sub>t</sub> = Corr(F<sub>t</sub>, R<sub>t+1</sub>)
+                </div>
+                <p class="text-sm text-gray-600">
+                  其中，F<sub>t</sub>为t期末的因子值向量，R<sub>t+1</sub>为t+1期的股票收益率向量，
+                  Corr表示<strong>Spearman秩相关系数</strong>（常用）或Pearson线性相关系数。
+                </p>
+              </div>
+
+              <div class="overflow-x-auto mb-4">
+                <table class="w-full text-sm border-collapse border border-gray-300">
+                  <thead>
+                    <tr class="bg-gray-100">
+                      <th class="border border-gray-300 px-4 py-2 text-left">IC范围</th>
+                      <th class="border border-gray-300 px-4 py-2 text-left">预测能力评级</th>
+                      <th class="border border-gray-300 px-4 py-2 text-left">经济含义</th>
+                      <th class="border border-gray-300 px-4 py-2 text-left">应用建议</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td class="border border-gray-300 px-4 py-2">|IC| &lt; 0.02</td>
+                      <td class="border border-gray-300 px-4 py-2">基本无效</td>
+                      <td class="border border-gray-300 px-4 py-2">因子与未来收益无显著关系</td>
+                      <td class="border border-gray-300 px-4 py-2">排除或重新设计</td>
+                    </tr>
+                    <tr>
+                      <td class="border border-gray-300 px-4 py-2">0.02 ≤ |IC| &lt; 0.05</td>
+                      <td class="border border-gray-300 px-4 py-2">弱有效</td>
+                      <td class="border border-gray-300 px-4 py-2">有一定预测力，但需结合其他验证</td>
+                      <td class="border border-gray-300 px-4 py-2">可作为辅助因子</td>
+                    </tr>
+                    <tr>
+                      <td class="border border-gray-300 px-4 py-2">0.05 ≤ |IC| &lt; 0.10</td>
+                      <td class="border border-gray-300 px-4 py-2">有效</td>
+                      <td class="border border-gray-300 px-4 py-2">较强预测能力，具备实盘潜力</td>
+                      <td class="border border-gray-300 px-4 py-2">核心因子候选</td>
+                    </tr>
+                    <tr>
+                      <td class="border border-gray-300 px-4 py-2">|IC| ≥ 0.10</td>
+                      <td class="border border-gray-300 px-4 py-2">优秀</td>
+                      <td class="border border-gray-300 px-4 py-2">强预测能力，但需警惕过拟合</td>
+                      <td class="border border-gray-300 px-4 py-2">重点验证稳健性</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="expandable bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
+            <h4 class="text-xl font-semibold mb-4 flex items-center">
+              <i class="fas fa-chart-area mr-3 text-accent"></i>
+              ICIR（Information Coefficient Information Ratio）稳定性评估
+            </h4>
+            <div class="expanded-content">
+              <p class="mb-4">
+                <strong>信息比率（Information Ratio, IR或ICIR）</strong>是评估因子预测能力<strong>稳定性</strong>的重要指标，
+                定义为IC的均值除以IC的标准差<a href="https://www.joinquant.com/post/64c5f25b2aa1965b40b39cb3b0aa1d35" class="citation">[661]</a>
+                <a href="https://www.joinquant.com/post/64c5f25b2aa1965b40b39cb3b0aa1d35" class="citation">[644]</a>。
+              </p>
+
+              <div class="bg-gray-50 p-4 rounded-lg mb-4">
+                <h5 class="font-semibold mb-2">ICIR计算公式：</h5>
+                <div class="text-center text-lg font-mono bg-white p-3 border rounded mb-2">
+                  IR = mean(IC) / std(IC)
+                </div>
+                <p class="text-sm text-gray-600">
+                  IR反映了因子预测能力的<strong>风险调整后收益</strong>，高IR意味着因子在不同时间段的预测能力较为稳定。
+                </p>
+              </div>
+
+              <div class="grid md:grid-cols-2 gap-4 mb-4">
+                <div class="bg-green-50 p-4 rounded-lg">
+                  <h5 class="font-semibold text-green-800 mb-2">IR判断标准</h5>
+                  <ul class="text-sm text-green-700 space-y-1">
+                    <li>• <strong>IR &gt; 0.5</strong>：因子预测能力稳定可用</li>
+                    <li>• <strong>IR &gt; 0.8</strong>：因子预测能力优秀稳定</li>
+                    <li>• <strong>IR &lt; 0.3</strong>：因子预测能力波动过大</li>
+                  </ul>
+                </div>
+                <div class="bg-blue-50 p-4 rounded-lg">
+                  <h5 class="font-semibold text-blue-800 mb-2">稳定性分析</h5>
+                  <ul class="text-sm text-blue-700 space-y-1">
+                    <li>• IC的滚动均值（判断因子方向一致性）</li>
+                    <li>• IC的滚动标准差（判断波动是否加剧）</li>
+                    <li>• IC为正的时间比例（IC胜率）</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="分层回测" class="mb-12">
+          <h3 class="text-2xl font-semibold mb-6 text-secondary">5.2 分层回测方法</h3>
+
+          <div class="expandable bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
+            <h4 class="text-xl font-semibold mb-4 flex items-center">
+              <i class="fas fa-layer-group mr-3 text-accent"></i>
+              十分组/五分组构建流程
+            </h4>
+            <div class="expanded-content">
+              <p class="mb-4">
+                <strong>分层回测（Portfolio Sorts）</strong>是验证因子有效性的<strong>经典方法</strong>，
+                通过构建不同因子值的投资组合，直观检验因子的收益区分能力<a href="https://www.joinquant.com/post/64c5f25b2aa1965b40b39cb3b0aa1d35" class="citation">[661]</a>
+                <a href="https://www.joinquant.com/post/64c5f25b2aa1965b40b39cb3b0aa1d35" class="citation">[644]</a>。
+              </p>
+
+              <div class="bg-gray-50 border border-gray-200 p-4 rounded-lg mb-4">
+                <h5 class="font-semibold mb-2">标准分层回测流程：</h5>
+                <ol class="list-decimal list-inside space-y-2 text-sm">
+                  <li><strong>确定回测参数</strong>：回测时间范围（建议5年以上）、调仓频率、分组数量</li>
+                  <li><strong>计算因子值和未来收益率</strong>：避免前视偏差，使用当时可获得的数据</li>
+                  <li><strong>股票排序和分组</strong>：按因子值排序，平均分配到N个组中</li>
+                  <li><strong>计算各组收益率</strong>：等权重或市值加权平均</li>
+                  <li><strong>计算多空收益</strong>：最高组收益率 - 最低组收益率</li>
+                </ol>
+              </div>
+
+              <div class="grid md:grid-cols-2 gap-4 mb-4">
+                <div class="bg-yellow-50 p-4 rounded-lg">
+                  <h5 class="font-semibold text-yellow-800 mb-2">权重方案对比</h5>
+                  <ul class="text-sm text-yellow-700 space-y-1">
+                    <li>• <strong>等权重</strong>：更纯粹反映因子效应，避免大市值影响</li>
+                    <li>• <strong>市值加权</strong>：更接近实际可投资表现</li>
+                    <li>• <strong>因子值加权</strong>：因子值越高权重越大</li>
+                  </ul>
+                </div>
+                <div class="bg-purple-50 p-4 rounded-lg">
+                  <h5 class="font-semibold text-purple-800 mb-2">调仓频率考量</h5>
+                  <ul class="text-sm text-purple-700 space-y-1">
+                    <li>• 频率过高：增加交易成本</li>
+                    <li>• 频率过低：错过因子预测窗口</li>
+                    <li>• 需与因子IC衰减周期匹配</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="expandable bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
+            <h4 class="text-xl font-semibold mb-4 flex items-center">
+              <i class="fas fa-trending-up mr-3 text-accent"></i>
+              单调性检验：收益率随因子值的单调变化
+            </h4>
+            <div class="expanded-content">
+              <p class="mb-4">
+                <strong>单调性检验</strong>验证因子分组的收益率是否呈现<strong>单调变化趋势</strong>——对于正向因子，
+                应从低分组到高分组递增；对于负向因子，应递减<a href="https://www.joinquant.com/post/64c5f25b2aa1965b40b39cb3b0aa1d35" class="citation">[661]</a>。
+                单调性是因子有效性的重要特征，表明因子与收益的关系稳定且一致，而非随机波动。
+              </p>
+
+              <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
+                <h5 class="font-semibold text-blue-800 mb-2">单调性统计检验方法</h5>
+                <ul class="text-sm text-blue-700 space-y-1">
+                  <li>• <strong>Spearman秩相关系数</strong>：计算分组收益率与分组序号的秩相关</li>
+                  <li>• <strong>Jonckheere-Terpstra检验</strong>：专门用于有序分组的单调趋势检验</li>
+                  <li>• <strong>视觉检验</strong>：观察收益率柱状图的单调模式</li>
+                </ul>
+              </div>
+
+              <div class="highlight-box">
+                <i class="fas fa-exclamation-circle mr-2"></i>
+                <strong>异常模式识别</strong>：若单调性不成立（如中间分组收益率异常高或低），
+                可能提示因子与收益的关系非线性，或存在异常值干扰，需要进一步分析。
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="统计检验" class="mb-12">
+          <h3 class="text-2xl font-semibold mb-6 text-secondary">5.3 统计显著性检验</h3>
+
+          <div class="expandable bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
+            <h4 class="text-xl font-semibold mb-4 flex items-center">
+              <i class="fas fa-chart-bar mr-3 text-accent"></i>
+              Fama-MacBeth回归：横截面与时间序列检验
+            </h4>
+            <div class="expanded-content">
+              <p class="mb-4">
+                <strong>Fama-MacBeth回归</strong>是资产定价领域<strong>最经典的检验方法之一</strong>，
+                由Fama和MacBeth于1973年提出，巧妙地规避了收益率随机扰动项截面相关性的影响
+                <a href="https://baike.baidu.com/item/%E5%9B%A0%E5%AD%90%E6%8A%95%E8%B5%84%EF%BC%9A%E6%96%B9%E6%B3%95%E4%B8%8E%E5%AE%9E%E8%B7%B5/53439312" class="citation">[534]</a>
+                <a href="https://asset.quant-wiki.com/pdf/%E7%9F%B3%E5%B7%9D_%20%E5%88%98%E6%B4%8B%E6%BA%A3_%20%E8%BF%9E%E7%A5%A5%E6%96%8C%20-%20%E5%9B%A0%E5%AD%90%E6%8A%95%E8%B5%84%EF%BC%9A%E6%96%B9%E6%B3%95%E4%B8%8E%E5%AE%9E%E8%B7%B5-%E7%94%B5%E5%AD%90%E5%B7%A5%E4%B8%9A%E5%87%BA%E7%89%88%E7%A4%BE%20%282020%29.pdf" class="citation">[535]</a>。
+              </p>
+
+              <div class="bg-gray-50 border border-gray-200 p-4 rounded-lg mb-4">
+                <h5 class="font-semibold mb-3">Fama-MacBeth两步回归法：</h5>
+
+                <div class="mb-3">
+                  <h6 class="font-semibold text-sm mb-1">第一步：横截面回归</h6>
+                  <div class="text-center text-sm font-mono bg-white p-2 border rounded mb-1">
+                    R<sub>i,t</sub> = γ<sub>0,t</sub> + Σ γ<sub>k,t</sub> β<sub>i,k,t-1</sub> + ε<sub>i,t</sub>
+                  </div>
+                  <p class="text-xs text-gray-600">得到因子收益率的估计 γ̂<sub>k,t</sub></p>
+                </div>
+
+                <div>
+                  <h6 class="font-semibold text-sm mb-1">第二步：时间序列分析</h6>
+                  <div class="text-center text-sm font-mono bg-white p-2 border rounded mb-1">
+                    γ̄<sub>k</sub> = (1/T) Σ γ̂<sub>k,t</sub>, t<sub>k</sub> = γ̄<sub>k</sub> / se(γ̄<sub>k</sub>)
+                  </div>
+                  <p class="text-xs text-gray-600">计算因子收益率均值和标准误，检验显著性</p>
+                </div>
+              </div>
+
+              <div class="grid md:grid-cols-2 gap-4 mb-4">
+                <div class="bg-green-50 p-4 rounded-lg">
+                  <h5 class="font-semibold text-green-800 mb-2">方法优势</h5>
+                  <ul class="text-sm text-green-700 space-y-1">
+                    <li>• 允许因子暴露随时间变化</li>
+                    <li>• 有效处理截面相关性</li>
+                    <li>• 提供因子收益率时间序列</li>
+                    <li>• 便于进一步分析和建模</li>
+                  </ul>
+                </div>
+                <div class="bg-orange-50 p-4 rounded-lg">
+                  <h5 class="font-semibold text-orange-800 mb-2">最新发展</h5>
+                  <ul class="text-sm text-orange-700 space-y-1">
+                    <li>• 时变因子暴露的Fama-MacBeth回归</li>
+                    <li>• 替代传统排序法的新方法</li>
+                    <li>• 更准确的因子收益率估计</li>
+                    <li>• 适应高频和另类数据环境</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="section-divider"></div>
+
+      <!-- Section 6: Dimension Reduction -->
+      <section id="dimension-reduction" class="max-w-7xl mx-auto px-4 sm:px-6 py-12">
+        <h2 class="text-3xl font-bold serif mb-8 text-primary">6. 因子降维与特征工程</h2>
+
+        <div id="linear-methods" class="mb-12">
+          <h3 class="text-2xl font-semibold mb-6 text-secondary">6.1 线性降维方法</h3>
+
+          <div class="expandable bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
+            <h4 class="text-xl font-semibold mb-4 flex items-center">
+              <i class="fas fa-compress-arrows-alt mr-3 text-accent"></i>
+              主成分分析（PCA）：原理、实现与参数选择
+            </h4>
+            <div class="expanded-content">
+              <p class="mb-4">
+                <strong>主成分分析（Principal Component Analysis, PCA）</strong>是最常用的线性降维方法，
+                通过正交变换将相关变量转换为不相关的主成分，按方差解释比例选择前几个主成分，实现降维
+                <a href="https://asset.quant-wiki.com/pdf/%E7%9F%B3%E5%B7%9D_%20%E5%88%98%E6%B4%8B%E6%BA%A3_%20%E8%BF%9E%E7%A5%A5%E6%96%8C%20-%20%E5%9B%A0%E5%AD%90%E6%8A%95%E8%B5%84%EF%BC%9A%E6%96%B9%E6%B3%95%E4%B8%8E%E5%AE%9E%E8%B7%B5-%E7%94%B5%E5%AD%90%E5%B7%A5%E4%B8%9A%E5%87%BA%E7%89%88%E7%A4%BE%20%282020%29.pdf" class="citation">[535]</a>。
+              </p>
+
+              <div class="bg-gray-50 p-4 rounded-lg mb-4">
+                <h5 class="font-semibold mb-2">PCA数学原理：</h5>
+                <div class="text-center text-base font-mono bg-white p-3 border rounded mb-2">
+                  PC<sub>k</sub> = Σ w<sub>k,i</sub> F<sub>i</sub>
+                </div>
+                <p class="text-sm text-gray-600">
+                  对因子相关矩阵进行特征值分解，特征向量即为载荷矩阵，特征值即为各主成分的方差。
+                  第k个主成分为原始因子的线性组合。
+                </p>
+              </div>
+
+              <div class="grid md:grid-cols-3 gap-4 mb-4">
+                <div class="bg-blue-50 p-4 rounded-lg">
+                  <h5 class="font-semibold text-blue-800 mb-2">关键参数</h5>
+                  <ul class="text-sm text-blue-700 space-y-1">
+                    <li>• <strong>主成分个数K</strong>：方差解释比例、碎石图</li>
+                    <li>• <strong>数据标准化</strong>：Z-score、Rank标准化</li>
+                    <li>• <strong>因子预处理</strong>：去极值、中性化</li>
+                  </ul>
+                </div>
+                <div class="bg-green-50 p-4 rounded-lg">
+                  <h5 class="font-semibold text-green-800 mb-2">方法优势</h5>
+                  <ul class="text-sm text-green-700 space-y-1">
+                    <li>• 计算简单，结果稳定</li>
+                    <li>• 无监督学习，无需标签</li>
+                    <li>• 最大化方差解释</li>
+                    <li>• 正交变换消除相关性</li>
+                  </ul>
+                </div>
+                <div class="bg-orange-50 p-4 rounded-lg">
+                  <h5 class="font-semibold text-orange-800 mb-2">主要局限</h5>
+                  <ul class="text-sm text-orange-700 space-y-1">
+                    <li>• 仅捕捉线性关系</li>
+                    <li>• 主成分经济含义不明确</li>
+                    <li>• 对异常值敏感</li>
+                    <li>• 需要人为确定主成分个数</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="ml-methods" class="mb-12">
+          <h3 class="text-2xl font-semibold mb-6 text-secondary">6.2 基于机器学习的降维</h3>
+
+          <div class="expandable bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
+            <h4 class="text-xl font-semibold mb-4 flex items-center">
+              <i class="fas fa-magic mr-3 text-accent"></i>
+              LASSO回归：稀疏化与自动特征选择
+            </h4>
+            <div class="expanded-content">
+              <p class="mb-4">
+                <strong>LASSO（Least Absolute Shrinkage and Selection Operator）回归</strong>通过L1正则化实现系数的稀疏化，
+                自动进行特征选择<a href="https://xbgjxt.swu.edu.cn/article/doi/10.13718/j.cnki.xdsk.2022.06.012" class="citation">[398]</a>
+                <a href="https://asset.quant-wiki.com/pdf/%E7%9F%B3%E5%B7%9D_%20%E5%88%98%E6%B4%8B%E6%BA%A3_%20%E8%BF%9E%E7%A5%A5%E6%96%8C%20-%20%E5%9B%A0%E5%AD%90%E6%8A%95%E8%B5%84%EF%BC%9A%E6%96%B9%E6%B3%95%E4%B8%8E%E5%AE%9E%E8%B7%B5-%E7%94%B5%E5%AD%90%E5%B7%A5%E4%B8%9A%E5%87%BA%E7%89%88%E7%A4%BE%20%282020%29.pdf" class="citation">[535]</a>。
+              </p>
+
+              <div class="bg-gray-50 p-4 rounded-lg mb-4">
+                <h5 class="font-semibold mb-2">LASSO目标函数：</h5>
+                <div class="text-center text-base font-mono bg-white p-3 border rounded mb-2">
+                  min<sub>β</sub> { Σ(y<sub>i</sub> - Σx<sub>ij</sub>β<sub>j</sub>)² + λ Σ|β<sub>j</sub>| }
+                </div>
+                <p class="text-sm text-gray-600">
+                  其中，λ为正则化参数，控制稀疏程度。λ越大，越多系数被压缩为0，实现特征选择。
+                </p>
+              </div>
+
+              <div class="grid md:grid-cols-2 gap-4 mb-4">
+                <div class="bg-green-50 p-4 rounded-lg">
+                  <h5 class="font-semibold text-green-800 mb-2">方法优势</h5>
+                  <ul class="text-sm text-green-700 space-y-1">
+                    <li>• 同时进行回归和特征选择</li>
+                    <li>• 处理高维数据（p&gt;n）</li>
+                    <li>• 结果可解释（非零系数即选中因子）</li>
+                    <li>• 产生稀疏解，模型简洁</li>
+                  </ul>
+                </div>
+                <div class="bg-red-50 p-4 rounded-lg">
+                  <h5 class="font-semibold text-red-800 mb-2">主要局限</h5>
+                  <ul class="text-sm text-red-700 space-y-1">
+                    <li>• 对高度相关的因子，随机选择其中一个</li>
+                    <li>• 系数估计有偏</li>
+                    <li>• 正则化参数需要调优</li>
+                    <li>• 可能忽略重要但相关的因子</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div class="highlight-box">
+                <i class="fas fa-cogs mr-2"></i>
+                <strong>应用场景</strong>：LASSO在因子降维中可用于：
+                从大量候选因子中筛选出预测能力最强的子集；
+                构建稀疏化的多因子预测模型；
+                识别因子的非线性交互效应（通过构造交互项）。
+              </div>
+            </div>
+          </div>
+
+          <div class="expandable bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
+            <h4 class="text-xl font-semibold mb-4 flex items-center">
+              <i class="fas fa-balance-scale mr-3 text-accent"></i>
+              弹性网络（Elastic Net）：L1与L2结合
+            </h4>
+            <div class="expanded-content">
+              <p class="mb-4">
+                <strong>弹性网络（Elastic Net）</strong>结合LASSO的L1正则化和Ridge的L2正则化，
+                兼顾稀疏化和稳定性<a href="https://asset.quant-wiki.com/pdf/%E7%9F%B3%E5%B7%9D_%20%E5%88%98%E6%B4%8B%E6%BA%A3_%20%E8%BF%9E%E7%A5%A5%E6%96%8C%20-%20%E5%9B%A0%E5%AD%90%E6%8A%95%E8%B5%84%EF%BC%9A%E6%96%B9%E6%B3%95%E4%B8%8E%E5%AE%9E%E8%B7%B5-%E7%94%B5%E5%AD%90%E5%B7%A5%E4%B8%9A%E5%87%BA%E7%89%88%E7%A4%BE%20%282020%29.pdf" class="citation">[535]</a>。
+              </p>
+
+              <div class="bg-gray-50 p-4 rounded-lg mb-4">
+                <h5 class="font-semibold mb-2">Elastic Net目标函数：</h5>
+                <div class="text-center text-base font-mono bg-white p-3 border rounded mb-2">
+                  min<sub>β</sub> { Σ(y<sub>i</sub> - Σx<sub>ij</sub>β<sub>j</sub>)² + λ[α Σ|β<sub>j</sub>| + (1-α) Σβ<sub>j</sub>²] }
+                </div>
+                <p class="text-sm text-gray-600">
+                  其中，α ∈ [0,1]控制L1和L2的权重。α=1时为LASSO，α=0时为Ridge。
+                </p>
+              </div>
+
+              <div class="bg-purple-50 border-l-4 border-purple-400 p-4 mb-4">
+                <h5 class="font-semibold text-purple-800 mb-2">Elastic Net核心优势</h5>
+                <ul class="text-sm text-purple-700 space-y-1">
+                  <li>• <strong>同时实现特征选择和共线性处理</strong></li>
+                  <li>• 对高度相关的因子，倾向于同时选中或同时剔除</li>
+                  <li>• 灵活性高，通过调参适应不同场景</li>
+                  <li>• 是因子降维中最常用的机器学习方法之一</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="clustering" class="mb-12">
+          <h3 class="text-2xl font-semibold mb-6 text-secondary">6.3 聚类与分组方法</h3>
+
+          <div class="expandable bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
+            <h4 class="text-xl font-semibold mb-4 flex items-center">
+              <i class="fas fa-project-diagram mr-3 text-accent"></i>
+              相关性聚类：将高相关因子归为一类
+            </h4>
+            <div class="expanded-content">
+              <p class="mb-4">
+                <strong>相关性聚类</strong>是基于因子相关矩阵的降维方法，将高度相关的因子归为一类，
+                每类选择一个代表因子，实现降维<a href="https://asset.quant-wiki.com/pdf/%E7%9F%B3%E5%B7%9D_%20%E5%88%98%E6%B4%8B%E6%BA%A3_%20%E8%BF%9E%E7%A5%A5%E6%96%8C%20-%20%E5%9B%A0%E5%AD%90%E6%8A%95%E8%B5%84%EF%BC%9A%E6%96%B9%E6%B3%95%E4%B8%8E%E5%AE%9E%E8%B7%B5-%E7%94%B5%E5%AD%90%E5%B7%A5%E4%B8%9A%E5%87%BA%E7%89%88%E7%A4%BE%20%282020%29.pdf" class="citation">[535]</a>。
+              </p>
+
+              <div class="bg-gray-50 border border-gray-200 p-4 rounded-lg mb-4">
+                <h5 class="font-semibold mb-2">相关性聚类实施步骤：</h5>
+                <ol class="list-decimal list-inside space-y-2 text-sm">
+                  <li>计算因子间的相关系数矩阵</li>
+                  <li>将相关系数转换为距离（如d = √(2(1-ρ))）</li>
+                  <li>应用层次聚类或K-means聚类</li>
+                  <li>确定聚类个数，使类内相关性高、类间相关性低</li>
+                  <li>每类选择一个代表因子（IC最高或与其他类相关性最低）</li>
+                </ol>
+              </div>
+
+              <div class="grid md:grid-cols-2 gap-4 mb-4">
+                <div class="bg-blue-50 p-4 rounded-lg">
+                  <h5 class="font-semibold text-blue-800 mb-2">方法优势</h5>
+                  <ul class="text-sm text-blue-700 space-y-1">
+                    <li>• 直观易懂，结果可解释</li>
+                    <li>• 保留因子的经济含义</li>
+                    <li>• 灵活控制降维程度</li>
+                    <li>• 无需复杂数学变换</li>
+                  </ul>
+                </div>
+                <div class="bg-orange-50 p-4 rounded-lg">
+                  <h5 class="font-semibold text-orange-800 mb-2">主要局限</h5>
+                  <ul class="text-sm text-orange-700 space-y-1">
+                    <li>• 仅考虑线性相关，忽略非线性关系</li>
+                    <li>• 聚类个数需要人为确定</li>
+                    <li>• 代表因子选择标准不唯一</li>
+                    <li>• 可能损失部分信息</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div class="bg-green-50 border-l-4 border-green-400 p-4">
+                <h5 class="font-semibold text-green-800 mb-2">代表因子选择策略</h5>
+                <div class="grid md:grid-cols-2 gap-4 text-sm text-green-700">
+                  <div>
+                    <strong>IC最高策略</strong>
+                    <br/>选择类内IC均值或IR最高的因子
+                    <br/><em>适用于预测能力优先场景</em>
+                  </div>
+                  <div>
+                    <strong>稳定性最好策略</strong>
+                    <br/>选择类内IC标准差最小的因子
+                    <br/><em>适用于稳健性优先场景</em>
+                  </div>
+                  <div>
+                    <strong>信息增量优先策略</strong>
+                    <br/>选择类间平均相关性最小的因子
+                    <br/><em>适用于独立性优先场景</em>
+                  </div>
+                  <div>
+                    <strong>经济含义优先策略</strong>
+                    <br/>选择业界广泛认可的因子
+                    <br/><em>适用于可解释性优先场景</em>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="section-divider"></div>
+
+      <!-- Section 7: ML Applications -->
+      <section id="ml-applications" class="max-w-7xl mx-auto px-4 sm:px-6 py-12">
+        <h2 class="text-3xl font-bold serif mb-8 text-primary">7. 机器学习应用场景适配</h2>
+
+        <div id="regression" class="mb-12">
+          <h3 class="text-2xl font-semibold mb-6 text-secondary">7.1 回归任务：预测涨跌幅度</h3>
+
+          <div class="expandable bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
+            <h4 class="text-xl font-semibold mb-4 flex items-center">
+              <i class="fas fa-target mr-3 text-accent"></i>
+              标签构建：未来N日收益率定义
+            </h4>
+            <div class="expanded-content">
+              <p class="mb-4">
+                在回归任务中，<strong>标签（Label）的构建</strong>直接影响模型的学习目标和预测能力<a href="https://www.joinquant.com/post/64c5f25b2aa1965b40b39cb3b0aa1d35" class="citation">[644]</a>。
+                常见的标签定义包括未来不同期限的收益率和风险调整收益。
+              </p>
+
+              <div class="overflow-x-auto mb-4">
+                <table class="w-full text-sm border-collapse border border-gray-300">
+                  <thead>
+                    <tr class="bg-gray-100">
+                      <th class="border border-gray-300 px-4 py-2 text-left">标签类型</th>
+                      <th class="border border-gray-300 px-4 py-2 text-left">定义</th>
+                      <th class="border border-gray-300 px-4 py-2 text-left">适用场景</th>
+                      <th class="border border-gray-300 px-4 py-2 text-left">注意事项</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td class="border border-gray-300 px-4 py-2">未来1日收益率</td>
+                      <td class="border border-gray-300 px-4 py-2">R<sub>t+1</sub> = (P<sub>t+1</sub> - P<sub>t</sub>) / P<sub>t</sub></td>
+                      <td class="border border-gray-300 px-4 py-2">高频交易、日内的择时</td>
+                      <td class="border border-gray-300 px-4 py-2">噪声大，预测难度高</td>
+                    </tr>
+                    <tr>
+                      <td class="border border-gray-300 px-4 py-2">未来5日收益率</td>
+                      <td class="border border-gray-300 px-4 py-2">R<sub>t+5</sub> = (P<sub>t+5</sub> - P<sub>t</sub>) / P<sub>t</sub></td>
+                      <td class="border border-gray-300 px-4 py-2">短期策略，周度调仓</td>
+                      <td class="border border-gray-300 px-4 py-2">平衡噪声和信号</td>
+                    </tr>
+                    <tr>
+                      <td class="border border-gray-300 px-4 py-2">未来20日收益率</td>
+                      <td class="border border-gray-300 px-4 py-2">R<sub>t+20</sub> = (P<sub>t+20</sub> - P<sub>t</sub>) / P<sub>t</sub></td>
+                      <td class="border border-gray-300 px-4 py-2">中期策略，月度调仓</td>
+                      <td class="border border-gray-300 px-4 py-2">常用选择，信号较稳定</td>
+                    </tr>
+                    <tr>
+                      <td class="border border-gray-300 px-4 py-2">风险调整收益</td>
+                      <td class="border border-gray-300 px-4 py-2">夏普比率、信息比率</td>
+                      <td class="border border-gray-300 px-4 py-2">风险调整后优化</td>
+                      <td class="border border-gray-300 px-4 py-2">需要估计波动率，引入额外噪声</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="highlight-box">
+                <i class="fas fa-lightbulb mr-2"></i>
+                <strong>标签构建关键考量</strong>：预测周期与因子IC衰减周期的匹配；
+                交易成本的纳入（如使用净收益而非毛收益）；
+                极端值的处理（如对收益率进行Winsorization）。
+              </div>
+            </div>
+          </div>
+
+          <div class="expandable bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
+            <h4 class="text-xl font-semibold mb-4 flex items-center">
+              <i class="fas fa-chart-line mr-3 text-accent"></i>
+              模型类型：线性模型、树模型、神经网络
+            </h4>
+            <div class="expanded-content">
+              <p class="mb-4">
+                在A股因子预测中，不同模型类型具有各自的优缺点和适用场景。
+                选择合适的模型类型需要综合考虑数据特征、计算资源、预测精度要求等因素。
+              </p>
+
+              <div class="grid md:grid-cols-3 gap-4 mb-4">
+                <div class="bg-blue-50 p-4 rounded-lg">
+                  <h5 class="font-semibold text-blue-800 mb-2">线性模型</h5>
+                  <div class="text-sm text-blue-700 space-y-1">
+                    <p><strong>代表算法</strong>：OLS、Ridge、LASSO、Elastic Net</p>
+                    <p><strong>核心优势</strong>：简单可解释，计算快</p>
+                    <p><strong>主要局限</strong>：仅捕捉线性关系</p>
+                    <p><strong>适用场景</strong>：基准模型，因子筛选</p>
+                  </div>
+                </div>
+                <div class="bg-green-50 p-4 rounded-lg">
+                  <h5 class="font-semibold text-green-800 mb-2">树模型</h5>
+                  <div class="text-sm text-green-700 space-y-1">
+                    <p><strong>代表算法</strong>：随机森林、XGBoost、LightGBM</p>
+                    <p><strong>核心优势</strong>：捕捉非线性，特征交互自动</p>
+                    <p><strong>主要局限</strong>：易过拟合，需仔细调参</p>
+                    <p><strong>适用场景</strong>：主流选择，性能优异</p>
+                  </div>
+                </div>
+                <div class="bg-purple-50 p-4 rounded-lg">
+                  <h5 class="font-semibold text-purple-800 mb-2">神经网络</h5>
+                  <div class="text-sm text-purple-700 space-y-1">
+                    <p><strong>代表算法</strong>：MLP、LSTM、Transformer</p>
+                    <p><strong>核心优势</strong>：强大表达能力，端到端学习</p>
+                    <p><strong>主要局限</strong>：黑箱，需大量数据</p>
+                    <p><strong>适用场景</strong>：大规模数据，复杂模式</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                <h5 class="font-semibold text-yellow-800 mb-2">推荐实践</h5>
+                <p class="text-sm text-yellow-700">
+                  在A股因子预测中，<strong>XGBoost和LightGBM是当前的主流选择</strong>，
+                  因其在预测性能、训练速度、可解释性之间取得了良好平衡。
+                  神经网络方法在大规模数据、高频数据、文本/图像数据等场景下展现出优势，
+                  但需要更多的技术投入和验证工作。
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="classification" class="mb-12">
+          <h3 class="text-2xl font-semibold mb-6 text-secondary">7.2 分类任务：市场状态判断</h3>
+
+          <div class="expandable bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
+            <h4 class="text-xl font-semibold mb-4 flex items-center">
+              <i class="fas fa-bullseye mr-3 text-accent"></i>
+              标签定义：牛市/熊市/中性的划分标准
+            </h4>
+            <div class="expanded-content">
+              <p class="mb-4">
+                市场状态分类的标签定义需要<strong>明确、可复现、有投资意义</strong>
+                <a href="https://www.joinquant.com/post/64c5f25b2aa1965b40b39cb3b0aa1d35" class="citation">[644]</a>。
+                常见的划分标准包括指数收益率阈值、移动平均线、波动率状态等。
+              </p>
+
+              <div class="overflow-x-auto mb-4">
+                <table class="w-full text-sm border-collapse border border-gray-300">
+                  <thead>
+                    <tr class="bg-gray-100">
+                      <th class="border border-gray-300 px-4 py-2 text-left">划分方法</th>
+                      <th class="border border-gray-300 px-4 py-2 text-left">具体标准</th>
+                      <th class="border border-gray-300 px-4 py-2 text-left">优点</th>
+                      <th class="border border-gray-300 px-4 py-2 text-left">缺点</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td class="border border-gray-300 px-4 py-2">指数收益率阈值</td>
+                      <td class="border border-gray-300 px-4 py-2">20日收益率&gt;10%为牛市，&lt;-10%为熊市</td>
+                      <td class="border border-gray-300 px-4 py-2">简单直观</td>
+                      <td class="border border-gray-300 px-4 py-2">阈值主观，震荡市定义模糊</td>
+                    </tr>
+                    <tr>
+                      <td class="border border-gray-300 px-4 py-2">移动平均线</td>
+                      <td class="border border-gray-300 px-4 py-2">价格上穿200日均线为牛市</td>
+                      <td class="border border-gray-300 px-4 py-2">趋势跟踪，滞后性</td>
+                      <td class="border border-gray-300 px-4 py-2">信号滞后，频繁震荡时反复切换</td>
+                    </tr>
+                    <tr>
+                      <td class="border border-gray-300 px-4 py-2">波动率状态</td>
+                      <td class="border border-gray-300 px-4 py-2">高波动+下跌为熊市</td>
+                      <td class="border border-gray-300 px-4 py-2">结合风险和收益</td>
+                      <td class="border border-gray-300 px-4 py-2">需要估计波动率，参数敏感</td>
+                    </tr>
+                    <tr>
+                      <td class="border border-gray-300 px-4 py-2">机器学习聚类</td>
+                      <td class="border border-gray-300 px-4 py-2">基于多维度特征自动划分</td>
+                      <td class="border border-gray-300 px-4 py-2">数据驱动，自适应</td>
+                      <td class="border border-gray-300 px-4 py-2">黑箱，可解释性差</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="highlight-box">
+                <i class="fas fa-star mr-2"></i>
+                <strong>推荐做法</strong>：结合多种方法，构建复合的市场状态指标，
+                并通过投资意义验证（如不同状态下的因子有效性差异）进行校准。
+              </div>
+            </div>
+          </div>
+
+          <div class="expandable bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
+            <h4 class="text-xl font-semibold mb-4 flex items-center">
+              <i class="fas fa-balance-scale mr-3 text-accent"></i>
+              类别不平衡处理
+            </h4>
+            <div class="expanded-content">
+              <p class="mb-4">
+                市场状态分类中，<strong>类别不平衡是常见问题</strong>——例如，牛市和熊市的时间占比可能远低于中性市场
+                <a href="https://www.atlantis-press.com/article/126012821.pdf" class="citation">[429]</a>。
+                需要采用专门的处理方法来解决这一问题。
+              </p>
+
+              <div class="grid md:grid-cols-2 gap-4 mb-4">
+                <div class="bg-blue-50 p-4 rounded-lg">
+                  <h5 class="font-semibold text-blue-800 mb-2">重采样方法</h5>
+                  <ul class="text-sm text-blue-700 space-y-1">
+                    <li>• <strong>过采样</strong>：SMOTE等合成少数类样本</li>
+                    <li>• <strong>欠采样</strong>：减少多数类样本数量</li>
+                    <li>• <strong>组合采样</strong>：结合过采样和欠采样</li>
+                    <li>• <strong>集成采样</strong>：EasyEnsemble、BalanceCascade</li>
+                  </ul>
+                </div>
+                <div class="bg-green-50 p-4 rounded-lg">
+                  <h5 class="font-semibold text-green-800 mb-2">算法层面方法</h5>
+                  <ul class="text-sm text-green-700 space-y-1">
+                    <li>• <strong>代价敏感学习</strong>：为不同类别设置不同误分类代价</li>
+                    <li>• <strong>阈值调整</strong>：根据类别先验概率调整分类阈值</li>
+                    <li>• <strong>集成方法</strong>：专门针对不平衡数据的算法</li>
+                    <li>• <strong>自定义损失函数</strong>：设计考虑类别不平衡的损失</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div class="bg-purple-50 border-l-4 border-purple-400 p-4">
+                <h5 class="font-semibold text-purple-800 mb-2">实践经验</h5>
+                <p class="text-sm text-purple-700">
+                  在市场状态分类中，建议<strong>优先采用代价敏感学习和阈值调整</strong>，
+                  因为这两种方法不会改变原始数据分布，能更好地保持数据的真实性。
+                  同时，可以结合集成方法提高模型的鲁棒性。
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="industry-rotation" class="mb-12">
+          <h3 class="text-2xl font-semibold mb-6 text-secondary">7.3 行业轮动辅助判断</h3>
+
+          <div class="expandable bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
+            <h4 class="text-xl font-semibold mb-4 flex items-center">
+              <i class="fas fa-industry mr-3 text-accent"></i>
+              行业因子构建与聚合
+            </h4>
+            <div class="expanded-content">
+              <p class="mb-4">
+                <strong>行业因子</strong>是行业轮动策略的基础，构建方法包括行业指数收益率、行业内聚合因子、行业相对因子等
+                <a href="https://apacinsider.digital/sector-rotation-strategies-5-ways-to-maximize-returns-across-market-cycles/" class="citation">[590]</a>。
+              </p>
+
+              <div class="grid md:grid-cols-3 gap-4 mb-4">
+                <div class="bg-blue-50 p-4 rounded-lg">
+                  <h5 class="font-semibold text-blue-800 mb-2">行业指数收益率</h5>
+                  <ul class="text-sm text-blue-700 space-y-1">
+                    <li>• 直接使用申万、中信等行业指数</li>
+                    <li>• 计算行业整体表现</li>
+                    <li>• 标准化处理消除量纲影响</li>
+                    <li>• 考虑行业市值权重</li>
+                  </ul>
+                </div>
+                <div class="bg-green-50 p-4 rounded-lg">
+                  <h5 class="font-semibold text-green-800 mb-2">行业内聚合因子</h5>
+                  <ul class="text-sm text-green-700 space-y-1">
+                    <li>• 将个股因子在行业内部聚合</li>
+                    <li>• 市值加权平均或等权平均</li>
+                    <li>• 考虑行业内分层结构</li>
+                    <li>• 行业特异性指标处理</li>
+                  </ul>
+                </div>
+                <div class="bg-purple-50 p-4 rounded-lg">
+                  <h5 class="font-semibold text-purple-800 mb-2">行业相对因子</h5>
+                  <ul class="text-sm text-purple-700 space-y-1">
+                    <li>• 计算行业相对于市场偏离</li>
+                    <li>• 行业收益率 - 市场收益率</li>
+                    <li>• 行业估值 / 市场估值</li>
+                    <li>• 行业相对强弱指标</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="expandable bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
+            <h4 class="text-xl font-semibold mb-4 flex items-center">
+              <i class="fas fa-chart-line mr-3 text-accent"></i>
+              行业间相对强弱指标
+            </h4>
+            <div class="expanded-content">
+              <p class="mb-4">
+                <strong>行业间相对强弱</strong>是行业轮动的核心信号，常用指标包括行业动量、行业估值差、行业盈利预期修正等。
+              </p>
+
+              <div class="overflow-x-auto mb-4">
+                <table class="w-full text-sm border-collapse border border-gray-300">
+                  <thead>
+                    <tr class="bg-gray-100">
+                      <th class="border border-gray-300 px-4 py-2 text-left">指标类型</th>
+                      <th class="border border-gray-300 px-4 py-2 text-left">计算方法</th>
+                      <th class="border border-gray-300 px-4 py-2 text-left">投资逻辑</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td class="border border-gray-300 px-4 py-2">行业动量</td>
+                      <td class="border border-gray-300 px-4 py-2">行业收益率的过去N期排名</td>
+                      <td class="border border-gray-300 px-4 py-2">动量延续，强者恒强</td>
+                    </tr>
+                    <tr>
+                      <td class="border border-gray-300 px-4 py-2">行业估值差</td>
+                      <td class="border border-gray-300 px-4 py-2">行业PE/PB相对于历史分位数</td>
+                      <td class="border border-gray-300 px-4 py-2">均值回归，低估值修复</td>
+                    </tr>
+                    <tr>
+                      <td class="border border-gray-300 px-4 py-2">行业盈利预期修正</td>
+                      <td class="border border-gray-300 px-4 py-2">行业一致预期的调整方向</td>
+                      <td class="border border-gray-300 px-4 py-2">基本面改善，预期驱动</td>
+                    </tr>
+                    <tr>
+                      <td class="border border-gray-300 px-4 py-2">行业资金流向</td>
+                      <td class="border border-gray-300 px-4 py-2">行业主力资金净流入</td>
+                      <td class="border border-gray-300 px-4 py-2">资金推动，趋势确认</td>
+                    </tr>
+                    <tr>
+                      <td class="border border-gray-300 px-4 py-2">行业景气度</td>
+                      <td class="border border-gray-300 px-4 py-2">综合PMI、订单、库存等</td>
+                      <td class="border border-gray-300 px-4 py-2">宏观经济，周期定位</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="highlight-box">
+                <i class="fas fa-lightbulb mr-2"></i>
+                <strong>关键要点</strong>：成功的行业轮动策略需要<strong>识别各行业的关键驱动因素</strong>，
+                构建相应的行业因子，并动态调整因子权重以适应不同市场环境。
+              </div>
+            </div>
+          </div>
+
+          <div class="expandable bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
+            <h4 class="text-xl font-semibold mb-4 flex items-center">
+              <i class="fas fa-brain mr-3 text-accent"></i>
+              轮动信号的机器学习建模
+            </h4>
+            <div class="expanded-content">
+              <p class="mb-4">
+                <strong>行业轮动的机器学习建模</strong>可以视为多分类问题（选择最优行业）或排序问题（对行业进行排序）
+                <a href="https://apacinsider.digital/sector-rotation-strategies-5-ways-to-maximize-returns-across-market-cycles/" class="citation">[590]</a>。
+              </p>
+
+              <div class="grid md:grid-cols-3 gap-4 mb-4">
+                <div class="bg-blue-50 p-4 rounded-lg">
+                  <h5 class="font-semibold text-blue-800 mb-2">多分类模型</h5>
+                  <ul class="text-sm text-blue-700 space-y-1">
+                    <li>• 将每个行业作为一个类别</li>
+                    <li>• 预测下期表现最好的行业</li>
+                    <li>• 常用算法：多分类逻辑回归</li>
+                    <li>• 随机森林、XGBoost、神经网络</li>
+                  </ul>
+                </div>
+                <div class="bg-green-50 p-4 rounded-lg">
+                  <h5 class="font-semibold text-green-800 mb-2">排序学习</h5>
+                  <ul class="text-sm text-green-700 space-y-1">
+                    <li>• 直接学习行业的排序关系</li>
+                    <li>• 而非绝对收益预测</li>
+                    <li>• 常用算法：RankSVM</li>
+                    <li>• LambdaMART、ListNet</li>
+                  </ul>
+                </div>
+                <div class="bg-purple-50 p-4 rounded-lg">
+                  <h5 class="font-semibold text-purple-800 mb-2">序列模型</h5>
+                  <ul class="text-sm text-purple-700 space-y-1">
+                    <li>• 考虑行业轮动的时序依赖</li>
+                    <li>• 捕捉动态模式</li>
+                    <li>• 常用算法：LSTM</li>
+                    <li>• Transformer等序列模型</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div class="bg-red-50 border-l-4 border-red-400 p-4">
+                <h5 class="font-semibold text-red-800 mb-2">关键挑战</h5>
+                <ul class="text-sm text-red-700 space-y-1">
+                  <li>• <strong>样本量有限</strong>：行业数量少（30个左右），时间序列样本有限</li>
+                  <li>• <strong>特征异质性强</strong>：不同行业特征差异大，难以统一建模</li>
+                  <li>• <strong>信号衰减快</strong>：轮动信号需要高频更新，模型稳定性要求高</li>
+                  <li>• <strong>交易成本高</strong>：频繁轮动导致交易成本侵蚀收益</li>
+                </ul>
+              </div>
+
+              <div class="highlight-box">
+                <i class="fas fa-star mr-2"></i>
+                <strong>推荐实践路径</strong>：从简单的动量+估值双因子模型开始，
+                逐步引入更多因子和机器学习方法，同时严格控制换手率和交易成本，
+                通过样本外验证和实盘模拟检验模型有效性。
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Footer -->
+      <footer class="bg-gray-50 border-t border-gray-200 py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6">
+          <div class="text-center text-gray-600">
+            <p class="mb-4">
+              <strong>构建A股因子挖掘库：从数据获取到机器学习应用</strong>
+            </p>
+            <p class="text-sm">
+              本指南系统梳理了A股因子挖掘库构建的全流程，涵盖数据获取、因子定义、有效性检验、降维方法和机器学习应用等关键环节。
+              希望为量化投资研究者和从业者提供有价值的参考。
+            </p>
+          </div>
+        </div>
+      </footer>
+    </main>
+
+    <script>
+        // Toggle expandable sections
+        document.querySelectorAll('.expandable').forEach(section => {
+            section.addEventListener('click', function() {
+                const content = this.querySelector('.expanded-content');
+                const isExpanded = content.style.maxHeight && content.style.maxHeight !== '0px';
+                
+                if (isExpanded) {
+                    content.style.maxHeight = '0px';
+                    this.classList.remove('bg-gray-50');
+                } else {
+                    content.style.maxHeight = content.scrollHeight + 'px';
+                    this.classList.add('bg-gray-50');
+                }
+            });
+        });
+
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Mobile TOC toggle
+        function toggleTOC() {
+            const toc = document.querySelector('.toc');
+            toc.classList.toggle('open');
+        }
+
+        // Add mobile menu button on small screens
+        if (window.innerWidth <= 1024) {
+            const menuButton = document.createElement('button');
+            menuButton.innerHTML = '<i class="fas fa-bars"></i>';
+            menuButton.className = 'fixed top-4 left-4 z-50 bg-primary text-white p-3 rounded-lg shadow-lg lg:hidden';
+            menuButton.onclick = toggleTOC;
+            document.body.appendChild(menuButton);
+        }
+
+        // Close TOC when clicking outside on mobile
+        document.addEventListener('click', function(event) {
+            const toc = document.querySelector('.toc');
+            const menuButton = document.querySelector('button[onclick="toggleTOC()"]');
+            
+            if (window.innerWidth > 1024) return;
+            
+            // Check if click is outside TOC and not on menu button
+            const isClickInsideTOC = toc.contains(event.target);
+            const isClickOnMenuButton = menuButton && menuButton.contains(event.target);
+            
+            if (!isClickInsideTOC && !isClickOnMenuButton && toc.classList.contains('open')) {
+                toc.classList.remove('open');
+            }
+        });
+
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            const toc = document.querySelector('.toc');
+            if (window.innerWidth > 1024) {
+                toc.classList.remove('open');
+            }
+        });
+    </script>
+  
+
+</body></html>

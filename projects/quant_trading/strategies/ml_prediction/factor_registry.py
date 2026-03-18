@@ -246,6 +246,7 @@ class SQLFactorBuilder:
         price_factors = [f for f in factors if f.data_source == "t_stock_dailymarketdata"]
         valuation_factors = [f for f in factors if f.data_source == "t_stock_daily_basic"]
         moneyflow_factors = [f for f in factors if f.data_source == "t_stock_moneyflow"]
+        financial_factors = [f for f in factors if f.data_source == "t_stock_fina_indicator"]
 
         # 计算最大窗口需求
         max_window = 0
@@ -262,7 +263,7 @@ class SQLFactorBuilder:
         # 构建价格数据 CTE（需要窗口函数的历史数据）
         ctes = []
         if price_factors:
-            price_exprs = ["ts_code", "trade_date", "close", "vol", "amount", "pct_chg"]
+            price_exprs = ["ts_code", "trade_date", "open", "high", "low", "close", "vol", "amount", "pct_chg"]
             for f in price_factors:
                 if f.sql_expr:
                     expr = self._process_sql_expr(f.sql_expr)
@@ -314,29 +315,98 @@ moneyflow_data AS (
 )
             """.strip())
 
-        # 构建最终查询
-        select_list = ["COALESCE(p.ts_code, v.ts_code, m.ts_code) as ts_code"]
-        from_clause = ""
+        # 构建财务数据 CTE（最新财报数据）
+        if financial_factors:
+            fina_exprs = ["ts_code"]
+            for f in financial_factors:
+                if f.sql_expr:
+                    fina_exprs.append(f"{f.sql_expr} as {f.name}")
 
-        # 确定主表
-        if price_factors:
-            from_clause = "price_data p"
-            if valuation_factors:
-                from_clause += " LEFT JOIN valuation_data v ON p.ts_code = v.ts_code AND p.trade_date = v.trade_date"
-            if moneyflow_factors:
-                from_clause += " LEFT JOIN moneyflow_data m ON p.ts_code = m.ts_code AND p.trade_date = m.trade_date"
-            where_clause = f"WHERE p.trade_date = %s AND p.ts_code IN ({placeholders})"
-        elif valuation_factors:
-            from_clause = "valuation_data v"
-            if moneyflow_factors:
-                from_clause += " LEFT JOIN moneyflow_data m ON v.ts_code = m.ts_code AND v.trade_date = m.trade_date"
-            where_clause = f"WHERE v.trade_date = %s AND v.ts_code IN ({placeholders})"
+            ctes.append(f"""
+financial_data AS (
+    SELECT {', '.join(fina_exprs)}
+    FROM t_stock_fina_indicator
+    WHERE (ts_code, end_date) IN (
+        SELECT ts_code, MAX(end_date)
+        FROM t_stock_fina_indicator
+        WHERE end_date <= %s
+        GROUP BY ts_code
+    )
+      AND ts_code IN ({placeholders})
+)
+            """.strip())
+
+        # 构建最终查询
+        # 确定所有数据源
+        has_price = bool(price_factors)
+        has_val = bool(valuation_factors)
+        has_mf = bool(moneyflow_factors)
+        has_fin = bool(financial_factors)
+
+        # 确定主表（优先顺序：price > valuation > moneyflow）
+        if has_price:
+            primary_table = "p"
+            primary_alias = "p"
+        elif has_val:
+            primary_table = "v"
+            primary_alias = "v"
+        elif has_mf:
+            primary_table = "m"
+            primary_alias = "m"
         else:
-            from_clause = "moneyflow_data m"
+            primary_table = "f"
+            primary_alias = "f"
+
+        select_list = [f"COALESCE({primary_alias}.ts_code" +
+                       (", v.ts_code" if has_val and primary_alias != "v" else "") +
+                       (", m.ts_code" if has_mf and primary_alias != "m" else "") +
+                       (", f.ts_code" if has_fin and primary_alias != "f" else "") +
+                       ") as ts_code"]
+
+        # 构建 FROM 子句
+        from_parts = []
+        join_conditions = []
+
+        if has_price:
+            from_parts.append("price_data p")
+        if has_val:
+            if not from_parts:
+                from_parts.append("valuation_data v")
+            else:
+                join_conditions.append("LEFT JOIN valuation_data v ON p.ts_code = v.ts_code AND p.trade_date = v.trade_date")
+        if has_mf:
+            if not from_parts:
+                from_parts.append("moneyflow_data m")
+            else:
+                if has_price:
+                    join_conditions.append("LEFT JOIN moneyflow_data m ON p.ts_code = m.ts_code AND p.trade_date = m.trade_date")
+                else:
+                    join_conditions.append("LEFT JOIN moneyflow_data m ON v.ts_code = m.ts_code AND v.trade_date = m.trade_date")
+        if has_fin:
+            if not from_parts:
+                from_parts.append("financial_data f")
+            else:
+                if has_price:
+                    join_conditions.append("LEFT JOIN financial_data f ON p.ts_code = f.ts_code")
+                elif has_val:
+                    join_conditions.append("LEFT JOIN financial_data f ON v.ts_code = f.ts_code")
+                else:
+                    join_conditions.append("LEFT JOIN financial_data f ON m.ts_code = f.ts_code")
+
+        from_clause = " ".join(from_parts + join_conditions)
+
+        # WHERE 子句
+        if has_price:
+            where_clause = f"WHERE p.trade_date = %s AND p.ts_code IN ({placeholders})"
+        elif has_val:
+            where_clause = f"WHERE v.trade_date = %s AND v.ts_code IN ({placeholders})"
+        elif has_mf:
             where_clause = f"WHERE m.trade_date = %s AND m.ts_code IN ({placeholders})"
+        else:
+            where_clause = f"WHERE f.ts_code IN ({placeholders})"
 
         # 添加所有因子列
-        all_factors = price_factors + valuation_factors + moneyflow_factors
+        all_factors = price_factors + valuation_factors + moneyflow_factors + financial_factors
         for f in all_factors:
             # 确定表别名
             if f.data_source == "t_stock_dailymarketdata":
@@ -358,7 +428,14 @@ moneyflow_data AS (
         if moneyflow_factors:
             mf_start = (end_date - timedelta(days=mf_window + 10)).strftime('%Y%m%d') if mf_window > 0 else date_str
             params.extend([mf_start, date_str] + stock_pool)
-        params.extend([date_str] + stock_pool)
+        if financial_factors:
+            params.extend([date_str] + stock_pool)
+
+        # 最后添加主表的日期和股票池参数
+        if price_factors or valuation_factors or moneyflow_factors:
+            params.extend([date_str] + stock_pool)
+        else:
+            params.extend(stock_pool)
 
         return sql, tuple(params)
 
@@ -401,7 +478,53 @@ def create_full_registry() -> FactorRegistry:
         data_source="t_stock_daily_basic"
     )
 
+    # 盈利收益率 EP = 1/PE (价值因子)
+    registry.register_sql_factor(
+        name="ep_ttm",
+        sql_expr="1/NULLIF(pe_ttm, 0)",
+        description="盈利收益率TTM (Earnings Yield)",
+        category="valuation",
+        data_source="t_stock_daily_basic"
+    )
+
+    # 账面市值比 BP = 1/PB (价值因子)
+    registry.register_sql_factor(
+        name="bp",
+        sql_expr="1/NULLIF(pb, 0)",
+        description="账面市值比 (Book-to-Market)",
+        category="valuation",
+        data_source="t_stock_daily_basic"
+    )
+
+    # 换手率 (来自 daily_basic)
+    registry.register_sql_factor(
+        name="turnover_rate",
+        sql_expr="turnover_rate",
+        description="换手率(%)",
+        category="liquidity",
+        data_source="t_stock_daily_basic"
+    )
+
+    # 换手率自由流通股本
+    registry.register_sql_factor(
+        name="turnover_rate_f",
+        sql_expr="turnover_rate_f",
+        description="自由流通股换手率(%)",
+        category="liquidity",
+        data_source="t_stock_daily_basic"
+    )
+
     # ========== 收益特征因子 ==========
+    # 短期反转因子 (5日、10日)
+    for period in [5, 10]:
+        registry.register_sql_factor(
+            name=f"return_{period}d",
+            sql_expr=f"(close / NULLIF(LAG(close, {period}) OVER w, 0) - 1)",
+            description=f"{period}日收益率（短期反转）",
+            category="returns",
+            window_days=period
+        )
+
     for period in [20, 60]:
         registry.register_sql_factor(
             name=f"return_{period}d",
@@ -411,7 +534,7 @@ def create_full_registry() -> FactorRegistry:
             window_days=period
         )
 
-    for period in [20, 60]:
+    for period in [5, 10, 20, 60]:
         registry.register_sql_factor(
             name=f"volatility_{period}d",
             sql_expr=f"STDDEV(pct_chg) OVER (PARTITION BY ts_code ORDER BY trade_date ROWS {period-1} PRECEDING) * SQRT(252)",
@@ -436,6 +559,35 @@ def create_full_registry() -> FactorRegistry:
         description="20日平均成交量",
         category="returns",
         window_days=20
+    )
+
+    # ========== 流动性因子 (Liquidity) ==========
+    # 换手率波动率（基于日频换手率计算）
+    registry.register_python_factor(
+        name="turnover_volatility_20d",
+        compute_fn=lambda df: _calc_turnover_volatility(df, period=20),
+        dependencies=["turnover_rate"],
+        description="20日换手率波动率",
+        category="liquidity"
+    )
+
+    # ========== 风险因子 (Risk) ==========
+    # 20日最大回撤
+    registry.register_python_factor(
+        name="max_drawdown_20d",
+        compute_fn=lambda df: _calc_max_drawdown(df, period=20),
+        dependencies=["close"],
+        description="20日最大回撤",
+        category="risk"
+    )
+
+    # 60日最大回撤
+    registry.register_python_factor(
+        name="max_drawdown_60d",
+        compute_fn=lambda df: _calc_max_drawdown(df, period=60),
+        dependencies=["close"],
+        description="60日最大回撤",
+        category="risk"
     )
 
     # ========== 资金流向因子 ==========
@@ -472,6 +624,9 @@ def create_full_registry() -> FactorRegistry:
         ("pb", "pb_zscore"),
         ("return_20d", "return_20d_zscore"),
         ("volatility_20d", "volatility_20d_zscore"),
+        ("turnover_rate", "turnover_rate_zscore"),
+        ("ep_ttm", "ep_ttm_zscore"),
+        ("bp", "bp_zscore"),
     ]
 
     for base_col, zscore_name in zscore_factors:
@@ -509,6 +664,162 @@ def create_full_registry() -> FactorRegistry:
         category="relative"
     )
 
+    # ========== 动量因子（扩展长周期）==========
+    for period in [120, 250]:
+        registry.register_sql_factor(
+            name=f"return_{period}d",
+            sql_expr=f"(close / NULLIF(LAG(close, {period}) OVER w, 0) - 1)",
+            description=f"{period}日收益率（长期动量）",
+            category="momentum",
+            window_days=period
+        )
+
+    for period in [120, 250]:
+        registry.register_sql_factor(
+            name=f"volatility_{period}d",
+            sql_expr=f"STDDEV(pct_chg) OVER (PARTITION BY ts_code ORDER BY trade_date ROWS {period-1} PRECEDING) * SQRT(252)",
+            description=f"{period}日年化波动率",
+            category="momentum",
+            window_days=period
+        )
+
+    # 价格位置因子（相对于近期高低点）
+    registry.register_sql_factor(
+        name="price_position_20d",
+        sql_expr="(close - MIN(low) OVER (PARTITION BY ts_code ORDER BY trade_date ROWS 19 PRECEDING)) / NULLIF(MAX(high) OVER (PARTITION BY ts_code ORDER BY trade_date ROWS 19 PRECEDING) - MIN(low) OVER (PARTITION BY ts_code ORDER BY trade_date ROWS 19 PRECEDING), 0)",
+        description="20日价格位置（0-1之间，接近1表示接近高点）",
+        category="momentum",
+        window_days=20
+    )
+
+    # ========== 财务因子 (from t_stock_fina_indicator) ==========
+    financial_factors = [
+        ("roe", "roe", "净资产收益率ROE"),
+        ("roa", "roa", "总资产收益率ROA"),
+        ("gross_margin", "grossprofit_margin", "销售毛利率"),
+        ("net_margin", "netprofit_margin", "销售净利率"),
+        ("debt_to_assets", "debt_to_assets", "资产负债率"),
+        ("current_ratio", "current_ratio", "流动比率"),
+        ("quick_ratio", "quick_ratio", "速动比率"),
+        ("asset_turnover", "assets_turn", "总资产周转率"),
+        ("inventory_turnover", "inv_turn", "存货周转率"),
+        ("eps", "eps", "每股收益"),
+        ("bps", "bps", "每股净资产"),
+    ]
+
+    for name, expr, desc in financial_factors:
+        registry.register_sql_factor(
+            name=name,
+            sql_expr=expr,
+            description=desc,
+            category="financial",
+            data_source="t_stock_fina_indicator"
+        )
+
+    # ========== 波动率因子（ATR、下行波动率）==========
+    # 真实波幅（需要使用high/low/close）
+    registry.register_sql_factor(
+        name="tr",
+        sql_expr="GREATEST(high - low, ABS(high - LAG(close, 1) OVER w), ABS(low - LAG(close, 1) OVER w))",
+        description="真实波幅TR",
+        category="volatility",
+        window_days=2
+    )
+
+    # ATR (14日)
+    registry.register_python_factor(
+        name="atr_14d",
+        compute_fn=lambda df: _calc_atr(df, period=14),
+        dependencies=["tr"],
+        description="14日平均真实波幅ATR",
+        category="volatility"
+    )
+
+    # 下行波动率（只计算负收益的波动）
+    registry.register_python_factor(
+        name="downside_vol_20d",
+        compute_fn=lambda df: _calc_downside_vol(df, period=20),
+        dependencies=["return_20d"],
+        description="20日下行波动率（只计算亏损部分）",
+        category="volatility"
+    )
+
+    # ========== 技术因子（RSI、MACD、布林带）==========
+    # RSI (14日)
+    registry.register_python_factor(
+        name="rsi_14d",
+        compute_fn=lambda df: _calc_rsi(df, period=14),
+        dependencies=["close"],
+        description="14日相对强弱指数RSI",
+        category="technical"
+    )
+
+    # MACD
+    registry.register_python_factor(
+        name="macd",
+        compute_fn=lambda df: _calc_macd(df)["macd"],
+        dependencies=["close"],
+        description="MACD指标",
+        category="technical"
+    )
+
+    registry.register_python_factor(
+        name="macd_signal",
+        compute_fn=lambda df: _calc_macd(df)["signal"],
+        dependencies=["close"],
+        description="MACD信号线",
+        category="technical"
+    )
+
+    registry.register_python_factor(
+        name="macd_hist",
+        compute_fn=lambda df: _calc_macd(df)["hist"],
+        dependencies=["close"],
+        description="MACD柱状线",
+        category="technical"
+    )
+
+    # 布林带
+    registry.register_python_factor(
+        name="bb_upper",
+        compute_fn=lambda df: _calc_bollinger(df, period=20, std_dev=2)["upper"],
+        dependencies=["close"],
+        description="布林带上轨",
+        category="technical"
+    )
+
+    registry.register_python_factor(
+        name="bb_middle",
+        compute_fn=lambda df: _calc_bollinger(df, period=20, std_dev=2)["middle"],
+        dependencies=["close"],
+        description="布林带中轨（20日均线）",
+        category="technical"
+    )
+
+    registry.register_python_factor(
+        name="bb_lower",
+        compute_fn=lambda df: _calc_bollinger(df, period=20, std_dev=2)["lower"],
+        dependencies=["close"],
+        description="布林带下轨",
+        category="technical"
+    )
+
+    registry.register_python_factor(
+        name="bb_width",
+        compute_fn=lambda df: _calc_bollinger(df, period=20, std_dev=2)["width"],
+        dependencies=["close"],
+        description="布林带宽度（(上轨-下轨)/中轨）",
+        category="technical"
+    )
+
+    registry.register_python_factor(
+        name="bb_position",
+        compute_fn=lambda df: _calc_bollinger(df, period=20, std_dev=2)["position"],
+        dependencies=["close"],
+        description="布林带位置（0-1之间）",
+        category="technical"
+    )
+
     return registry
 
 
@@ -523,6 +834,161 @@ def _calc_zscore(series: pd.Series) -> pd.Series:
     if std > 0:
         return (series - mean) / std
     return pd.Series(0, index=series.index)
+
+
+def _calc_atr(df: pd.DataFrame, period: int = 14) -> pd.Series:
+    """计算平均真实波幅 ATR"""
+    if 'tr' not in df.columns:
+        return pd.Series(0, index=df.index)
+    tr = pd.to_numeric(df['tr'], errors='coerce')
+    # 使用指数移动平均
+    atr = tr.ewm(span=period, adjust=False).mean()
+    return atr
+
+
+def _calc_downside_vol(df: pd.DataFrame, period: int = 20) -> pd.Series:
+    """计算下行波动率（只计算负收益的波动）"""
+    # 获取日收益率数据
+    if 'pct_chg' in df.columns:
+        returns = pd.to_numeric(df['pct_chg'], errors='coerce')
+    elif 'return_1d' in df.columns:
+        returns = pd.to_numeric(df['return_1d'], errors='coerce')
+    else:
+        # 如果没有日收益，使用close计算
+        if 'close' in df.columns:
+            close = pd.to_numeric(df['close'], errors='coerce')
+            returns = close.pct_change()
+        else:
+            return pd.Series(0, index=df.index)
+
+    # 只保留负收益
+    downside_returns = returns[returns < 0]
+    if len(downside_returns) == 0:
+        return pd.Series(0, index=df.index)
+
+    # 计算下行标准差
+    downside_std = downside_returns.rolling(window=period, min_periods=5).std() * np.sqrt(252)
+    return downside_std.fillna(0)
+
+
+def _calc_rsi(df: pd.DataFrame, period: int = 14) -> pd.Series:
+    """计算 RSI 相对强弱指数"""
+    if 'close' not in df.columns:
+        return pd.Series(50, index=df.index)
+
+    close = pd.to_numeric(df['close'], errors='coerce')
+    # 计算价格变化
+    delta = close.diff()
+
+    # 分离上涨和下跌
+    gain = delta.where(delta > 0, 0)
+    loss = (-delta).where(delta < 0, 0)
+
+    # 计算平均涨跌
+    avg_gain = gain.ewm(span=period, adjust=False).mean()
+    avg_loss = loss.ewm(span=period, adjust=False).mean()
+
+    # 计算 RS 和 RSI
+    rs = avg_gain / avg_loss.replace(0, np.nan)
+    rsi = 100 - (100 / (1 + rs))
+
+    return rsi.fillna(50)
+
+
+def _calc_macd(df: pd.DataFrame, fast: int = 12, slow: int = 26, signal: int = 9) -> dict:
+    """计算 MACD 指标"""
+    if 'close' not in df.columns:
+        empty = pd.Series(0, index=df.index)
+        return {"macd": empty, "signal": empty, "hist": empty}
+
+    close = pd.to_numeric(df['close'], errors='coerce')
+
+    # 计算EMA
+    ema_fast = close.ewm(span=fast, adjust=False).mean()
+    ema_slow = close.ewm(span=slow, adjust=False).mean()
+
+    # MACD线
+    macd_line = ema_fast - ema_slow
+
+    # 信号线
+    signal_line = macd_line.ewm(span=signal, adjust=False).mean()
+
+    # MACD柱状线
+    hist = macd_line - signal_line
+
+    return {
+        "macd": macd_line.fillna(0),
+        "signal": signal_line.fillna(0),
+        "hist": hist.fillna(0)
+    }
+
+
+def _calc_bollinger(df: pd.DataFrame, period: int = 20, std_dev: float = 2.0) -> dict:
+    """计算布林带指标"""
+    if 'close' not in df.columns:
+        empty = pd.Series(0, index=df.index)
+        return {"upper": empty, "middle": empty, "lower": empty, "width": empty, "position": empty}
+
+    close = pd.to_numeric(df['close'], errors='coerce')
+
+    # 中轨（移动平均线）
+    middle = close.rolling(window=period, min_periods=5).mean()
+
+    # 标准差
+    std = close.rolling(window=period, min_periods=5).std()
+
+    # 上轨和下轨
+    upper = middle + std_dev * std
+    lower = middle - std_dev * std
+
+    # 布林带宽度
+    width = (upper - lower) / middle.replace(0, np.nan)
+
+    # 价格在布林带中的位置（0-1之间）
+    position = (close - lower) / (upper - lower).replace(0, np.nan)
+    position = position.clip(0, 1)  # 限制在0-1之间
+
+    return {
+        "upper": upper.fillna(method='ffill').fillna(close),
+        "middle": middle.fillna(method='ffill').fillna(close),
+        "lower": lower.fillna(method='ffill').fillna(close),
+        "width": width.fillna(0),
+        "position": position.fillna(0.5)
+    }
+
+
+def _calc_turnover_volatility(df: pd.DataFrame, period: int = 20) -> pd.Series:
+    """计算换手率波动率"""
+    if 'turnover_rate' not in df.columns:
+        return pd.Series(0, index=df.index)
+
+    turnover = pd.to_numeric(df['turnover_rate'], errors='coerce')
+    # 计算换手率的变异系数（标准差/均值）
+    rolling_std = turnover.rolling(window=period, min_periods=5).std()
+    rolling_mean = turnover.rolling(window=period, min_periods=5).mean().replace(0, np.nan)
+
+    cv = rolling_std / rolling_mean
+    return cv.fillna(0)
+
+
+def _calc_max_drawdown(df: pd.DataFrame, period: int = 20) -> pd.Series:
+    """计算最大回撤
+
+    最大回撤 = (历史最高 - 当前) / 历史最高
+    返回值范围: 0 到 1（0表示没有回撤，1表示全部亏损）
+    """
+    if 'close' not in df.columns:
+        return pd.Series(0, index=df.index)
+
+    close = pd.to_numeric(df['close'], errors='coerce')
+
+    # 计算滚动窗口内的累计最大值
+    rolling_max = close.rolling(window=period, min_periods=5).max()
+
+    # 计算回撤
+    drawdown = (rolling_max - close) / rolling_max.replace(0, np.nan)
+
+    return drawdown.fillna(0).clip(0, 1)
 
 
 # 单例实例

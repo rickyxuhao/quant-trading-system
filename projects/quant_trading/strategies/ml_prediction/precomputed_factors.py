@@ -77,6 +77,7 @@ class FactorPrecomputer:
         self.registry = registry or get_full_registry()
         self._schema = get_factor_schema(self.registry)
         self._ensure_table_exists()
+        self._sync_table_schema()  # 同步表结构，添加新列
 
     def _ensure_table_exists(self):
         """确保预计算表存在（支持动态列）"""
@@ -131,6 +132,168 @@ class FactorPrecomputer:
         except Exception as e:
             logger.error(f"Error getting columns: {e}")
             return []
+
+    def get_missing_factor_columns(self) -> List[str]:
+        """
+        获取数据库中缺失的因子列
+
+        Returns:
+            缺失的因子列名列表
+        """
+        existing_cols = set(self._get_existing_columns())
+        all_factor_cols = set(self._schema.keys())
+        missing_cols = list(all_factor_cols - existing_cols)
+        return missing_cols
+
+    def update_missing_factors(
+        self,
+        start_date: datetime,
+        end_date: datetime
+    ) -> Dict[str, Any]:
+        """
+        增量更新：只为已有数据计算新增的因子列
+
+        适用于：新增因子后，不需要重新计算所有因子
+        只计算缺失的列，使用 UPDATE 更新现有记录
+
+        Args:
+            start_date: 开始日期
+            end_date: 结束日期
+
+        Returns:
+            统计信息
+        """
+        # 1. 获取缺失的列
+        missing_cols = self.get_missing_factor_columns()
+
+        if not missing_cols:
+            logger.info("No new factors to add")
+            return {"status": "no_change", "missing_factors": []}
+
+        logger.info(f"Found {len(missing_cols)} new factors to add: {sorted(missing_cols)}")
+
+        # 2. 确保表结构已更新（添加新列）
+        self._sync_table_schema()
+
+        # 3. 获取日期范围内的交易日
+        from projects.quant_trading.backtest.data_manager import DataManager
+        trade_dates = DataManager().get_trade_dates(start_date, end_date)
+
+        if not trade_dates:
+            logger.warning("No trading dates in range")
+            return {"status": "no_dates", "missing_factors": missing_cols}
+
+        logger.info(f"Processing {len(trade_dates)} trading days")
+
+        # 4. 为每个日期计算缺失因子并更新
+        total_updated = 0
+        success_dates = 0
+        failed_dates = 0
+        details = []
+
+        for i, date in enumerate(trade_dates):
+            date_str = date.strftime('%Y%m%d')
+            logger.info(f"[{i+1}/{len(trade_dates)}] Updating factors for {date_str}")
+
+            try:
+                # 获取当天已存在的股票列表
+                existing_stocks = self._get_stocks_for_date(date)
+
+                if not existing_stocks:
+                    logger.warning(f"No existing data for {date_str}, skipping")
+                    continue
+
+                # 只计算缺失的因子
+                factors_df = self.registry.compute_factors(
+                    date, existing_stocks, factor_names=missing_cols
+                )
+
+                if factors_df.empty:
+                    logger.warning(f"No factors computed for {date_str}")
+                    failed_dates += 1
+                    continue
+
+                # 使用 UPDATE 更新现有记录
+                updated = self._update_factors_for_date(date, factors_df)
+                total_updated += updated
+                success_dates += 1
+                details.append({
+                    "date": date_str,
+                    "status": "success",
+                    "updated": updated,
+                    "factors": len(missing_cols)
+                })
+
+            except Exception as e:
+                logger.error(f"Failed to update {date_str}: {e}")
+                failed_dates += 1
+                details.append({
+                    "date": date_str,
+                    "status": "error",
+                    "error": str(e)
+                })
+
+        return {
+            "status": "success",
+            "new_factors": missing_cols,
+            "dates_processed": len(trade_dates),
+            "success_dates": success_dates,
+            "failed_dates": failed_dates,
+            "total_updated": total_updated,
+            "details": details
+        }
+
+    def _get_stocks_for_date(self, trade_date: datetime) -> List[str]:
+        """获取指定日期已有的股票列表"""
+        date_str = trade_date.strftime('%Y%m%d')
+
+        results = DatabaseManager.fetchall(
+            self.DB_NAME,
+            f"SELECT ts_code FROM {self.TABLE_NAME} WHERE trade_date = %s",
+            (date_str,)
+        )
+        return [r['ts_code'] for r in results]
+
+    def _update_factors_for_date(self, trade_date: datetime, factors_df: pd.DataFrame) -> int:
+        """使用 UPDATE 更新指定日期的因子数据"""
+        if factors_df.empty:
+            return 0
+
+        date_str = trade_date.strftime('%Y%m%d')
+        factor_cols = [c for c in factors_df.columns if c not in ['trade_date', 'ts_code']]
+
+        if not factor_cols:
+            return 0
+
+        # 构建 UPDATE SQL
+        update_sql = f"""
+        UPDATE {self.TABLE_NAME}
+        SET {', '.join([f'{c} = %s' for c in factor_cols])}
+        WHERE trade_date = %s AND ts_code = %s
+        """
+
+        # 准备数据
+        values = []
+        for ts_code, row in factors_df.iterrows():
+            vals = [row.get(c, None) for c in factor_cols]
+            vals.extend([date_str, ts_code])
+            values.append(tuple(vals))
+
+        # 执行批量更新
+        if values:
+            try:
+                batch_size = 1000
+                total_updated = 0
+                for i in range(0, len(values), batch_size):
+                    batch = values[i:i+batch_size]
+                    DatabaseManager.executemany(self.DB_NAME, update_sql, batch)
+                    total_updated += len(batch)
+                logger.debug(f"Updated {total_updated} rows for {date_str}")
+                return total_updated
+            except Exception as e:
+                logger.error(f"Error updating {date_str}: {e}")
+                return 0
+        return 0
 
     def precompute_for_date(
         self,
@@ -327,7 +490,14 @@ class FactorPrecomputer:
             logger.info(f"After filtering: {len(trade_dates)} dates to process")
 
         if not trade_dates:
-            return {"status": "skipped", "message": "All dates already computed"}
+            return {
+                "status": "skipped",
+                "message": "All dates already computed",
+                "total_dates": 0,
+                "success": 0,
+                "failed": 0,
+                "details": []
+            }
 
         # 执行批量处理
         if self.config.use_parallel and len(trade_dates) > 1:
@@ -460,6 +630,75 @@ def backfill_factors(
     return precomputer.batch_precompute(start_date, end_date)
 
 
+def update_existing_factors(
+    start_year: int = 2010,
+    end_year: int = 2024,
+    workers: int = 4
+) -> Dict[str, Any]:
+    """
+    增量更新：只为已有数据计算新增的因子列
+
+    适用于：新增因子后，不需要重新计算所有因子
+    只计算缺失的列，使用 UPDATE 更新现有记录
+
+    Args:
+        start_year: 开始年份
+        end_year: 结束年份
+        workers: 并行进程数（目前仅用于初始化配置，更新过程是串行的）
+
+    Returns:
+        执行结果统计
+    """
+    start_date = datetime(start_year, 1, 1)
+    end_date = datetime(end_year, 12, 31)
+
+    config = PrecomputeConfig(
+        workers=workers,
+        use_parallel=False,  # 增量更新目前使用串行模式
+        skip_existing=True
+    )
+
+    precomputer = FactorPrecomputer(config=config)
+    return precomputer.update_missing_factors(start_date, end_date)
+
+
+def check_factor_status() -> Dict[str, Any]:
+    """
+    检查当前因子覆盖状态
+
+    Returns:
+        包含数据库中已有因子和缺失因子的信息
+    """
+    precomputer = FactorPrecomputer()
+
+    existing_cols = set(precomputer._get_existing_columns())
+    all_factor_cols = set(precomputer._schema.keys())
+    missing_cols = all_factor_cols - existing_cols
+
+    # 获取基本统计信息
+    stats = DatabaseManager.fetchone(
+        precomputer.DB_NAME,
+        f"""
+        SELECT
+            COUNT(DISTINCT trade_date) as total_dates,
+            COUNT(*) as total_rows
+        FROM {precomputer.TABLE_NAME}
+        """
+    )
+
+    return {
+        "status": "ok",
+        "total_factors_defined": len(all_factor_cols),
+        "factors_in_db": len(existing_cols - {'trade_date', 'ts_code', 'updated_at'}),
+        "missing_factors": sorted(missing_cols),
+        "new_factors_count": len(missing_cols),
+        "database_stats": {
+            "total_dates": stats.get('total_dates', 0) if stats else 0,
+            "total_rows": stats.get('total_rows', 0) if stats else 0
+        }
+    }
+
+
 # 全局单例
 _precomputer_instance: Optional[FactorPrecomputer] = None
 
@@ -474,6 +713,28 @@ def get_factor_precomputer(config: Optional[PrecomputeConfig] = None) -> FactorP
 
 # 使用示例
 if __name__ == "__main__":
-    # 补齐 2010 年以来的数据
+    import sys
+
+    # 检查因子状态
+    if len(sys.argv) > 1 and sys.argv[1] == "--status":
+        status = check_factor_status()
+        print(f"因子状态检查:")
+        print(f"  已定义因子: {status['total_factors_defined']}")
+        print(f"  数据库已有: {status['factors_in_db']}")
+        print(f"  缺失因子: {status['new_factors_count']}")
+        if status['missing_factors']:
+            print(f"  缺失列表: {status['missing_factors']}")
+        print(f"  数据行数: {status['database_stats']['total_rows']}")
+        print(f"  覆盖日期: {status['database_stats']['total_dates']}")
+        sys.exit(0)
+
+    # 增量更新模式
+    if len(sys.argv) > 1 and sys.argv[1] == "--update-existing":
+        print("开始增量更新...")
+        result = update_existing_factors(start_year=2010, end_year=2024)
+        print(f"增量更新结果: {result}")
+        sys.exit(0)
+
+    # 默认：补齐 2010 年以来的数据
     result = backfill_factors(start_year=2010, end_year=2024, workers=4)
     print(result)
