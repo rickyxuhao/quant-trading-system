@@ -230,7 +230,7 @@ class FactorRegistry:
 
 
 class SQLFactorBuilder:
-    """SQL 查询构建器 - 支持窗口函数"""
+    """SQL 查询构建器 - 支持多表 JOIN 和窗口函数"""
 
     def build(
         self,
@@ -242,66 +242,128 @@ class SQLFactorBuilder:
 
         placeholders = ','.join(['%s'] * len(stock_pool))
 
+        # 按数据源分组
+        price_factors = [f for f in factors if f.data_source == "t_stock_dailymarketdata"]
+        valuation_factors = [f for f in factors if f.data_source == "t_stock_daily_basic"]
+        moneyflow_factors = [f for f in factors if f.data_source == "t_stock_moneyflow"]
+
         # 计算最大窗口需求
         max_window = 0
-        for f in factors:
+        for f in price_factors:
             if f.window_days:
                 max_window = max(max_window, f.window_days)
 
-        # 计算起始日期（留足历史数据）
+        # 计算起始日期
         from datetime import datetime, timedelta
         end_date = datetime.strptime(date_str, '%Y%m%d')
-        start_date = end_date - timedelta(days=max_window + 10)  # 留足缓冲
+        start_date = end_date - timedelta(days=max_window + 10) if max_window > 0 else end_date
         start_str = start_date.strftime('%Y%m%d')
 
-        # 构建 SQL 表达式列表
-        select_exprs = ["ts_code"]
-        for f in factors:
-            if f.sql_expr:
-                # 处理窗口函数表达式
-                expr = self._process_sql_expr(f.sql_expr)
-                select_exprs.append(f"{expr} as {f.name}")
+        # 构建价格数据 CTE（需要窗口函数的历史数据）
+        ctes = []
+        if price_factors:
+            price_exprs = ["ts_code", "trade_date", "close", "vol", "amount", "pct_chg"]
+            for f in price_factors:
+                if f.sql_expr:
+                    expr = self._process_sql_expr(f.sql_expr)
+                    price_exprs.append(f"{expr} as {f.name}")
 
-        # 构建完整的 SQL
-        sql = f"""
-WITH price_data AS (
-    SELECT
-        ts_code,
-        trade_date,
-        close,
-        vol,
-        amount,
-        pct_chg
+            ctes.append(f"""
+price_data AS (
+    SELECT {', '.join(price_exprs)}
     FROM t_stock_dailymarketdata
     WHERE trade_date BETWEEN %s AND %s
       AND ts_code IN ({placeholders})
-),
-priced AS (
-    SELECT
-        ts_code,
-        trade_date,
-        close,
-        vol,
-        amount,
-        pct_chg,
-        {', '.join(select_exprs[1:])}  -- 动态因子计算
-    FROM price_data
     WINDOW w AS (PARTITION BY ts_code ORDER BY trade_date)
 )
-SELECT * FROM priced WHERE trade_date = %s
-        """.strip()
+            """.strip())
+
+        # 构建估值数据 CTE（单日数据）
+        if valuation_factors:
+            val_exprs = ["ts_code", "trade_date"]
+            for f in valuation_factors:
+                if f.sql_expr:
+                    val_exprs.append(f"{f.sql_expr} as {f.name}")
+
+            ctes.append(f"""
+valuation_data AS (
+    SELECT {', '.join(val_exprs)}
+    FROM t_stock_daily_basic
+    WHERE trade_date = %s
+      AND ts_code IN ({placeholders})
+)
+            """.strip())
+
+        # 构建资金流 CTE（需要历史数据）
+        mf_window = max([f.window_days for f in moneyflow_factors if f.window_days], default=0)
+        if moneyflow_factors:
+            mf_exprs = ["ts_code", "trade_date", "buy_lg_amount", "sell_lg_amount"]
+            for f in moneyflow_factors:
+                if f.sql_expr:
+                    expr = self._process_sql_expr(f.sql_expr)
+                    mf_exprs.append(f"{expr} as {f.name}")
+
+            mf_start = (end_date - timedelta(days=mf_window + 10)).strftime('%Y%m%d') if mf_window > 0 else date_str
+            ctes.append(f"""
+moneyflow_data AS (
+    SELECT {', '.join(mf_exprs)}
+    FROM t_stock_moneyflow
+    WHERE trade_date BETWEEN %s AND %s
+      AND ts_code IN ({placeholders})
+    WINDOW w AS (PARTITION BY ts_code ORDER BY trade_date)
+)
+            """.strip())
+
+        # 构建最终查询
+        select_list = ["COALESCE(p.ts_code, v.ts_code, m.ts_code) as ts_code"]
+        from_clause = ""
+
+        # 确定主表
+        if price_factors:
+            from_clause = "price_data p"
+            if valuation_factors:
+                from_clause += " LEFT JOIN valuation_data v ON p.ts_code = v.ts_code AND p.trade_date = v.trade_date"
+            if moneyflow_factors:
+                from_clause += " LEFT JOIN moneyflow_data m ON p.ts_code = m.ts_code AND p.trade_date = m.trade_date"
+            where_clause = f"WHERE p.trade_date = %s AND p.ts_code IN ({placeholders})"
+        elif valuation_factors:
+            from_clause = "valuation_data v"
+            if moneyflow_factors:
+                from_clause += " LEFT JOIN moneyflow_data m ON v.ts_code = m.ts_code AND v.trade_date = m.trade_date"
+            where_clause = f"WHERE v.trade_date = %s AND v.ts_code IN ({placeholders})"
+        else:
+            from_clause = "moneyflow_data m"
+            where_clause = f"WHERE m.trade_date = %s AND m.ts_code IN ({placeholders})"
+
+        # 添加所有因子列
+        all_factors = price_factors + valuation_factors + moneyflow_factors
+        for f in all_factors:
+            # 确定表别名
+            if f.data_source == "t_stock_dailymarketdata":
+                alias = "p"
+            elif f.data_source == "t_stock_daily_basic":
+                alias = "v"
+            else:
+                alias = "m"
+            select_list.append(f"{alias}.{f.name}")
+
+        sql = f"WITH {', '.join(ctes)}\nSELECT {', '.join(select_list)}\nFROM {from_clause}\n{where_clause}"
 
         # 构建参数
-        params = [start_str, date_str] + stock_pool + [date_str]
+        params = []
+        if price_factors:
+            params.extend([start_str, date_str] + stock_pool)
+        if valuation_factors:
+            params.extend([date_str] + stock_pool)
+        if moneyflow_factors:
+            mf_start = (end_date - timedelta(days=mf_window + 10)).strftime('%Y%m%d') if mf_window > 0 else date_str
+            params.extend([mf_start, date_str] + stock_pool)
+        params.extend([date_str] + stock_pool)
 
         return sql, tuple(params)
 
     def _process_sql_expr(self, expr: str) -> str:
         """处理 SQL 表达式，确保兼容性"""
-        # 替换简写的窗口定义
-        if 'OVER w' in expr and 'PARTITION BY' not in expr:
-            # 使用默认窗口定义
-            pass
         return expr
 
 
@@ -352,7 +414,7 @@ def create_full_registry() -> FactorRegistry:
     for period in [20, 60]:
         registry.register_sql_factor(
             name=f"volatility_{period}d",
-            sql_expr=f"STDDEV(pct_chg) OVER w ROWS {period-1} PRECEDING * SQRT(252)",
+            sql_expr=f"STDDEV(pct_chg) OVER (PARTITION BY ts_code ORDER BY trade_date ROWS {period-1} PRECEDING) * SQRT(252)",
             description=f"{period}日年化波动率",
             category="returns",
             window_days=period
@@ -361,7 +423,7 @@ def create_full_registry() -> FactorRegistry:
     # 成交量比率
     registry.register_sql_factor(
         name="volume_ratio",
-        sql_expr="AVG(vol) OVER w ROWS 4 PRECEDING / NULLIF(AVG(vol) OVER w ROWS 19 PRECEDING, 0)",
+        sql_expr="AVG(vol) OVER (PARTITION BY ts_code ORDER BY trade_date ROWS 4 PRECEDING) / NULLIF(AVG(vol) OVER (PARTITION BY ts_code ORDER BY trade_date ROWS 19 PRECEDING), 0)",
         description="5日/20日成交量比率",
         category="returns",
         window_days=20
@@ -370,7 +432,7 @@ def create_full_registry() -> FactorRegistry:
     # 20日平均成交量
     registry.register_sql_factor(
         name="turnover_20d",
-        sql_expr="AVG(vol) OVER w ROWS 19 PRECEDING",
+        sql_expr="AVG(vol) OVER (PARTITION BY ts_code ORDER BY trade_date ROWS 19 PRECEDING)",
         description="20日平均成交量",
         category="returns",
         window_days=20
@@ -388,18 +450,18 @@ def create_full_registry() -> FactorRegistry:
     for period in [5, 20]:
         registry.register_sql_factor(
             name=f"net_inflow_{period}d",
-            sql_expr=f"SUM(buy_lg_amount - sell_lg_amount) OVER w ROWS {period-1} PRECEDING",
+            sql_expr=f"SUM(buy_lg_amount - sell_lg_amount) OVER (PARTITION BY ts_code ORDER BY trade_date ROWS {period-1} PRECEDING)",
             description=f"{period}日累计净流入",
             category="moneyflow",
             data_source="t_stock_moneyflow",
             window_days=period
         )
 
-    # 大单净流入占比
+    # 大单净流入（金额，不是占比）
     registry.register_sql_factor(
-        name="large_order_net_ratio",
-        sql_expr="(buy_lg_amount - sell_lg_amount) / NULLIF(amount * 10000, 0)",
-        description="大单净流入占比",
+        name="large_order_net_amount",
+        sql_expr="buy_lg_amount - sell_lg_amount",
+        description="大单净流入金额",
         category="moneyflow",
         data_source="t_stock_moneyflow"
     )
@@ -422,9 +484,18 @@ def create_full_registry() -> FactorRegistry:
         )
 
     # ========== 市场相对因子 (Python 计算) ==========
+    def _calc_market_alpha(df, col):
+        """计算市场超额收益"""
+        series = df.get(col)
+        if series is None or not isinstance(series, pd.Series):
+            return pd.Series(0, index=df.index)
+        # 转换为 float 避免 Decimal 类型问题
+        series = pd.to_numeric(series, errors='coerce')
+        return series - series.mean()
+
     registry.register_python_factor(
         name="market_alpha_20d",
-        compute_fn=lambda df: df.get('return_20d', 0) - df.get('return_20d', 0).mean(),
+        compute_fn=lambda df, col='return_20d': _calc_market_alpha(df, col),
         dependencies=["return_20d"],
         description="20日市场超额收益",
         category="relative"
@@ -432,7 +503,7 @@ def create_full_registry() -> FactorRegistry:
 
     registry.register_python_factor(
         name="market_alpha_60d",
-        compute_fn=lambda df: df.get('return_60d', 0) - df.get('return_60d', 0).mean(),
+        compute_fn=lambda df, col='return_60d': _calc_market_alpha(df, col),
         dependencies=["return_60d"],
         description="60日市场超额收益",
         category="relative"
@@ -445,6 +516,8 @@ def _calc_zscore(series: pd.Series) -> pd.Series:
     """计算 Z-score"""
     if series is None or series.empty:
         return pd.Series(dtype=float)
+    # 转换为 float 避免 Decimal 类型问题
+    series = pd.to_numeric(series, errors='coerce')
     mean = series.mean()
     std = series.std()
     if std > 0:
