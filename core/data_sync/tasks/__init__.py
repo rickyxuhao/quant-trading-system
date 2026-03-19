@@ -12,6 +12,8 @@ from core.data_sync.tasks.tushare_trade_date import TushareTradeDateTask
 from core.data_sync.tasks.tushare_stock_st_list import TushareStockStListTask
 from core.data_sync.tasks.tushare_stock_dailymarketdata import TushareStockDailyMarketDataTask
 from core.data_sync.tasks.tushare_stock_adjfactor import TushareStockAdjFactorTask
+from core.data_sync.tasks.tushare_daily_basic import TushareDailyBasicTask
+from core.data_sync.tasks.tushare_moneyflow import TushareMoneyflowTask
 
 
 class TaskRegistry:
@@ -104,6 +106,8 @@ TaskRegistry.register('tushare_trade_date', TushareTradeDateTask)
 TaskRegistry.register('tushare_stock_st_list', TushareStockStListTask)
 TaskRegistry.register('tushare_stock_dailymarketdata', TushareStockDailyMarketDataTask)
 TaskRegistry.register('tushare_stock_adjfactor', TushareStockAdjFactorTask)
+TaskRegistry.register('tushare_daily_basic', TushareDailyBasicTask)
+TaskRegistry.register('tushare_moneyflow', TushareMoneyflowTask)
 
 
 __all__ = [
@@ -120,4 +124,6 @@ __all__ = [
     'TushareStockStListTask',
     'TushareStockDailyMarketDataTask',
     'TushareStockAdjFactorTask',
+    'TushareDailyBasicTask',
+    'TushareMoneyflowTask',
 ]

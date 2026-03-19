@@ -78,3 +78,27 @@ tasks:
     # 速率限制: adj_factor接口每次最多6000条
     batch_size: 6000
     max_requests_per_minute: 500
+
+  # 每日基本面数据 - 每天收盘后16:20增量同步
+  # 包含PE/PB/市值/换手率等指标
+  - name: daily_basic
+    task_type: tushare_daily_basic
+    table: t_stock_daily_basic
+    db: tushare_biz
+    sync_type: incremental
+    schedule: "20 16 * * *"  # 每天16:20
+    check_after_sync: true
+    batch_size: 6000
+    max_requests_per_minute: 500
+
+  # 资金流向数据 - 每天收盘后16:25增量同步
+  # 包含大单/小单资金流向数据
+  - name: moneyflow
+    task_type: tushare_moneyflow
+    table: t_stock_moneyflow
+    db: tushare_biz
+    sync_type: incremental
+    schedule: "25 16 * * *"  # 每天16:25
+    check_after_sync: true
+    batch_size: 6000
+    max_requests_per_minute: 500

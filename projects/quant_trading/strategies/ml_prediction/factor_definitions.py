@@ -144,16 +144,17 @@ _register_factor(FactorDefinition(
     winsorize=True,
 ))
 
-_register_factor(FactorDefinition(
-    name="pcf",
-    description="市现率 (Price-to-Cash-Flow)",
-    category="valuation",
-    calculation=CalculationType.DIRECT,
-    data_source="t_stock_daily_basic",
-    source_field="pcf_ncf_ttm",
-    sql_expr="pcf_ncf_ttm",
-    winsorize=True,
-))
+# Note: pcf_ncf_ttm column does not exist in t_stock_daily_basic, removed
+# _register_factor(FactorDefinition(
+#     name="pcf",
+#     description="市现率 (Price-to-Cash-Flow)",
+#     category="valuation",
+#     calculation=CalculationType.DIRECT,
+#     data_source="t_stock_daily_basic",
+#     source_field="pcf_ncf_ttm",
+#     sql_expr="pcf_ncf_ttm",
+#     winsorize=True,
+# ))
 
 _register_factor(FactorDefinition(
     name="dividend_yield",
@@ -236,7 +237,7 @@ for period in [5, 10, 20, 60, 120, 250]:
         calculation=CalculationType.SQL,
         data_source="t_stock_dailymarketdata",
         source_field="close",
-        sql_expr=f"(close / NULLIF(LAG(close, {period}) OVER w, 0) - 1)",
+        sql_expr=f"(close / NULLIF(LAG(close, {period}) OVER (PARTITION BY ts_code ORDER BY trade_date), 0) - 1)",
         window_days=period,
         default_value=0.0,
         winsorize=True,
@@ -387,14 +388,17 @@ FINANCIAL_FACTORS = [
 ]
 
 for name, field, desc in FINANCIAL_FACTORS:
+    # Note: t_stock_fina_indicator does not have trade_date column
+    # It uses end_date instead. These factors need special handling.
     _register_factor(FactorDefinition(
         name=name,
         description=desc,
         category="financial",
-        calculation=CalculationType.DIRECT,
+        calculation=CalculationType.PYTHON,  # Changed from DIRECT due to no trade_date
         data_source="t_stock_fina_indicator",
         source_field=field,
-        sql_expr=field,
+        # sql_expr is not used for PYTHON type, but we keep it for reference
+        sql_expr=f"(SELECT {field} FROM t_stock_fina_indicator fi WHERE fi.ts_code = ts_code AND fi.end_date <= trade_date ORDER BY fi.end_date DESC LIMIT 1)",
         winsorize=True,
     ))
 
@@ -515,7 +519,7 @@ _register_factor(FactorDefinition(
     calculation=CalculationType.SQL,
     data_source="t_stock_dailymarketdata",
     source_field="high, low, close",
-    sql_expr="GREATEST(high - low, ABS(high - LAG(close, 1) OVER w), ABS(low - LAG(close, 1) OVER w))",
+    sql_expr="GREATEST(high - low, ABS(high - LAG(close, 1) OVER (PARTITION BY ts_code ORDER BY trade_date)), ABS(low - LAG(close, 1) OVER (PARTITION BY ts_code ORDER BY trade_date)))",
     window_days=2,
 ))
 
