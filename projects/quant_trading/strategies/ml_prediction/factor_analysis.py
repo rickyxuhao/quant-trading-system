@@ -790,3 +790,507 @@ if __name__ == "__main__":
         print("Usage:")
         print("  python factor_analysis.py --screen")
         print("  python factor_analysis.py --analyze <factor_name>")
+
+
+# ============================================================================
+# 新增功能：因子换手率分析、行业中性测试、事件研究
+# ============================================================================
+
+@dataclass
+class FactorTurnoverResult:
+    """因子换手率分析结果"""
+    factor_name: str
+    daily_turnover: pd.Series  # 每日换手率时序
+    mean_turnover: float       # 平均换手率
+    turnover_std: float        # 换手率标准差
+    annual_turnover: float     # 年化换手率估计
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'factor_name': self.factor_name,
+            'mean_turnover': self.mean_turnover,
+            'turnover_std': self.turnover_std,
+            'annual_turnover': self.annual_turnover,
+        }
+
+
+@dataclass
+class IndustryNeutralResult:
+    """行业中性分析结果"""
+    factor_name: str
+    ic_within_industry: Dict[str, float]  # 行业内IC
+    ic_cross_industry: float              # 行业间IC
+    quantile_returns_by_industry: Dict[str, pd.DataFrame]  # 各行业分位数收益
+    industry_neutral_ic: float            # 行业中性化后的IC
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'factor_name': self.factor_name,
+            'ic_cross_industry': self.ic_cross_industry,
+            'industry_neutral_ic': self.industry_neutral_ic,
+            'avg_within_industry_ic': np.mean(list(self.ic_within_industry.values())),
+        }
+
+
+@dataclass
+class EventStudyResult:
+    """事件研究结果"""
+    event_name: str
+    window_pre: int          # 事件前窗口（天数）
+    window_post: int         # 事件后窗口（天数）
+    event_dates: List[str]   # 事件日期列表
+    avg_cumulative_return: pd.Series  # 平均累积收益
+    significant_days: List[int]       # 显著异于0的天数
+    t_stats: pd.Series       # 每日t统计量
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'event_name': self.event_name,
+            'n_events': len(self.event_dates),
+            'max_return': self.avg_cumulative_return.max(),
+            'min_return': self.avg_cumulative_return.min(),
+            'final_return': self.avg_cumulative_return.iloc[-1],
+        }
+
+
+def calculate_factor_turnover(
+    factor_name: str,
+    stock_pool: Optional[List[str]] = None,
+    top_n: int = 100,
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
+) -> FactorTurnoverResult:
+    """
+    计算因子换手率
+
+    衡量因子选股的稳定性。高换手率意味着频繁调仓，交易成本增加。
+
+    Args:
+        factor_name: 因子名称
+        stock_pool: 股票池
+        top_n: 选取前N只股票计算换手率
+        start_date: 开始日期
+        end_date: 结束日期
+
+    Returns:
+        FactorTurnoverResult: 换手率分析结果
+
+    Example:
+        >>> result = calculate_factor_turnover("pe_ttm", top_n=50)
+        >>> print(f"平均换手率: {result.mean_turnover:.2%}")
+    """
+    from .precomputed_factors import get_factor_precomputer
+
+    precomputer = get_factor_precomputer()
+    start_date = start_date or datetime(2020, 1, 1)
+    end_date = end_date or datetime(2024, 12, 31)
+
+    # 获取交易日
+    from projects.quant_trading.backtest.data_manager import DataManager
+    dm = DataManager()
+    trade_dates = dm.get_trade_dates(start_date, end_date)
+
+    turnovers = []
+    dates = []
+    prev_top_stocks = None
+
+    for date in trade_dates:
+        try:
+            # 获取当日因子值
+            factors = precomputer.get_precomputed_factors(
+                trade_date=date,
+                stock_pool=stock_pool
+            )
+
+            if factors.empty or factor_name not in factors.columns:
+                continue
+
+            # 获取前N只股票
+            factor_vals = factors[factor_name].dropna()
+            if len(factor_vals) < top_n:
+                continue
+
+            current_top_stocks = set(factor_vals.nlargest(top_n).index)
+
+            if prev_top_stocks is not None:
+                # 计算换手率 = 1 - 交集比例
+                common = len(prev_top_stocks & current_top_stocks)
+                turnover = 1 - common / top_n
+                turnovers.append(turnover)
+                dates.append(date.strftime('%Y%m%d'))
+
+            prev_top_stocks = current_top_stocks
+
+        except Exception as e:
+            logger.debug(f"Failed to compute turnover for {date}: {e}")
+            continue
+
+    if not turnovers:
+        raise ValueError(f"No turnover data computed for {factor_name}")
+
+    turnover_series = pd.Series(turnovers, index=dates)
+
+    return FactorTurnoverResult(
+        factor_name=factor_name,
+        daily_turnover=turnover_series,
+        mean_turnover=turnover_series.mean(),
+        turnover_std=turnover_series.std(),
+        annual_turnover=turnover_series.mean() * 252,  # 年化估算
+    )
+
+
+def industry_neutral_quantile_analysis(
+    factor_name: str,
+    industry_field: str = "industry",
+    n_quantiles: int = 5,
+    forward_period: int = 20,
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
+) -> IndustryNeutralResult:
+    """
+    行业中性分位数分析
+
+    在每个行业内进行分位数测试，排除行业效应对因子的影响。
+
+    Args:
+        factor_name: 因子名称
+        industry_field: 行业字段名（需要在预计算因子中）
+        n_quantiles: 分位数数量
+        forward_period: 前瞻期
+        start_date: 开始日期
+        end_date: 结束日期
+
+    Returns:
+        IndustryNeutralResult: 行业中性分析结果
+
+    Example:
+        >>> result = industry_neutral_quantile_analysis("pe_ttm")
+        >>> print(f"行业中性IC: {result.industry_neutral_ic:.4f}")
+    """
+    from .precomputed_factors import get_factor_precomputer
+    from projects.quant_trading.backtest.data_manager import DataManager
+    import statsmodels.api as sm
+
+    precomputer = get_factor_precomputer()
+    dm = DataManager()
+
+    start_date = start_date or datetime(2020, 1, 1)
+    end_date = end_date or datetime(2024, 12, 31)
+
+    trade_dates = dm.get_trade_dates(start_date, end_date)
+
+    # 存储行业内IC
+    ic_within_industry = defaultdict(list)
+    all_neutral_ics = []
+
+    for date in trade_dates:
+        date_str = date.strftime('%Y%m%d')
+
+        try:
+            # 获取因子数据
+            factors = precomputer.get_precomputed_factors(trade_date=date)
+
+            if factors.empty or factor_name not in factors.columns:
+                continue
+
+            if industry_field not in factors.columns:
+                logger.warning(f"Industry field {industry_field} not found in factor data")
+                continue
+
+            # 获取前瞻收益
+            if date + timedelta(days=forward_period) > end_date:
+                continue
+
+            future_date = trade_dates[min(
+                trade_dates.index(date) + forward_period,
+                len(trade_dates) - 1
+            )]
+
+            current_prices = dm.get_batch_stock_data(
+                ts_codes=list(factors.index),
+                fields=['close'],
+                trade_date=date
+            )
+            future_prices = dm.get_batch_stock_data(
+                ts_codes=list(factors.index),
+                fields=['close'],
+                trade_date=future_date
+            )
+
+            # 计算收益
+            returns = future_prices['close'] / current_prices['close'] - 1
+
+            # 合并数据
+            data = factors[[factor_name, industry_field]].copy()
+            data['returns'] = returns
+            data = data.dropna()
+
+            if len(data) < 100:
+                continue
+
+            # 行业中性化：在每个行业内计算IC
+            for industry in data[industry_field].unique():
+                industry_data = data[data[industry_field] == industry]
+                if len(industry_data) < 20:
+                    continue
+
+                ic, _ = stats.spearmanr(
+                    industry_data[factor_name],
+                    industry_data['returns']
+                )
+                if not np.isnan(ic):
+                    ic_within_industry[industry].append(ic)
+
+            # 整体行业中性IC（回归去除行业效应）
+            # 使用虚拟变量控制行业
+            industry_dummies = pd.get_dummies(data[industry_field], prefix='ind')
+            X = pd.concat([data[[factor_name]], industry_dummies], axis=1)
+            X = sm.add_constant(X)
+            y = data['returns']
+
+            model = sm.OLS(y, X).fit()
+            # 因子系数标准化后的相关性
+            neutral_ic = model.params[factor_name] / model.bse[factor_name]
+            all_neutral_ics.append(neutral_ic)
+
+        except Exception as e:
+            logger.debug(f"Failed industry neutral analysis for {date}: {e}")
+            continue
+
+    # 计算平均行业内IC
+    avg_ic_within = {
+        industry: np.mean(ics)
+        for industry, ics in ic_within_industry.items()
+    }
+
+    # 计算行业间IC（原始IC）
+    cross_industry_ic = np.mean(all_neutral_ics) if all_neutral_ics else 0
+
+    return IndustryNeutralResult(
+        factor_name=factor_name,
+        ic_within_industry=avg_ic_within,
+        ic_cross_industry=cross_industry_ic,
+        quantile_returns_by_industry={},  # TODO: 实现各行业的分位数收益
+        industry_neutral_ic=np.mean(all_neutral_ics) if all_neutral_ics else 0,
+    )
+
+
+def event_study(
+    event_dates: List[str],
+    returns_data: pd.DataFrame,
+    window_pre: int = 10,
+    window_post: int = 10,
+    event_name: str = "Event",
+) -> EventStudyResult:
+    """
+    事件研究分析
+
+    分析特定事件前后的股票收益表现。
+
+    Args:
+        event_dates: 事件日期列表 (YYYYMMDD)
+        returns_data: 收益率数据 DataFrame，index=date, columns=stocks
+        window_pre: 事件前窗口天数
+        window_post: 事件后窗口天数
+        event_name: 事件名称
+
+    Returns:
+        EventStudyResult: 事件研究结果
+
+    Example:
+        >>> events = ["20240115", "20240220", "20240315"]
+        >>> result = event_study(events, returns_df, window_pre=5, window_post=20)
+        >>> result.plot_cumulative_return()
+    """
+    cumulative_returns = []
+
+    for event_date in event_dates:
+        try:
+            # 找到事件日期在数据中的位置
+            if event_date not in returns_data.index:
+                continue
+
+            event_idx = returns_data.index.get_loc(event_date)
+
+            # 提取窗口内的收益
+            start_idx = max(0, event_idx - window_pre)
+            end_idx = min(len(returns_data), event_idx + window_post + 1)
+
+            window_returns = returns_data.iloc[start_idx:end_idx]
+
+            # 计算累积收益（等权平均）
+            avg_returns = window_returns.mean(axis=1)
+            cum_returns = (1 + avg_returns).cumprod() - 1
+
+            # 对齐到事件日（事件日为第0天）
+            event_day_idx = event_idx - start_idx
+            aligned_returns = cum_returns - cum_returns.iloc[event_day_idx]
+
+            # 保存结果
+            day_indices = list(range(-event_day_idx, len(cum_returns) - event_day_idx))
+            cumulative_returns.append((day_indices, aligned_returns.values))
+
+        except Exception as e:
+            logger.warning(f"Failed to process event {event_date}: {e}")
+            continue
+
+    if not cumulative_returns:
+        raise ValueError("No valid event data")
+
+    # 计算平均累积收益
+    all_days = set()
+    for days, _ in cumulative_returns:
+        all_days.update(days)
+    all_days = sorted(all_days)
+
+    avg_cum_returns = []
+    t_stats = []
+
+    for day in all_days:
+        day_returns = []
+        for days, rets in cumulative_returns:
+            if day in days:
+                idx = days.index(day)
+                day_returns.append(rets[idx])
+
+        if len(day_returns) >= 3:  # 至少3个事件
+            avg_ret = np.mean(day_returns)
+            t_stat = np.mean(day_returns) / (np.std(day_returns) / np.sqrt(len(day_returns)) + 1e-8)
+            avg_cum_returns.append((day, avg_ret, t_stat))
+
+    avg_cum_series = pd.Series(
+        [x[1] for x in avg_cum_returns],
+        index=[x[0] for x in avg_cum_returns]
+    )
+    t_stat_series = pd.Series(
+        [x[2] for x in avg_cum_returns],
+        index=[x[0] for x in avg_cum_returns]
+    )
+
+    # 找出显著的天数（|t| > 2）
+    significant_days = t_stat_series[abs(t_stat_series) > 2].index.tolist()
+
+    return EventStudyResult(
+        event_name=event_name,
+        window_pre=window_pre,
+        window_post=window_post,
+        event_dates=event_dates,
+        avg_cumulative_return=avg_cum_series,
+        significant_days=significant_days,
+        t_stats=t_stat_series,
+    )
+
+
+def plot_event_cumulative_return(
+    result: EventStudyResult,
+    save_path: Optional[str] = None,
+    show_confidence: bool = True,
+):
+    """
+    绘制事件累积收益图
+
+    Args:
+        result: 事件研究结果
+        save_path: 保存路径
+        show_confidence: 是否显示置信区间
+    """
+    import matplotlib.pyplot as plt
+
+    fig, ax = plt.subplots(figsize=(12, 6))
+
+    # 绘制累积收益
+    ax.plot(
+        result.avg_cumulative_return.index,
+        result.avg_cumulative_return.values * 100,
+        marker='o',
+        linewidth=2,
+        label='Cumulative Return'
+    )
+
+    # 标记事件日
+    ax.axvline(x=0, color='red', linestyle='--', alpha=0.5, label='Event Day')
+
+    # 标记显著天数
+    if result.significant_days:
+        for day in result.significant_days:
+            if day in result.avg_cumulative_return.index:
+                ax.scatter(
+                    [day],
+                    [result.avg_cumulative_return[day] * 100],
+                    color='red',
+                    s=100,
+                    zorder=5,
+                )
+
+    ax.axhline(y=0, color='black', linestyle='-', alpha=0.3)
+    ax.set_xlabel('Days Relative to Event')
+    ax.set_ylabel('Cumulative Return (%)')
+    ax.set_title(f'Event Study: {result.event_name} (n={len(result.event_dates)})')
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+    if save_path:
+        plt.savefig(save_path, dpi=150, bbox_inches='tight')
+    else:
+        plt.show()
+
+
+# 便捷函数
+def analyze_factor_turnover(
+    factor_names: List[str],
+    top_n: int = 100,
+) -> pd.DataFrame:
+    """
+    批量分析多个因子的换手率
+
+    Args:
+        factor_names: 因子列表
+        top_n: 选取前N只股票
+
+    Returns:
+        DataFrame: 各因子的换手率指标
+    """
+    results = []
+    for factor in factor_names:
+        try:
+            result = calculate_factor_turnover(factor, top_n=top_n)
+            results.append({
+                'factor_name': factor,
+                'mean_turnover': result.mean_turnover,
+                'turnover_std': result.turnover_std,
+                'annual_turnover': result.annual_turnover,
+            })
+        except Exception as e:
+            logger.warning(f"Failed to analyze turnover for {factor}: {e}")
+
+    return pd.DataFrame(results)
+
+
+def analyze_industry_neutrality(
+    factor_names: List[str],
+    industry_field: str = "industry",
+) -> pd.DataFrame:
+    """
+    批量分析多个因子的行业中性
+
+    Args:
+        factor_names: 因子列表
+        industry_field: 行业字段名
+
+    Returns:
+        DataFrame: 各因子的行业中性指标
+    """
+    results = []
+    for factor in factor_names:
+        try:
+            result = industry_neutral_quantile_analysis(factor, industry_field=industry_field)
+            results.append({
+                'factor_name': factor,
+                'cross_industry_ic': result.ic_cross_industry,
+                'industry_neutral_ic': result.industry_neutral_ic,
+                'avg_within_industry_ic': np.mean(list(result.ic_within_industry.values())),
+            })
+        except Exception as e:
+            logger.warning(f"Failed to analyze industry neutrality for {factor}: {e}")
+
+    return pd.DataFrame(results)

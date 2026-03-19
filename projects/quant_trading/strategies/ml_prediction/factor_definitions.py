@@ -798,6 +798,73 @@ def print_all_factors_summary():
 # 主程序入口（用于测试）
 # =============================================================================
 
+# =============================================================================
+# Qlib 因子注册
+# =============================================================================
+
+def register_qlib_factors(alpha158: bool = True, alpha360: bool = False):
+    """
+    注册 Qlib Alpha 因子到因子定义系统
+
+    这个函数在导入时不会自动执行，需要显式调用。
+
+    Args:
+        alpha158: 是否注册 Alpha158 因子（约150个）
+        alpha360: 是否注册 Alpha360 因子（360个）
+
+    Example:
+        >>> from factor_definitions import register_qlib_factors
+        >>> register_qlib_factors(alpha158=True, alpha360=False)
+        >>> # 现在 FACTOR_DEFINITIONS 包含 Qlib 因子
+        >>> print(f"Total factors: {len(FACTOR_DEFINITIONS)}")
+    """
+    import logging
+    _logger = logging.getLogger(__name__)
+
+    try:
+        # 支持相对导入和直接运行
+        try:
+            from .qlib_factors import QlibFactorRegistry
+        except ImportError:
+            from qlib_factors import QlibFactorRegistry
+
+        registry = QlibFactorRegistry()
+
+        if alpha158:
+            _logger.info("Parsing Alpha158 factor definitions...")
+            registry.parse_alpha158()
+
+        if alpha360:
+            _logger.info("Parsing Alpha360 factor definitions...")
+            registry.parse_alpha360()
+
+        _logger.info("Registering Qlib factors to FACTOR_DEFINITIONS...")
+        registry.register_factors(alpha158=alpha158, alpha360=alpha360)
+
+        stats = get_factor_statistics()
+        _logger.info(f"Registration complete. Total factors: {stats['total_count']}")
+
+    except ImportError as e:
+        _logger.warning(f"Could not import qlib_factors module: {e}")
+    except Exception as e:
+        _logger.error(f"Failed to register Qlib factors: {e}")
+
+
+def get_qlib_factor_count() -> Dict[str, int]:
+    """获取 Qlib 因子的数量统计"""
+    categories = ["qlib_kbar", "qlib_rolling", "qlib_alpha360"]
+    counts = {}
+    for cat in categories:
+        factors = get_factors_by_category(cat)
+        counts[cat] = len(factors)
+    counts["total_qlib"] = sum(counts.values())
+    return counts
+
+
+# =============================================================================
+# 主程序入口（用于测试）
+# =============================================================================
+
 if __name__ == "__main__":
     # 打印汇总信息
     print_all_factors_summary()
@@ -810,3 +877,11 @@ if __name__ == "__main__":
     for factor_name in ["pe_ttm", "return_20d", "ep_ttm", "atr_14d"]:
         print_factor_lineage(factor_name)
         print()
+
+    # 测试 Qlib 因子注册
+    print("\n" + "=" * 60)
+    print("测试 Qlib 因子注册")
+    print("=" * 60)
+
+    register_qlib_factors(alpha158=True, alpha360=False)
+    print_all_factors_summary()
