@@ -33,6 +33,9 @@ warnings.filterwarnings('ignore')
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _PROJECT_ROOT = _SCRIPT_DIR.parents[4]  # ml_prediction -> strategies -> quant_trading -> projects -> root
 sys.path.insert(0, str(_PROJECT_ROOT))
+# Also add current working directory if running from project root
+if Path('.').resolve() != _PROJECT_ROOT and (Path('.') / 'core').exists():
+    sys.path.insert(0, str(Path('.').resolve()))
 
 # ---------------------------------------------------------------------------
 # 项目内部导入
@@ -118,12 +121,12 @@ def _get_trade_dates_from_db(start_date: datetime, end_date: datetime) -> List[s
     try:
         results = DatabaseManager.fetchall(
             "tushare_biz",
-            "SELECT cal_date FROM t_trade_date WHERE is_open = 1 AND cal_date >= %s AND cal_date <= %s ORDER BY cal_date",
+            "SELECT cal_date FROM t_stock_tradedate WHERE is_open = 1 AND cal_date >= %s AND cal_date <= %s ORDER BY cal_date",
             (start_date.strftime("%Y%m%d"), end_date.strftime("%Y%m%d")),
         )
         return [r["cal_date"] for r in results]
     except Exception as e:
-        print(f"  [WARN] 无法从t_trade_date获取交易日: {e}")
+        print(f"  [WARN] 无法从t_stock_tradedate获取交易日: {e}")
         return []
 
 
