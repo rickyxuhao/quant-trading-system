@@ -9,6 +9,9 @@ SQL 批量因子计算引擎
 - 使用 CTE (Common Table Expressions) 组织复杂计算
 - 支持横截面 Z-score 的 SQL 内计算
 - 自动处理缺失值和异常值
+
+版本历史:
+- 2026-03-19: 从 factor_definitions.py 读取因子定义，SQL 动态构建
 """
 
 from dataclasses import dataclass
@@ -21,6 +24,14 @@ import pandas as pd
 
 from core.logger import get_logger
 from core.storage.relational.connection import DatabaseManager
+
+# 导入统一因子定义
+from .factor_definitions import (
+    FACTOR_DEFINITIONS,
+    FactorDefinition,
+    CalculationType,
+    get_factors_by_data_source,
+)
 
 logger = get_logger(__name__)
 
@@ -366,31 +377,71 @@ class SQLFactorEngine:
         results = DatabaseManager.fetchall(self.DB_NAME, sql, (date_str,))
         return [r["ts_code"] for r in results]
 
+    def _get_sql_factors_from_definitions(self) -> Dict[str, List[FactorDefinition]]:
+        """
+        从统一因子定义中获取所有 SQL 类型的因子，按数据源分组
+
+        Returns:
+            Dict[data_source -> List[FactorDefinition]]
+        """
+        sql_factors = {}
+
+        for name, factor_def in FACTOR_DEFINITIONS.items():
+            # 只处理 SQL 和 DIRECT 类型的因子
+            if factor_def.calculation not in (CalculationType.SQL, CalculationType.DIRECT):
+                continue
+
+            # 跳过没有数据源或 SQL 表达式的因子
+            if not factor_def.data_source or not factor_def.sql_expr:
+                continue
+
+            ds = factor_def.data_source
+            if ds not in sql_factors:
+                sql_factors[ds] = []
+            sql_factors[ds].append(factor_def)
+
+        return sql_factors
+
+    def _get_max_window_days(self) -> int:
+        """获取所有 SQL 因子中最大的窗口天数"""
+        max_window = 0
+        for name, factor_def in FACTOR_DEFINITIONS.items():
+            if factor_def.calculation in (CalculationType.SQL, CalculationType.DIRECT):
+                if factor_def.window_days:
+                    max_window = max(max_window, factor_def.window_days)
+        return max_window
+
     def _clean_factor_data(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         清理因子数据
 
+        使用 factor_definitions.py 中的定义决定如何清理每个因子：
         - 将 inf 替换为 NaN
-        - 极端异常值处理（Winsorize）
+        - 根据 valid_range 限制范围
+        - 根据 winsorize 进行缩尾处理
         """
         # 替换无穷值
         df = df.replace([np.inf, -np.inf], np.nan)
 
-        # 对数值列进行 1%-99% 缩尾处理
-        numeric_cols = df.select_dtypes(include=[np.number]).columns
+        # 对每个列根据定义进行清理
+        for col in df.columns:
+            if col not in FACTOR_DEFINITIONS:
+                continue
 
-        for col in numeric_cols:
-            if col.endswith("_zscore"):
-                # Z-score  already standardized, just clip extreme outliers
+            factor_def = FACTOR_DEFINITIONS[col]
+
+            # 如果定义了有效范围，直接裁剪
+            if factor_def.valid_range:
+                min_val, max_val = factor_def.valid_range
+                df[col] = df[col].clip(min_val, max_val)
+            # 如果是 Z-score 因子，裁剪到 -5 到 5
+            elif col.endswith("_zscore"):
                 df[col] = df[col].clip(-5, 5)
-            elif col in ["pe_ttm", "pb", "ps_ttm", "pcf"]:
-                # 估值因子，处理极端值
+            # 如果需要进行缩尾处理
+            elif factor_def.winsorize:
                 lower = df[col].quantile(0.01)
                 upper = df[col].quantile(0.99)
                 df[col] = df[col].clip(lower, upper)
-            elif col in ["return_20d", "return_60d"]:
-                # 收益限制在合理范围
-                df[col] = df[col].clip(-0.5, 0.5)
 
         return df
 
@@ -510,6 +561,42 @@ class SQLFactorEngine:
                 results[date] = pd.DataFrame()
 
         return results
+
+    def get_factor_data_sources(self) -> Dict[str, List[str]]:
+        """
+        获取 SQL 计算因子的数据源信息
+
+        Returns:
+            Dict[数据表 -> 因子列表]
+        """
+        sql_factors = self._get_sql_factors_from_definitions()
+
+        result = {}
+        for data_source, factors in sql_factors.items():
+            result[data_source] = [f.name for f in factors]
+
+        return result
+
+    def print_factor_lineage(self):
+        """打印所有 SQL 因子的数据血缘信息"""
+        sql_factors = self._get_sql_factors_from_definitions()
+
+        print("=" * 80)
+        print("SQL 因子数据血缘")
+        print("=" * 80)
+
+        for data_source, factors in sorted(sql_factors.items()):
+            print(f"\n数据表: {data_source}")
+            print("-" * 40)
+
+            for factor in sorted(factors, key=lambda x: x.name):
+                print(f"  {factor.name:25s} | {factor.description}")
+                if factor.source_field:
+                    print(f"  {'':25s} | 源字段: {factor.source_field}")
+                if factor.window_days:
+                    print(f"  {'':25s} | 窗口: {factor.window_days}天")
+
+        print(f"\n总计: {sum(len(f) for f in sql_factors.values())} 个 SQL 因子")
 
 
 # 单例实例缓存

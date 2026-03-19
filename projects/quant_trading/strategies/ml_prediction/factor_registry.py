@@ -6,6 +6,9 @@
 2. 自动 SQL 生成
 3. 动态因子发现
 4. 支持自定义计算逻辑
+
+版本历史：
+- 2026-03-19: 重构为从 factor_definitions.py 读取因子定义，移除硬编码
 """
 
 from dataclasses import dataclass, field
@@ -20,14 +23,36 @@ import pandas as pd
 from core.logger import get_logger
 from core.storage.relational.connection import DatabaseManager
 
+# 导入统一因子定义
+from .factor_definitions import (
+    FACTOR_DEFINITIONS,
+    FactorDefinition,
+    CalculationType,
+    get_factor_lineage,
+    get_factors_by_category,
+    get_factors_by_data_source,
+)
+
 logger = get_logger(__name__)
 
 
 class FactorType(Enum):
-    """因子类型"""
+    """因子类型 (向后兼容)"""
     SQL = auto()      # 纯 SQL 计算
     PYTHON = auto()   # Python 后处理
     HYBRID = auto()   # SQL + Python 组合
+
+    @classmethod
+    def from_calculation_type(cls, calc_type: CalculationType) -> "FactorType":
+        """从 CalculationType 转换"""
+        mapping = {
+            CalculationType.DIRECT: cls.SQL,
+            CalculationType.SQL: cls.SQL,
+            CalculationType.PYTHON: cls.PYTHON,
+            CalculationType.HYBRID: cls.HYBRID,
+            CalculationType.DERIVED: cls.PYTHON,
+        }
+        return mapping.get(calc_type, cls.PYTHON)
 
 
 @dataclass
@@ -451,381 +476,179 @@ financial_data AS (
 
 # ==================== 完整因子库定义 ====================
 
+def _convert_factor_def_to_registry(
+    registry: "FactorRegistry",
+    factor_def: FactorDefinition
+) -> None:
+    """
+    将 FactorDefinition 转换为 FactorRegistry 中的注册
+
+    Args:
+        registry: FactorRegistry 实例
+        factor_def: 统一因子定义
+    """
+    calc_type = factor_def.calculation
+
+    if calc_type in (CalculationType.DIRECT, CalculationType.SQL):
+        # SQL 类型因子
+        registry.register_sql_factor(
+            name=factor_def.name,
+            sql_expr=factor_def.sql_expr or factor_def.source_field or factor_def.name,
+            description=factor_def.description,
+            category=factor_def.category,
+            data_source=factor_def.data_source,
+            window_days=factor_def.window_days,
+            default_value=factor_def.default_value,
+        )
+    elif calc_type == CalculationType.PYTHON:
+        # Python 类型因子 - 需要根据因子名称映射到对应的计算函数
+        compute_fn = _get_python_compute_fn(factor_def.name)
+        if compute_fn:
+            registry.register_python_factor(
+                name=factor_def.name,
+                compute_fn=compute_fn,
+                dependencies=factor_def.dependencies,
+                description=factor_def.description,
+                category=factor_def.category,
+                default_value=factor_def.default_value,
+            )
+        else:
+            # 如果找不到计算函数，作为占位符注册
+            logger.debug(f"No Python compute function found for {factor_def.name}, registering as placeholder")
+            registry.register_python_factor(
+                name=factor_def.name,
+                compute_fn=lambda df: pd.Series(factor_def.default_value or 0, index=df.index),
+                dependencies=factor_def.dependencies,
+                description=factor_def.description,
+                category=factor_def.category,
+                default_value=factor_def.default_value,
+            )
+    elif calc_type == CalculationType.HYBRID:
+        # HYBRID 类型因子
+        compute_fn = _get_python_compute_fn(factor_def.name)
+        registry.register_hybrid_factor(
+            name=factor_def.name,
+            sql_expr=factor_def.sql_expr or "",
+            compute_fn=compute_fn or (lambda df: pd.Series(factor_def.default_value or 0, index=df.index)),
+            dependencies=factor_def.dependencies,
+            description=factor_def.description,
+            category=factor_def.category,
+        )
+
+
+def _get_python_compute_fn(factor_name: str) -> Optional[Callable]:
+    """
+    根据因子名称获取对应的 Python 计算函数
+
+    这是从旧代码迁移过来的计算函数映射
+    """
+    compute_fn_map = {
+        # Z-score 因子
+        "pe_ttm_zscore": lambda df: _calc_zscore(df.get("pe_ttm")),
+        "pb_zscore": lambda df: _calc_zscore(df.get("pb")),
+        "ps_ttm_zscore": lambda df: _calc_zscore(df.get("ps_ttm")),
+        "return_20d_zscore": lambda df: _calc_zscore(df.get("return_20d")),
+        "volatility_20d_zscore": lambda df: _calc_zscore(df.get("volatility_20d")),
+        "turnover_rate_zscore": lambda df: _calc_zscore(df.get("turnover_rate")),
+        "ep_ttm_zscore": lambda df: _calc_zscore(df.get("ep_ttm")),
+        "bp_zscore": lambda df: _calc_zscore(df.get("bp")),
+
+        # 流动性因子
+        "turnover_volatility_20d": lambda df: _calc_turnover_volatility(df, period=20),
+
+        # 风险因子
+        "max_drawdown_20d": lambda df: _calc_max_drawdown(df, period=20),
+        "max_drawdown_60d": lambda df: _calc_max_drawdown(df, period=60),
+
+        # 市场相对因子
+        "market_alpha_20d": lambda df: _calc_market_alpha(df, "return_20d"),
+        "market_alpha_60d": lambda df: _calc_market_alpha(df, "return_60d"),
+
+        # 行业相对因子
+        "sector_alpha_20d": lambda df: _calc_sector_alpha(df, "return_20d"),
+        "sector_alpha_60d": lambda df: _calc_sector_alpha(df, "return_60d"),
+        "sector_rank_20d": lambda df: _calc_sector_rank(df, "return_20d"),
+
+        # 波动率因子
+        "atr_14d": lambda df: _calc_atr(df, period=14),
+        "downside_vol_20d": lambda df: _calc_downside_vol(df, period=20),
+
+        # 技术因子
+        "rsi_14d": lambda df: _calc_rsi(df, period=14),
+        "macd": lambda df: _calc_macd(df)["macd"],
+        "macd_signal": lambda df: _calc_macd(df)["signal"],
+        "macd_hist": lambda df: _calc_macd(df)["hist"],
+        "bb_upper": lambda df: _calc_bollinger(df, period=20, std_dev=2)["upper"],
+        "bb_middle": lambda df: _calc_bollinger(df, period=20, std_dev=2)["middle"],
+        "bb_lower": lambda df: _calc_bollinger(df, period=20, std_dev=2)["lower"],
+        "bb_width": lambda df: _calc_bollinger(df, period=20, std_dev=2)["width"],
+        "bb_position": lambda df: _calc_bollinger(df, period=20, std_dev=2)["position"],
+    }
+
+    return compute_fn_map.get(factor_name)
+
+
+def _calc_market_alpha(df: pd.DataFrame, col: str) -> pd.Series:
+    """计算市场超额收益"""
+    series = df.get(col)
+    if series is None or not isinstance(series, pd.Series):
+        return pd.Series(0, index=df.index)
+    series = pd.to_numeric(series, errors='coerce')
+    return series - series.mean()
+
+
+def _calc_sector_alpha(df: pd.DataFrame, col: str) -> pd.Series:
+    """计算行业超额收益（需要 industry 列）"""
+    series = df.get(col)
+    industry = df.get("industry")
+    if series is None or industry is None:
+        return pd.Series(0, index=df.index)
+
+    series = pd.to_numeric(series, errors='coerce')
+    result = pd.Series(0, index=df.index)
+
+    for sector in industry.unique():
+        mask = industry == sector
+        if mask.any():
+            result[mask] = series[mask] - series[mask].mean()
+
+    return result
+
+
+def _calc_sector_rank(df: pd.DataFrame, col: str) -> pd.Series:
+    """计算行业内排名（百分位）"""
+    series = df.get(col)
+    industry = df.get("industry")
+    if series is None or industry is None:
+        return pd.Series(0.5, index=df.index)
+
+    series = pd.to_numeric(series, errors='coerce')
+    result = pd.Series(0.5, index=df.index)
+
+    for sector in industry.unique():
+        mask = industry == sector
+        if mask.sum() > 1:
+            result[mask] = series[mask].rank(pct=True)
+
+    return result
+
+
 def create_full_registry() -> FactorRegistry:
-    """创建完整因子注册表（包含所有预计算因子）"""
+    """
+    创建完整因子注册表（包含所有预计算因子）
+
+    现在从 factor_definitions.py 读取所有因子定义
+    """
     registry = FactorRegistry()
 
-    # ========== 估值因子 (from t_stock_daily_basic) ==========
-    valuation_factors = [
-        ("pe_ttm", "pe_ttm", "市盈率TTM"),
-        ("pb", "pb", "市净率"),
-        ("ps_ttm", "ps_ttm", "市销率TTM"),
-        ("dividend_yield", "dv_ttm", "股息率"),
-        ("total_mv", "total_mv * 10000", "总市值"),
-        ("circ_mv", "circ_mv * 10000", "流通市值"),
-    ]
+    # 从统一清单导入所有因子定义
+    for factor_name, factor_def in FACTOR_DEFINITIONS.items():
+        try:
+            _convert_factor_def_to_registry(registry, factor_def)
+        except Exception as e:
+            logger.warning(f"Failed to register factor {factor_name}: {e}")
 
-    for name, expr, desc in valuation_factors:
-        registry.register_sql_factor(
-            name=name,
-            sql_expr=expr,
-            description=desc,
-            category="valuation",
-            data_source="t_stock_daily_basic"
-        )
-
-    # 对数市值（基于 total_mv）
-    registry.register_sql_factor(
-        name="log_mv",
-        sql_expr="LN(NULLIF(total_mv, 0))",
-        description="对数市值",
-        category="valuation",
-        data_source="t_stock_daily_basic"
-    )
-
-    # 盈利收益率 EP = 1/PE (价值因子)
-    registry.register_sql_factor(
-        name="ep_ttm",
-        sql_expr="1/NULLIF(pe_ttm, 0)",
-        description="盈利收益率TTM (Earnings Yield)",
-        category="valuation",
-        data_source="t_stock_daily_basic"
-    )
-
-    # 账面市值比 BP = 1/PB (价值因子)
-    registry.register_sql_factor(
-        name="bp",
-        sql_expr="1/NULLIF(pb, 0)",
-        description="账面市值比 (Book-to-Market)",
-        category="valuation",
-        data_source="t_stock_daily_basic"
-    )
-
-    # 换手率 (来自 daily_basic)
-    registry.register_sql_factor(
-        name="turnover_rate",
-        sql_expr="turnover_rate",
-        description="换手率(%)",
-        category="liquidity",
-        data_source="t_stock_daily_basic"
-    )
-
-    # 换手率自由流通股本
-    registry.register_sql_factor(
-        name="turnover_rate_f",
-        sql_expr="turnover_rate_f",
-        description="自由流通股换手率(%)",
-        category="liquidity",
-        data_source="t_stock_daily_basic"
-    )
-
-    # ========== 收益特征因子 ==========
-    # 短期反转因子 (5日、10日)
-    for period in [5, 10]:
-        registry.register_sql_factor(
-            name=f"return_{period}d",
-            sql_expr=f"(close / NULLIF(LAG(close, {period}) OVER w, 0) - 1)",
-            description=f"{period}日收益率（短期反转）",
-            category="returns",
-            window_days=period
-        )
-
-    for period in [20, 60]:
-        registry.register_sql_factor(
-            name=f"return_{period}d",
-            sql_expr=f"(close / NULLIF(LAG(close, {period}) OVER w, 0) - 1)",
-            description=f"{period}日收益率",
-            category="returns",
-            window_days=period
-        )
-
-    for period in [5, 10, 20, 60]:
-        registry.register_sql_factor(
-            name=f"volatility_{period}d",
-            sql_expr=f"STDDEV(pct_chg) OVER (PARTITION BY ts_code ORDER BY trade_date ROWS {period-1} PRECEDING) * SQRT(252)",
-            description=f"{period}日年化波动率",
-            category="returns",
-            window_days=period
-        )
-
-    # 成交量比率
-    registry.register_sql_factor(
-        name="volume_ratio",
-        sql_expr="AVG(vol) OVER (PARTITION BY ts_code ORDER BY trade_date ROWS 4 PRECEDING) / NULLIF(AVG(vol) OVER (PARTITION BY ts_code ORDER BY trade_date ROWS 19 PRECEDING), 0)",
-        description="5日/20日成交量比率",
-        category="returns",
-        window_days=20
-    )
-
-    # 20日平均成交量
-    registry.register_sql_factor(
-        name="turnover_20d",
-        sql_expr="AVG(vol) OVER (PARTITION BY ts_code ORDER BY trade_date ROWS 19 PRECEDING)",
-        description="20日平均成交量",
-        category="returns",
-        window_days=20
-    )
-
-    # ========== 流动性因子 (Liquidity) ==========
-    # 换手率波动率（基于日频换手率计算）
-    registry.register_python_factor(
-        name="turnover_volatility_20d",
-        compute_fn=lambda df: _calc_turnover_volatility(df, period=20),
-        dependencies=["turnover_rate"],
-        description="20日换手率波动率",
-        category="liquidity"
-    )
-
-    # ========== 风险因子 (Risk) ==========
-    # 20日最大回撤
-    registry.register_python_factor(
-        name="max_drawdown_20d",
-        compute_fn=lambda df: _calc_max_drawdown(df, period=20),
-        dependencies=["close"],
-        description="20日最大回撤",
-        category="risk"
-    )
-
-    # 60日最大回撤
-    registry.register_python_factor(
-        name="max_drawdown_60d",
-        compute_fn=lambda df: _calc_max_drawdown(df, period=60),
-        dependencies=["close"],
-        description="60日最大回撤",
-        category="risk"
-    )
-
-    # ========== 资金流向因子 ==========
-    registry.register_sql_factor(
-        name="main_net_inflow",
-        sql_expr="buy_lg_amount - sell_lg_amount",
-        description="主力净流入（大单）",
-        category="moneyflow",
-        data_source="t_stock_moneyflow"
-    )
-
-    for period in [5, 20]:
-        registry.register_sql_factor(
-            name=f"net_inflow_{period}d",
-            sql_expr=f"SUM(buy_lg_amount - sell_lg_amount) OVER (PARTITION BY ts_code ORDER BY trade_date ROWS {period-1} PRECEDING)",
-            description=f"{period}日累计净流入",
-            category="moneyflow",
-            data_source="t_stock_moneyflow",
-            window_days=period
-        )
-
-    # 大单净流入（金额，不是占比）
-    registry.register_sql_factor(
-        name="large_order_net_amount",
-        sql_expr="buy_lg_amount - sell_lg_amount",
-        description="大单净流入金额",
-        category="moneyflow",
-        data_source="t_stock_moneyflow"
-    )
-
-    # ========== 横截面 Z-Score (Python 计算) ==========
-    zscore_factors = [
-        ("pe_ttm", "pe_ttm_zscore"),
-        ("pb", "pb_zscore"),
-        ("return_20d", "return_20d_zscore"),
-        ("volatility_20d", "volatility_20d_zscore"),
-        ("turnover_rate", "turnover_rate_zscore"),
-        ("ep_ttm", "ep_ttm_zscore"),
-        ("bp", "bp_zscore"),
-    ]
-
-    for base_col, zscore_name in zscore_factors:
-        registry.register_python_factor(
-            name=zscore_name,
-            compute_fn=lambda df, col=base_col: _calc_zscore(df.get(col)),
-            dependencies=[base_col],
-            description=f"{base_col} 横截面Z-score",
-            category="zscore"
-        )
-
-    # ========== 市场相对因子 (Python 计算) ==========
-    def _calc_market_alpha(df, col):
-        """计算市场超额收益"""
-        series = df.get(col)
-        if series is None or not isinstance(series, pd.Series):
-            return pd.Series(0, index=df.index)
-        # 转换为 float 避免 Decimal 类型问题
-        series = pd.to_numeric(series, errors='coerce')
-        return series - series.mean()
-
-    registry.register_python_factor(
-        name="market_alpha_20d",
-        compute_fn=lambda df, col='return_20d': _calc_market_alpha(df, col),
-        dependencies=["return_20d"],
-        description="20日市场超额收益",
-        category="relative"
-    )
-
-    registry.register_python_factor(
-        name="market_alpha_60d",
-        compute_fn=lambda df, col='return_60d': _calc_market_alpha(df, col),
-        dependencies=["return_60d"],
-        description="60日市场超额收益",
-        category="relative"
-    )
-
-    # ========== 动量因子（扩展长周期）==========
-    for period in [120, 250]:
-        registry.register_sql_factor(
-            name=f"return_{period}d",
-            sql_expr=f"(close / NULLIF(LAG(close, {period}) OVER w, 0) - 1)",
-            description=f"{period}日收益率（长期动量）",
-            category="momentum",
-            window_days=period
-        )
-
-    for period in [120, 250]:
-        registry.register_sql_factor(
-            name=f"volatility_{period}d",
-            sql_expr=f"STDDEV(pct_chg) OVER (PARTITION BY ts_code ORDER BY trade_date ROWS {period-1} PRECEDING) * SQRT(252)",
-            description=f"{period}日年化波动率",
-            category="momentum",
-            window_days=period
-        )
-
-    # 价格位置因子（相对于近期高低点）
-    registry.register_sql_factor(
-        name="price_position_20d",
-        sql_expr="(close - MIN(low) OVER (PARTITION BY ts_code ORDER BY trade_date ROWS 19 PRECEDING)) / NULLIF(MAX(high) OVER (PARTITION BY ts_code ORDER BY trade_date ROWS 19 PRECEDING) - MIN(low) OVER (PARTITION BY ts_code ORDER BY trade_date ROWS 19 PRECEDING), 0)",
-        description="20日价格位置（0-1之间，接近1表示接近高点）",
-        category="momentum",
-        window_days=20
-    )
-
-    # ========== 财务因子 (from t_stock_fina_indicator) ==========
-    financial_factors = [
-        ("roe", "roe", "净资产收益率ROE"),
-        ("roa", "roa", "总资产收益率ROA"),
-        ("gross_margin", "gross_profit_margin", "销售毛利率"),
-        ("net_margin", "net_profit_margin", "销售净利率"),
-        ("debt_to_assets", "debt_to_assets", "资产负债率"),
-        ("current_ratio", "current_ratio", "流动比率"),
-        ("quick_ratio", "quick_ratio", "速动比率"),
-        ("asset_turnover", "asset_turnover", "总资产周转率"),
-        # Note: inv_turn not available in t_stock_fina_indicator, using ca_turnover instead
-        ("ca_turnover", "ca_turnover", "流动资产周转率"),
-        ("eps", "basic_eps_yoy", "每股收益同比增长"),
-        ("bps", "bps_yoy", "每股净资产同比增长"),
-    ]
-
-    for name, expr, desc in financial_factors:
-        registry.register_sql_factor(
-            name=name,
-            sql_expr=expr,
-            description=desc,
-            category="financial",
-            data_source="t_stock_fina_indicator"
-        )
-
-    # ========== 波动率因子（ATR、下行波动率）==========
-    # 真实波幅（需要使用high/low/close）
-    registry.register_sql_factor(
-        name="tr",
-        sql_expr="GREATEST(high - low, ABS(high - LAG(close, 1) OVER w), ABS(low - LAG(close, 1) OVER w))",
-        description="真实波幅TR",
-        category="volatility",
-        window_days=2
-    )
-
-    # ATR (14日)
-    registry.register_python_factor(
-        name="atr_14d",
-        compute_fn=lambda df: _calc_atr(df, period=14),
-        dependencies=["tr"],
-        description="14日平均真实波幅ATR",
-        category="volatility"
-    )
-
-    # 下行波动率（只计算负收益的波动）
-    registry.register_python_factor(
-        name="downside_vol_20d",
-        compute_fn=lambda df: _calc_downside_vol(df, period=20),
-        dependencies=["return_20d"],
-        description="20日下行波动率（只计算亏损部分）",
-        category="volatility"
-    )
-
-    # ========== 技术因子（RSI、MACD、布林带）==========
-    # RSI (14日)
-    registry.register_python_factor(
-        name="rsi_14d",
-        compute_fn=lambda df: _calc_rsi(df, period=14),
-        dependencies=["close"],
-        description="14日相对强弱指数RSI",
-        category="technical"
-    )
-
-    # MACD
-    registry.register_python_factor(
-        name="macd",
-        compute_fn=lambda df: _calc_macd(df)["macd"],
-        dependencies=["close"],
-        description="MACD指标",
-        category="technical"
-    )
-
-    registry.register_python_factor(
-        name="macd_signal",
-        compute_fn=lambda df: _calc_macd(df)["signal"],
-        dependencies=["close"],
-        description="MACD信号线",
-        category="technical"
-    )
-
-    registry.register_python_factor(
-        name="macd_hist",
-        compute_fn=lambda df: _calc_macd(df)["hist"],
-        dependencies=["close"],
-        description="MACD柱状线",
-        category="technical"
-    )
-
-    # 布林带
-    registry.register_python_factor(
-        name="bb_upper",
-        compute_fn=lambda df: _calc_bollinger(df, period=20, std_dev=2)["upper"],
-        dependencies=["close"],
-        description="布林带上轨",
-        category="technical"
-    )
-
-    registry.register_python_factor(
-        name="bb_middle",
-        compute_fn=lambda df: _calc_bollinger(df, period=20, std_dev=2)["middle"],
-        dependencies=["close"],
-        description="布林带中轨（20日均线）",
-        category="technical"
-    )
-
-    registry.register_python_factor(
-        name="bb_lower",
-        compute_fn=lambda df: _calc_bollinger(df, period=20, std_dev=2)["lower"],
-        dependencies=["close"],
-        description="布林带下轨",
-        category="technical"
-    )
-
-    registry.register_python_factor(
-        name="bb_width",
-        compute_fn=lambda df: _calc_bollinger(df, period=20, std_dev=2)["width"],
-        dependencies=["close"],
-        description="布林带宽度（(上轨-下轨)/中轨）",
-        category="technical"
-    )
-
-    registry.register_python_factor(
-        name="bb_position",
-        compute_fn=lambda df: _calc_bollinger(df, period=20, std_dev=2)["position"],
-        dependencies=["close"],
-        description="布林带位置（0-1之间）",
-        category="technical"
-    )
-
+    logger.info(f"Created registry with {len(registry._factors)} factors from unified definitions")
     return registry
 
 
