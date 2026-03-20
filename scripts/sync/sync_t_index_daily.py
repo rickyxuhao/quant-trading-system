@@ -11,9 +11,10 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from base_sync import BaseSyncTask, create_base_parser, init_sync_env
+from base_sync import BaseSyncTask, SyncRegistry, run_main
 
 
+@SyncRegistry.register
 class IndexDailySync(BaseSyncTask):
     """指数日线行情同步任务 - 仅同步核心指数"""
 
@@ -26,6 +27,10 @@ class IndexDailySync(BaseSyncTask):
     UNIQUE_COLUMNS = ['ts_code', 'trade_date']
     SYNC_TYPE = "incremental"
     DATE_COLUMN = "trade_date"
+    
+    # 分类信息
+    CATEGORY = "index"
+    DESCRIPTION = "指数日线行情"
     
     # 核心指数列表（约20个主要指数）
     CORE_INDEX_CODES = [
@@ -139,24 +144,7 @@ class IndexDailySync(BaseSyncTask):
 
 
 def main():
-    parser = create_base_parser("指数日线行情同步 - t_index_daily")
-    args = parser.parse_args()
-
-    config, db, client, logger = init_sync_env(args.log_file)
-
-    sync_task = IndexDailySync(config, db, client)
-    result = sync_task.execute(
-        mode=args.mode,
-        start_date=args.start_date,
-        end_date=args.end_date
-    )
-
-    logger.info("-" * 60)
-    if result['status'] == 'success':
-        logger.info(f"✅ 同步成功: 获取 {result['rows_fetched']} 条, "
-                   f"插入 {result['rows_inserted']}, 更新 {result['rows_updated']}")
-    else:
-        logger.info(f"⚠️ {result.get('reason', '未知状态')}")
+    run_main(IndexDailySync, "指数日线行情同步 - t_index_daily")
 
 
 if __name__ == "__main__":

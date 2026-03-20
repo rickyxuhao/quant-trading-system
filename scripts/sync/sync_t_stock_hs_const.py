@@ -13,9 +13,10 @@ from typing import Dict, Any
 # 添加当前目录到路径以导入 base_sync
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from base_sync import BaseSyncTask, create_base_parser, init_sync_env
+from base_sync import BaseSyncTask, SyncRegistry, run_main
 
 
+@SyncRegistry.register
 class HSConstSync(BaseSyncTask):
     """沪深股通成分股同步任务"""
 
@@ -24,6 +25,10 @@ class HSConstSync(BaseSyncTask):
     COLUMNS = ['ts_code', 'hs_type', 'in_date', 'out_date', 'is_new']
     UNIQUE_COLUMNS = ['ts_code', 'hs_type']
     SYNC_TYPE = "full"
+    
+    # 分类信息
+    CATEGORY = "basic"
+    DESCRIPTION = "沪深股通成分股"
 
     def sync_full(self, mode: str = "full") -> Dict[str, Any]:
         """全量同步 - 分别获取沪股通(SH)和深股通(SZ)数据并合并"""
@@ -78,23 +83,7 @@ class HSConstSync(BaseSyncTask):
 
 
 def main():
-    parser = create_base_parser("沪深股通成分股同步 - t_stock_hs_const")
-    args = parser.parse_args()
-
-    # 初始化环境
-    config, db, client, logger = init_sync_env(args.log_file)
-
-    # 执行同步
-    sync_task = HSConstSync(config, db, client)
-    result = sync_task.execute(mode=args.mode)
-
-    # 输出结果
-    logger.info("-" * 60)
-    if result['status'] == 'success':
-        logger.info(f"✅ 同步成功: 获取 {result['rows_fetched']} 条, "
-                   f"插入 {result['rows_inserted']}, 更新 {result['rows_updated']}")
-    else:
-        logger.info(f"⚠️ {result.get('reason', '未知状态')}")
+    run_main(HSConstSync, "沪深股通成分股同步 - t_stock_hs_const")
 
 
 if __name__ == "__main__":

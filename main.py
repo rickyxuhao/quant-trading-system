@@ -21,6 +21,7 @@
     poetry run python main.py sync --help
 """
 import sys
+import importlib.util
 from pathlib import Path
 
 # 确保项目根目录在路径中
@@ -68,7 +69,11 @@ def cli(ctx, log_level, log_dir):
 @cli.command()
 @click.option(
     "--task",
-    help="指定同步任务类型（如 stock_basic, trade_date 等）"
+    help="指定同步任务表名（如 t_stock_basic）"
+)
+@click.option(
+    "--category",
+    help="按分类批量同步（如 basic/market/financial/holder/index）"
 )
 @click.option(
     "--all",
@@ -87,66 +92,162 @@ def cli(ctx, log_level, log_dir):
     is_flag=True,
     help="全量同步（覆盖已有数据）"
 )
+@click.option(
+    "--list-categories",
+    is_flag=True,
+    help="列出所有可用的分类"
+)
+@click.option(
+    "--list-tasks",
+    is_flag=True,
+    help="列出所有可用的任务"
+)
 @click.pass_context
-def sync(ctx, task, sync_all, incremental, full):
+def sync(ctx, task, category, sync_all, incremental, full, list_categories, list_tasks):
     """
     执行数据同步任务
 
     从 Tushare 同步股票数据到本地数据库
 
     示例:
-        poetry run python main.py sync --task stock_basic
-        poetry run python main.py sync --all
-        poetry run python main.py sync --task stock_basic --full
+        # 同步单个表
+        python main.py sync --task t_stock_basic
+        
+        # 按分类批量同步
+        python main.py sync --category basic
+        python main.py sync --category market
+        
+        # 同步所有
+        python main.py sync --all
+        
+        # 查看可用分类和任务
+        python main.py sync --list-categories
+        python main.py sync --list-tasks
     """
-    from core.data_sync.tasks import TaskRegistry
-
-    if not task and not sync_all:
-        click.echo("错误: 必须指定 --task 或 --all", err=True)
-        sys.exit(1)
-
-    if task and sync_all:
-        click.echo("错误: 不能同时指定 --task 和 --all", err=True)
-        sys.exit(1)
-
-    sync_type = "full" if full else "incremental"
-    logger.info(f"启动数据同步，模式: {sync_type}")
-
-    try:
-        if sync_all:
-            # 同步所有已注册的任务
-            task_types = TaskRegistry.list_registered()
-            logger.info(f"发现 {len(task_types)} 个同步任务: {task_types}")
-
-            success_count = 0
-            for task_type in task_types:
-                try:
-                    logger.info(f"执行任务: {task_type}")
-                    task_instance = TaskRegistry.create(task_type, {"name": task_type})
-                    task_instance.run()
-                    success_count += 1
-                except Exception as e:
-                    logger.exception(f"任务 {task_type} 执行失败: {e}")
-
-            logger.info(f"同步完成: {success_count}/{len(task_types)} 个任务成功")
-            if success_count < len(task_types):
-                sys.exit(1)
+    import os
+    import importlib
+    
+    # 确保 scripts/sync 在路径中
+    sync_path = str(Path('scripts/sync').absolute())
+    if sync_path not in sys.path:
+        sys.path.insert(0, sync_path)
+    
+    # 导入 SyncRegistry
+    from base_sync import SyncRegistry
+    
+    # 自动导入所有同步脚本（触发 @SyncRegistry.register）
+    sync_dir = Path('scripts/sync')
+    for f in sync_dir.glob('sync_*.py'):
+        module_name = f.stem
+        try:
+            # 使用 importlib 动态导入
+            spec = importlib.util.spec_from_file_location(module_name, f)
+            module = importlib.util.module_from_spec(spec)
+            sys.modules[module_name] = module
+            spec.loader.exec_module(module)
+        except Exception as e:
+            logger.debug(f"导入模块 {module_name} 失败: {e}")
+    
+    # 列出模式
+    if list_categories:
+        categories = SyncRegistry.list_categories()
+        click.echo("可用的分类:")
+        for cat in categories:
+            tasks = SyncRegistry.list_tasks(cat)
+            click.echo(f"  {cat}: {len(tasks)} 个任务")
+        return
+    
+    if list_tasks:
+        if category:
+            tasks = SyncRegistry.list_tasks(category)
+            click.echo(f"分类 '{category}' 的任务:")
+            for t in tasks:
+                click.echo(f"  - {t}")
         else:
-            # 执行单个任务
-            try:
-                task_instance = TaskRegistry.create(task, {"name": task})
-                task_instance.run()
-                logger.info(f"任务 {task} 执行完成")
-            except ValueError as e:
-                logger.error(f"任务创建失败: {e}")
-                available = TaskRegistry.list_registered()
-                logger.info(f"可用任务: {available}")
+            all_tasks = SyncRegistry.list_tasks()
+            click.echo(f"所有任务 ({len(all_tasks)} 个):")
+            for cat in SyncRegistry.list_categories():
+                tasks = SyncRegistry.list_tasks(cat)
+                click.echo(f"\n  [{cat}]")
+                for t in tasks:
+                    click.echo(f"    - {t}")
+        return
+    
+    # 验证参数
+    if sum([bool(task), bool(category), sync_all]) != 1:
+        click.echo("错误: 必须且只能指定 --task、--category 或 --all 之一", err=True)
+        click.echo("      或使用 --list-categories / --list-tasks 查看可用选项", err=True)
+        sys.exit(1)
+    
+    sync_type = "full" if full else "incremental"
+    log_file = ctx.obj.get("log_file") if hasattr(ctx, 'obj') else None
+    
+    try:
+        if task:
+            # 同步单个任务
+            logger.info(f"执行任务: {task}, 模式: {sync_type}")
+            result = SyncRegistry.run_task(task, mode=sync_type, log_file=log_file)
+            if result.get('status') == 'success':
+                logger.info(f"✅ 任务 {task} 完成")
+            else:
+                logger.error(f"❌ 任务 {task} 失败: {result.get('reason', '未知错误')}")
                 sys.exit(1)
-            except Exception as e:
-                logger.exception(f"任务执行失败: {e}")
+                
+        elif category:
+            # 按分类批量同步
+            tasks = SyncRegistry.get_by_category(category)
+            if not tasks:
+                logger.error(f"分类 '{category}' 没有任务")
+                available = SyncRegistry.list_categories()
+                logger.info(f"可用分类: {available}")
                 sys.exit(1)
-
+            
+            logger.info(f"启动分类同步: {category}, 包含 {len(tasks)} 个任务, 模式: {sync_type}")
+            success_count = 0
+            for task_class in tasks:
+                try:
+                    logger.info(f"执行任务: {task_class.TABLE_NAME}")
+                    result = SyncRegistry.run_task(
+                        task_class.TABLE_NAME, 
+                        mode=sync_type,
+                        log_file=log_file
+                    )
+                    if result.get('status') == 'success':
+                        success_count += 1
+                        logger.info(f"✅ {task_class.TABLE_NAME} 完成")
+                    else:
+                        logger.error(f"❌ {task_class.TABLE_NAME} 失败")
+                except Exception as e:
+                    logger.exception(f"任务 {task_class.TABLE_NAME} 执行失败: {e}")
+            
+            logger.info(f"分类 {category} 同步完成: {success_count}/{len(tasks)} 个任务成功")
+            if success_count < len(tasks):
+                sys.exit(1)
+                
+        elif sync_all:
+            # 同步所有分类的所有任务
+            all_tasks = SyncRegistry.list_tasks()
+            logger.info(f"启动全量同步: 共 {len(all_tasks)} 个任务, 模式: {sync_type}")
+            success_count = 0
+            for task_name in all_tasks:
+                try:
+                    logger.info(f"执行任务: {task_name}")
+                    result = SyncRegistry.run_task(task_name, mode=sync_type, log_file=log_file)
+                    if result.get('status') == 'success':
+                        success_count += 1
+                        logger.info(f"✅ {task_name} 完成")
+                    else:
+                        logger.error(f"❌ {task_name} 失败")
+                except Exception as e:
+                    logger.exception(f"任务 {task_name} 执行失败: {e}")
+            
+            logger.info(f"全量同步完成: {success_count}/{len(all_tasks)} 个任务成功")
+            if success_count < len(all_tasks):
+                sys.exit(1)
+                
     except Exception as e:
+        logger.exception(f"同步过程发生错误: {e}")
+        sys.exit(1)
         logger.exception(f"同步过程发生错误: {e}")
         sys.exit(1)
 

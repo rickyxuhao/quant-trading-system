@@ -11,9 +11,10 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from base_sync import BaseSyncTask, create_base_parser, init_sync_env
+from base_sync import BaseSyncTask, SyncRegistry, run_main
 
 
+@SyncRegistry.register
 class IndexWeightSync(BaseSyncTask):
     """指数成分和权重同步任务 - 仅同步核心指数"""
 
@@ -25,6 +26,10 @@ class IndexWeightSync(BaseSyncTask):
     UNIQUE_COLUMNS = ['index_code', 'con_code', 'trade_date']
     SYNC_TYPE = "incremental"
     DATE_COLUMN = "trade_date"
+    
+    # 分类信息
+    CATEGORY = "index"
+    DESCRIPTION = "指数成分和权重"
     
     # 核心指数列表（有成分股权重数据的指数）
     CORE_INDEX_CODES = [
@@ -127,24 +132,7 @@ class IndexWeightSync(BaseSyncTask):
 
 
 def main():
-    parser = create_base_parser("指数成分和权重同步 - t_index_weight")
-    args = parser.parse_args()
-
-    config, db, client, logger = init_sync_env(args.log_file)
-
-    sync_task = IndexWeightSync(config, db, client)
-    result = sync_task.execute(
-        mode=args.mode,
-        start_date=args.start_date,
-        end_date=args.end_date
-    )
-
-    logger.info("-" * 60)
-    if result['status'] == 'success':
-        logger.info(f"✅ 同步成功: 获取 {result['rows_fetched']} 条, "
-                   f"插入 {result['rows_inserted']}, 更新 {result['rows_updated']}")
-    else:
-        logger.info(f"⚠️ {result.get('reason', '未知状态')}")
+    run_main(IndexWeightSync, "指数成分和权重同步 - t_index_weight")
 
 
 if __name__ == "__main__":

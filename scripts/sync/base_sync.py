@@ -294,6 +294,10 @@ class BaseSyncTask:
     TS_CODE_REQUIRED: bool = False  # 是否需要按股票代码循环
     MIN_EXPECTED_ROWS: int = 0  # 最小预期数据条数，用于验证
     SUPPORTS_DATE_FILTER: bool = True  # API是否支持start_date/end_date参数过滤
+    
+    # 新增：分类和描述（用于统一注册表）
+    CATEGORY: str = "other"  # 分类: market/financial/holder/basic/index/etc
+    DESCRIPTION: str = ""    # 任务描述
 
     def __init__(self, config: SyncConfig, db: SyncDatabaseManager, client: TushareSyncClient):
         self.config = config
@@ -762,3 +766,93 @@ def init_sync_env(log_file: Optional[str] = None) -> tuple:
         sys.exit(1)
 
     return config, db, client, logger
+
+
+def run_main(task_class: type, description: str) -> None:
+    """
+    通用同步任务入口函数
+    
+    用法:
+        if __name__ == "__main__":
+            run_main(StockBasicSync, "股票基础信息同步")
+    """
+    parser = create_base_parser(description)
+    args = parser.parse_args()
+    config, db, client, logger = init_sync_env(args.log_file)
+    sync_task = task_class(config, db, client)
+    result = sync_task.execute(
+        mode=args.mode,
+        start_date=args.start_date,
+        end_date=args.end_date
+    )
+    logger.info("-" * 60)
+    if result['status'] == 'success':
+        logger.info(f"✅ 同步成功: 获取 {result.get('rows_fetched', 0)} 条, "
+                   f"插入 {result.get('rows_inserted', 0)}, 更新 {result.get('rows_updated', 0)}")
+    elif result['status'] == 'skipped':
+        logger.info(f"⏭️  {result.get('reason', '已跳过')}")
+    else:
+        logger.info(f"⚠️ {result.get('reason', '未知状态')}")
+
+
+# ============================================================================
+# 同步任务注册表（用于统一入口）
+# ============================================================================
+
+from typing import Dict, Type
+
+
+class SyncRegistry:
+    """同步任务统一注册表"""
+    
+    _tasks: Dict[str, Type[BaseSyncTask]] = {}
+    _categories: Dict[str, list] = {}
+    
+    @classmethod
+    def register(cls, task_class: Type[BaseSyncTask]) -> Type[BaseSyncTask]:
+        """
+        装饰器：自动注册同步任务
+        
+        用法:
+            @SyncRegistry.register
+            class StockBasicSync(BaseSyncTask):
+                TABLE_NAME = "t_stock_basic"
+                CATEGORY = "basic"
+        """
+        name = task_class.TABLE_NAME
+        cls._tasks[name] = task_class
+        category = task_class.CATEGORY
+        if category not in cls._categories:
+            cls._categories[category] = []
+        cls._categories[category].append(name)
+        return task_class
+    
+    @classmethod
+    def get_by_category(cls, category: str) -> list:
+        """按分类获取任务类列表"""
+        return [cls._tasks[name] for name in cls._categories.get(category, [])]
+    
+    @classmethod
+    def list_categories(cls) -> list:
+        """列出所有分类"""
+        return list(cls._categories.keys())
+    
+    @classmethod
+    def list_tasks(cls, category: str = None) -> list:
+        """列出所有任务名称"""
+        if category:
+            return cls._categories.get(category, [])
+        return list(cls._tasks.keys())
+    
+    @classmethod
+    def run_task(cls, name: str, mode: str = "incremental", 
+                 start_date: str = None, end_date: str = None,
+                 log_file: str = None) -> dict:
+        """运行单个任务"""
+        if name not in cls._tasks:
+            raise ValueError(f"未知任务: {name}, 可用任务: {list(cls._tasks.keys())}")
+        
+        task_class = cls._tasks[name]
+        config, db, client, logger = init_sync_env(log_file)
+        task = task_class(config, db, client)
+        return task.execute(mode=mode, start_date=start_date, end_date=end_date)

@@ -12,9 +12,10 @@ import os
 # 添加当前目录到路径以导入 base_sync
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from base_sync import BaseSyncTask, create_base_parser, init_sync_env
+from base_sync import BaseSyncTask, SyncRegistry, run_main
 
 
+@SyncRegistry.register
 class NameChangeSync(BaseSyncTask):
     """股票更名历史同步任务"""
 
@@ -24,26 +25,14 @@ class NameChangeSync(BaseSyncTask):
     UNIQUE_COLUMNS = ['ts_code', 'start_date']
     SYNC_TYPE = "incremental"
     DATE_COLUMN = "start_date"
+    
+    # 分类信息
+    CATEGORY = "basic"
+    DESCRIPTION = "股票更名历史"
 
 
 def main():
-    parser = create_base_parser("股票更名历史同步 - t_stock_name_history")
-    args = parser.parse_args()
-
-    # 初始化环境
-    config, db, client, logger = init_sync_env(args.log_file)
-
-    # 执行同步
-    sync_task = NameChangeSync(config, db, client)
-    result = sync_task.execute(mode=args.mode)
-
-    # 输出结果
-    logger.info("-" * 60)
-    if result['status'] == 'success':
-        logger.info(f"✅ 同步成功: 获取 {result['rows_fetched']} 条, "
-                   f"插入 {result['rows_inserted']}, 更新 {result['rows_updated']}")
-    else:
-        logger.info(f"⚠️ {result.get('reason', '未知状态')}")
+    run_main(NameChangeSync, "股票更名历史同步 - t_stock_name_history")
 
 
 if __name__ == "__main__":
