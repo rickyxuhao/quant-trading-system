@@ -1,11 +1,11 @@
 ======================================================================
 Data Integrity Check Report
 ======================================================================
-Generated: 2026-03-18 12:26:30
+Generated: 2026-03-20 12:33:53
 
 Daily Market Data:
-  Years covered: 2020 - 2024
-  Average trading days per year: 242
+  Years covered: 2010 - 2024
+  Average trading days per year: 243
   Latest stock count: 5434
 
 Valuation Data:
@@ -17,12 +17,12 @@ Financial Data:
   ROE coverage: 99.7%
 
 Money Flow Data:
-  Years covered: 5
+  Years covered: 15
   Latest year trading days: 242
 
 Stock Universe:
   Status D: 320 stocks
-  Status L: 5489 stocks
+  Status L: 5490 stocks
 
 SW Industry Classification:
   Total industries: 359
