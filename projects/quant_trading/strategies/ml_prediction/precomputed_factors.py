@@ -382,22 +382,17 @@ class FactorPrecomputer:
 
         update_cols = [c for c in factor_cols if c not in ['trade_date', 'ts_code']]
 
-        # 构建值列表
-        values_list = []
-        for _, row in df.iterrows():
-            values = []
-            for c in columns:
-                val = row.get(c, None)
-                if val is None:
-                    values.append(None)
-                elif isinstance(val, float):
-                    if np.isnan(val) or np.isinf(val):
-                        values.append(None)
-                    else:
-                        values.append(val)
-                else:
-                    values.append(val)
-            values_list.append(tuple(values))
+        # 构建值列表 - 向量化替代 iterrows()
+        sub = df[columns].copy()
+        # 将 float 列的 NaN/Inf 替换为 None（数据库友好）
+        float_cols = sub.select_dtypes(include='float').columns.tolist()
+        for fc in float_cols:
+            sub[fc] = sub[fc].where(np.isfinite(sub[fc]), other=None)
+        # 转为 Python 原生类型列表
+        values_list = [
+            tuple(None if (v is not None and isinstance(v, float) and not np.isfinite(v)) else v for v in row)
+            for row in sub.itertuples(index=False, name=None)
+        ]
 
         # 构建 SQL
         placeholders = ', '.join(['%s'] * len(columns))
@@ -506,18 +501,19 @@ class FactorPrecomputer:
             return self._batch_precompute_sequential(trade_dates)
 
     def _filter_existing_dates(self, dates: List[datetime]) -> List[datetime]:
-        """过滤掉已计算过的日期"""
-        result = []
-        for date in dates:
-            date_str = date.strftime('%Y%m%d')
-            existing = DatabaseManager.fetchone(
-                self.DB_NAME,
-                f"SELECT COUNT(*) as cnt FROM {self.TABLE_NAME} WHERE trade_date = %s",
-                (date_str,)
-            )
-            if not existing or existing['cnt'] < self.config.min_stock_count:
-                result.append(date)
-        return result
+        """过滤掉已计算过的日期 - 一次批量查询代替逐日查询"""
+        if not dates:
+            return []
+        date_strs = [d.strftime('%Y%m%d') for d in dates]
+        placeholders = ','.join(['%s'] * len(date_strs))
+        rows = DatabaseManager.fetchall(
+            self.DB_NAME,
+            f"SELECT trade_date, COUNT(*) as cnt FROM {self.TABLE_NAME} "
+            f"WHERE trade_date IN ({placeholders}) GROUP BY trade_date",
+            tuple(date_strs),
+        )
+        sufficient = {r['trade_date'] for r in rows if r['cnt'] >= self.config.min_stock_count}
+        return [d for d in dates if d.strftime('%Y%m%d') not in sufficient]
 
     def _batch_precompute_sequential(
         self, trade_dates: List[datetime]

@@ -575,14 +575,14 @@ def _get_python_compute_fn(factor_name: str) -> Optional[Callable]:
 
         # 技术因子
         "rsi_14d": lambda df: _calc_rsi(df, period=14),
-        "macd": lambda df: _calc_macd(df)["macd"],
-        "macd_signal": lambda df: _calc_macd(df)["signal"],
-        "macd_hist": lambda df: _calc_macd(df)["hist"],
-        "bb_upper": lambda df: _calc_bollinger(df, period=20, std_dev=2)["upper"],
-        "bb_middle": lambda df: _calc_bollinger(df, period=20, std_dev=2)["middle"],
-        "bb_lower": lambda df: _calc_bollinger(df, period=20, std_dev=2)["lower"],
-        "bb_width": lambda df: _calc_bollinger(df, period=20, std_dev=2)["width"],
-        "bb_position": lambda df: _calc_bollinger(df, period=20, std_dev=2)["position"],
+        "macd": lambda df: _calc_macd_cached(df)["macd"],
+        "macd_signal": lambda df: _calc_macd_cached(df)["signal"],
+        "macd_hist": lambda df: _calc_macd_cached(df)["hist"],
+        "bb_upper": lambda df: _calc_bollinger_cached(df, period=20, std_dev=2)["upper"],
+        "bb_middle": lambda df: _calc_bollinger_cached(df, period=20, std_dev=2)["middle"],
+        "bb_lower": lambda df: _calc_bollinger_cached(df, period=20, std_dev=2)["lower"],
+        "bb_width": lambda df: _calc_bollinger_cached(df, period=20, std_dev=2)["width"],
+        "bb_position": lambda df: _calc_bollinger_cached(df, period=20, std_dev=2)["position"],
     }
 
     return compute_fn_map.get(factor_name)
@@ -605,14 +605,10 @@ def _calc_sector_alpha(df: pd.DataFrame, col: str) -> pd.Series:
         return pd.Series(0, index=df.index)
 
     series = pd.to_numeric(series, errors='coerce')
-    result = pd.Series(0, index=df.index)
-
-    for sector in industry.unique():
-        mask = industry == sector
-        if mask.any():
-            result[mask] = series[mask] - series[mask].mean()
-
-    return result
+    # groupby().transform() 替代 Python for loop，向量化执行
+    tmp = pd.DataFrame({"v": series, "ind": industry})
+    sector_mean = tmp.groupby("ind")["v"].transform("mean")
+    return (series - sector_mean).fillna(0)
 
 
 def _calc_sector_rank(df: pd.DataFrame, col: str) -> pd.Series:
@@ -623,14 +619,9 @@ def _calc_sector_rank(df: pd.DataFrame, col: str) -> pd.Series:
         return pd.Series(0.5, index=df.index)
 
     series = pd.to_numeric(series, errors='coerce')
-    result = pd.Series(0.5, index=df.index)
-
-    for sector in industry.unique():
-        mask = industry == sector
-        if mask.sum() > 1:
-            result[mask] = series[mask].rank(pct=True)
-
-    return result
+    tmp = pd.DataFrame({"v": series, "ind": industry})
+    result = tmp.groupby("ind")["v"].transform(lambda x: x.rank(pct=True) if len(x) > 1 else pd.Series(0.5, index=x.index))
+    return result.fillna(0.5)
 
 
 def create_full_registry() -> FactorRegistry:
@@ -784,6 +775,31 @@ def _calc_bollinger(df: pd.DataFrame, period: int = 20, std_dev: float = 2.0) ->
         "width": width.fillna(0),
         "position": position.fillna(0.5)
     }
+
+
+# ---------------------------------------------------------------------------
+# 带DataFrame级别缓存的 macd / bollinger 包装器
+# 每次 compute_factors 调用时，同一个 df 对象只计算一次
+# ---------------------------------------------------------------------------
+_MACD_CACHE: dict = {}   # id(df) -> result
+_BB_CACHE: dict = {}     # (id(df), period, std_dev) -> result
+
+
+def _calc_macd_cached(df: pd.DataFrame, fast: int = 12, slow: int = 26, signal: int = 9) -> dict:
+    key = id(df)
+    if key not in _MACD_CACHE:
+        _MACD_CACHE.clear()          # 每次新 df 进来时清旧缓存，避免内存泄漏
+        _MACD_CACHE[key] = _calc_macd(df, fast, slow, signal)
+    return _MACD_CACHE[key]
+
+
+def _calc_bollinger_cached(df: pd.DataFrame, period: int = 20, std_dev: float = 2.0) -> dict:
+    key = (id(df), period, std_dev)
+    if key not in _BB_CACHE:
+        if not any(k[0] == id(df) for k in _BB_CACHE):
+            _BB_CACHE.clear()        # 每次新 df 进来时清旧缓存
+        _BB_CACHE[key] = _calc_bollinger(df, period, std_dev)
+    return _BB_CACHE[key]
 
 
 def _calc_turnover_volatility(df: pd.DataFrame, period: int = 20) -> pd.Series:
