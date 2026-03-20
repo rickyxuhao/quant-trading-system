@@ -1,0 +1,96 @@
+{
+  "agents": {
+    "data-engineer-001": {
+      "id": "data-engineer-001",
+      "name": "Stock Data Engineer",
+      "type": "data-engineer",
+      "status": "active",
+      "cognitivePattern": "systems",
+      "learningRate": 0.1,
+      "memory": true,
+      "capabilities": [
+        "data_sync",
+        "database_management",
+        "tushare_api",
+        "data_quality_check",
+        "factor_calculation",
+        "sql_optimization",
+        "etl_pipeline",
+        "data_modeling"
+      ],
+      "metrics": {
+        "tasksCompleted": 0,
+        "successRate": 1,
+        "adaptations": 0
+      },
+      "createdAt": "2026-03-20T15:14:23.099Z",
+      "lastActivity": "2026-03-20T15:14:23.099Z"
+    }
+  },
+  "workflows": {},
+  "knowledge": {
+    "knowledge-1774019734648": {
+      "domain": "project-architecture",
+      "content": {
+        "project": "沪深股市量化交易系统",
+        "workdir": "/Users/xuhaoricky/ClawProject/Stock-trading-project",
+        "data_layer": {
+          "sync_engine": "core/data_sync/engine.py",
+          "tasks_dir": "core/data_sync/tasks/",
+          "tushare_client": "core/data_access/tushare/client.py",
+          "storage": "core/storage/relational/connection.py"
+        },
+        "databases": {
+          "tushare_biz": "原始Tushare数据",
+          "interface": "加工后数据"
+        },
+        "data_tables": [
+          "t_stock_basic",
+          "t_stock_daily_market_data",
+          "t_daily_basic",
+          "t_index_daily",
+          "t_moneyflow",
+          "t_stock_adjfactor",
+          "t_stock_st_list",
+          "t_sw_classify",
+          "t_sw_daily",
+          "t_sw_member",
+          "t_trade_date"
+        ],
+        "sync_tasks": [
+          "tushare_stock_basic",
+          "tushare_stock_dailymarketdata",
+          "tushare_daily_basic",
+          "tushare_index_daily",
+          "tushare_moneyflow",
+          "tushare_stock_adjfactor",
+          "tushare_stock_st_list",
+          "tushare_sw_classify",
+          "tushare_sw_daily",
+          "tushare_sw_member",
+          "tushare_trade_date"
+        ],
+        "factor_sql": [
+          "database/migrations/create_factor_calculation_functions.sql",
+          "database/migrations/create_precomputed_factors.sql"
+        ],
+        "cli_commands": {
+          "sync_all": "poetry run python main.py sync --all",
+          "sync_task": "poetry run python main.py sync --task <task_name>",
+          "check_data": "poetry run python main.py check --table <table_name>",
+          "init_db": "poetry run python main.py init-db"
+        },
+        "transaction_cost": {
+          "stamp_duty": "0.1% 仅卖出",
+          "commission": "0.025% 最低5元",
+          "transfer_fee": "0.002%",
+          "etf": "仅佣金无印花税"
+        },
+        "benchmark": "沪深300 (000300.SH)"
+      },
+      "sharedBy": "data-engineer-001",
+      "timestamp": "2026-03-20T15:15:34.648Z"
+    }
+  },
+  "version": "3.0.0"
+}

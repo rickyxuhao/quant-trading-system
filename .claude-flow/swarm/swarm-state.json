@@ -17,6 +17,24 @@
       },
       "createdAt": "2026-03-20T09:12:32.084Z",
       "updatedAt": "2026-03-20T09:12:32.084Z"
+    },
+    "swarm-1774018966164-cgdr7n": {
+      "swarmId": "swarm-1774018966164-cgdr7n",
+      "topology": "hierarchical",
+      "maxAgents": 8,
+      "status": "running",
+      "agents": [],
+      "tasks": [],
+      "config": {
+        "topology": "hierarchical",
+        "maxAgents": 8,
+        "strategy": "specialized",
+        "communicationProtocol": "message-bus",
+        "autoScaling": true,
+        "consensusMechanism": "majority"
+      },
+      "createdAt": "2026-03-20T15:02:46.164Z",
+      "updatedAt": "2026-03-20T15:02:46.164Z"
     }
   },
   "version": "3.0.0"
