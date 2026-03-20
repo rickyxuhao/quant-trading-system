@@ -23,7 +23,10 @@ import pandas as pd
 from core.logger import get_logger
 from core.storage.relational.connection import DatabaseManager
 from projects.quant_trading.strategies.ml_prediction.factor_registry import (
-    FactorRegistry, get_full_registry, FactorDefinition, FactorType
+    FactorRegistry, get_full_registry, FactorType
+)
+from projects.quant_trading.strategies.ml_prediction.factor_definitions import (
+    FactorDefinition, CalculationType
 )
 
 logger = get_logger(__name__)
@@ -44,7 +47,7 @@ def get_factor_schema(registry: Optional[FactorRegistry] = None) -> Dict[str, st
 
     schema = {}
     for name, factor in registry.get_all_factors().items():
-        schema[name] = FACTOR_DB_TYPES.get(factor.factor_type, "FLOAT")
+        schema[name] = FACTOR_DB_TYPES.get(FactorType.from_calculation_type(factor.calculation), "FLOAT")
     return schema
 
 

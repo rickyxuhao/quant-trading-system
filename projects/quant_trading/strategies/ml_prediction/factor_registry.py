@@ -55,35 +55,6 @@ class FactorType(Enum):
         return mapping.get(calc_type, cls.PYTHON)
 
 
-@dataclass
-class FactorDefinition:
-    """因子定义"""
-    name: str                           # 因子名称
-    description: str                    # 描述
-    factor_type: FactorType             # 类型
-
-    # SQL 相关
-    sql_expr: Optional[str] = None      # SQL 表达式
-    sql_cte: Optional[str] = None       # 自定义 CTE（可选）
-
-    # Python 相关
-    compute_fn: Optional[Callable] = None  # Python 计算函数
-
-    # 通用
-    dependencies: List[str] = field(default_factory=list)  # 依赖的其他因子
-    data_source: str = "t_stock_dailymarketdata"          # 默认数据源
-    category: str = "misc"              # 分类: valuation/returns/momentum/etc
-
-    # 元数据
-    default_value: float = 0.0          # 缺失值填充
-    winsorize: bool = True              # 是否缩尾处理
-    zscore: bool = False                # 是否自动计算 Z-score
-
-    # 扩展元数据（可选）
-    window_days: Optional[int] = None   # 计算窗口天数
-    extra: Dict[str, Any] = field(default_factory=dict)  # 扩展字段
-
-
 class FactorRegistry:
     """
     因子注册表
@@ -112,7 +83,7 @@ class FactorRegistry:
         factor = FactorDefinition(
             name=name,
             description=description,
-            factor_type=FactorType.SQL,
+            calculation=CalculationType.SQL,
             sql_expr=sql_expr,
             dependencies=dependencies or [],
             category=category,
@@ -135,7 +106,7 @@ class FactorRegistry:
         factor = FactorDefinition(
             name=name,
             description=description,
-            factor_type=FactorType.PYTHON,
+            calculation=CalculationType.PYTHON,
             compute_fn=compute_fn,
             dependencies=dependencies,
             category=category,
@@ -159,7 +130,7 @@ class FactorRegistry:
         factor = FactorDefinition(
             name=name,
             description=description,
-            factor_type=FactorType.HYBRID,
+            calculation=CalculationType.HYBRID,
             sql_expr=sql_expr,
             compute_fn=compute_fn,
             dependencies=dependencies,
@@ -212,8 +183,8 @@ class FactorRegistry:
         date_str = trade_date.strftime("%Y%m%d")
 
         # 分离 SQL 和 Python 因子
-        sql_factors = [f for f in factors if f.factor_type in (FactorType.SQL, FactorType.HYBRID)]
-        python_factors = [f for f in factors if f.factor_type in (FactorType.PYTHON, FactorType.HYBRID)]
+        sql_factors = [f for f in factors if FactorType.from_calculation_type(f.calculation) in (FactorType.SQL, FactorType.HYBRID)]
+        python_factors = [f for f in factors if FactorType.from_calculation_type(f.calculation) in (FactorType.PYTHON, FactorType.HYBRID)]
 
         # 1. 执行 SQL 查询获取基础因子
         if sql_factors:
@@ -268,7 +239,7 @@ class SQLFactorBuilder:
         placeholders = ','.join(['%s'] * len(stock_pool))
 
         # 按数据源分组（只包含SQL和HYBRID类型的因子）
-        sql_factors = [f for f in factors if f.factor_type in (FactorType.SQL, FactorType.HYBRID)]
+        sql_factors = [f for f in factors if FactorType.from_calculation_type(f.calculation) in (FactorType.SQL, FactorType.HYBRID)]
         price_factors = [f for f in sql_factors if f.data_source == "t_stock_dailymarketdata"]
         valuation_factors = [f for f in sql_factors if f.data_source == "t_stock_daily_basic"]
         moneyflow_factors = [f for f in sql_factors if f.data_source == "t_stock_moneyflow"]

@@ -1,0 +1,2144 @@
+<!DOCTYPE html><html lang="zh-CN"><head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Ruflo多Agent量化交易系统构建与迭代优化完整方案</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Tiempos+Headline:wght@400;600;700&amp;family=Inter:wght@300;400;500;600;700&amp;family=Noto+Sans+SC:wght@300;400;500;700&amp;family=Noto+Serif+SC:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+    <style>
+        :root {
+            --primary: #0f4c75;
+            --secondary: #3282b8;
+            --accent: #bbe1fa;
+            --neutral: #1b263b;
+            --base-100: #ffffff;
+            --base-200: #f8fafc;
+            --base-300: #e2e8f0;
+            --info: #3b82f6;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+        }
+
+        body {
+            font-family: 'Inter', 'Noto Sans SC', sans-serif;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            color: var(--neutral);
+        }
+
+        .serif {
+            font-family: 'Tiempos Headline', 'Noto Serif SC', serif;
+        }
+
+        .hero-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            grid-template-rows: auto auto;
+            gap: 2rem;
+            min-height: 60vh;
+        }
+
+        .hero-content {
+            grid-column: 1;
+            grid-row: 1 / -1;
+        }
+
+        .hero-visual {
+            grid-column: 2;
+            grid-row: 1;
+        }
+
+        .hero-stats {
+            grid-column: 2;
+            grid-row: 2;
+        }
+
+        .toc-fixed {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 280px;
+            height: 100vh;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-right: 1px solid var(--base-300);
+            z-index: 1000;
+            overflow-y: auto;
+            padding: 2rem 1.5rem;
+        }
+
+        .main-content {
+            margin-left: 280px;
+            min-height: 100vh;
+        }
+
+        .toc-link {
+            display: block;
+            padding: 0.5rem 0;
+            color: var(--neutral);
+            text-decoration: none;
+            border-left: 2px solid transparent;
+            padding-left: 1rem;
+            transition: all 0.2s ease;
+        }
+
+        .toc-link:hover, .toc-link.active {
+            color: var(--primary);
+            border-left-color: var(--primary);
+            background: rgba(15, 76, 117, 0.05);
+        }
+
+        .section-header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 4rem 2rem;
+            margin-bottom: 3rem;
+            position: relative;
+        }
+
+        .section-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+            opacity: 0.3;
+        }
+
+        .card {
+            background: white;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+
+        .card:hover {
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            text-align: center;
+            border: 2px solid var(--base-300);
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            border-color: var(--primary);
+            background: rgba(15, 76, 117, 0.05);
+        }
+
+        .citation {
+            color: var(--secondary);
+            text-decoration: none;
+            font-size: 0.85em;
+            vertical-align: super;
+        }
+
+        .citation:hover {
+            color: var(--primary);
+            text-decoration: underline;
+        }
+
+        .code-block {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            overflow-x: auto;
+            font-family: 'Fira Code', monospace;
+            margin: 1.5rem 0;
+        }
+
+        .highlight-box {
+            background: linear-gradient(135deg, var(--accent) 0%, rgba(187, 225, 250, 0.3) 100%);
+            border-left: 4px solid var(--secondary);
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            margin: 2rem 0;
+        }
+
+        @media (max-width: 1024px) {
+            .toc-fixed {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+            
+            .toc-fixed.open {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+            
+            .hero-grid {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto auto;
+            }
+            
+            .hero-content {
+                grid-column: 1;
+                grid-row: 1;
+            }
+            
+            .hero-visual {
+                grid-column: 1;
+                grid-row: 2;
+            }
+            
+            .hero-stats {
+                grid-column: 1;
+                grid-row: 3;
+            }
+        }
+
+        /* Prevent horizontal overflow on small screens */
+        @media (max-width: 768px) {
+            body {
+                overflow-x: hidden;
+            }
+            
+            .hero-content h1 {
+                font-size: 2.25rem;
+                line-height: 1.2;
+            }
+            
+            .hero-content p {
+                font-size: 1rem;
+            }
+            
+            .hero-visual img,
+            .hero-stats img {
+                height: auto;
+                max-height: 200px;
+            }
+            
+            .section-header {
+                padding: 2rem 1rem;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+  <base target="_blank">
+</head>
+
+  <body>
+    <!-- 目录 -->
+    <nav class="toc-fixed" id="toc">
+      <div class="mb-6">
+        <h3 class="serif text-lg font-bold text-gray-800 mb-4">目录导航</h3>
+      </div>
+
+      <div class="space-y-1">
+        <a href="#overview" class="toc-link text-sm">方案概览</a>
+        <a href="#architecture" class="toc-link text-sm">系统架构设计</a>
+        <div class="ml-4 space-y-1">
+          <a href="#ruflo-core" class="toc-link text-xs text-gray-600">Ruflo核心能力</a>
+          <a href="#system-design" class="toc-link text-xs text-gray-600">总体架构设计</a>
+        </div>
+        <a href="#core-agents" class="toc-link text-sm">核心Agent设计</a>
+        <div class="ml-4 space-y-1">
+          <a href="#data-engineer" class="toc-link text-xs text-gray-600">数据处理Agent</a>
+          <a href="#factor-miner" class="toc-link text-xs text-gray-600">因子挖掘Agent</a>
+          <a href="#model-builder" class="toc-link text-xs text-gray-600">预测模型Agent</a>
+          <a href="#portfolio-manager" class="toc-link text-xs text-gray-600">策略组合Agent</a>
+          <a href="#risk-controller" class="toc-link text-xs text-gray-600">风险管理Agent</a>
+        </div>
+        <a href="#collaboration" class="toc-link text-sm">协同与通信</a>
+        <div class="ml-4 space-y-1">
+          <a href="#communication" class="toc-link text-xs text-gray-600">通信协议设计</a>
+          <a href="#workflow" class="toc-link text-xs text-gray-600">工作流编排</a>
+        </div>
+        <a href="#optimization" class="toc-link text-sm">迭代优化规划</a>
+        <a href="#implementation" class="toc-link text-sm">实施路线图</a>
+      </div>
+    </nav>
+
+    <!-- 主要内容 -->
+    <main class="main-content">
+      <!-- 概览部分 -->
+      <section id="overview" class="section-header">
+        <div class="relative z-10 max-w-6xl mx-auto">
+          <div class="hero-grid">
+            <div class="hero-content">
+              <h1 class="serif text-5xl font-bold mb-6 leading-tight">
+                <em class="text-yellow-300">Ruflo多Agent</em>
+                <br/>
+                量化交易系统构建
+                <br/>
+                与迭代优化完整方案
+              </h1>
+              <p class="text-xl text-blue-100 mb-8 leading-relaxed">
+                基于蜂群智能架构的企业级量化交易系统设计，实现从数据获取到策略执行的全流程自动化，
+                通过五轮迭代演进构建自适应智能交易系统
+              </p>
+              <div class="flex items-center space-x-6">
+                <div class="flex items-center space-x-2">
+                  <i class="fas fa-brain text-yellow-300"></i>
+                  <span class="text-blue-100">多Agent协同</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                  <i class="fas fa-chart-line text-yellow-300"></i>
+                  <span class="text-blue-100">量化交易</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                  <i class="fas fa-sync-alt text-yellow-300"></i>
+                  <span class="text-blue-100">持续优化</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="hero-visual">
+              <img src="https://kimi-web-img.moonshot.cn/img/media.ginonotes.com/4ce97552ffe8687749b574139433f1eddd1e186d.png" alt="多智能体协同工作的抽象概念图" class="w-full h-64 object-cover rounded-lg shadow-2xl opacity-90" size="medium" aspect="wide" color="blue" query="多智能体协同系统概念图" referrerpolicy="no-referrer" data-modified="1" data-score="0.00"/>
+            </div>
+
+            <div class="hero-stats grid grid-cols-2 gap-4">
+              <div class="bg-white bg-opacity-20 backdrop-blur-sm rounded-lg p-4">
+                <div class="text-2xl font-bold text-yellow-300">5</div>
+                <div class="text-blue-100 text-sm">核心Agent类型</div>
+              </div>
+              <div class="bg-white bg-opacity-20 backdrop-blur-sm rounded-lg p-4">
+                <div class="text-2xl font-bold text-yellow-300">5</div>
+                <div class="text-blue-100 text-sm">迭代优化轮次</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 核心要点 -->
+      <div class="max-w-6xl mx-auto px-6 py-12">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="text-3xl font-bold text-blue-600 mb-2">架构设计</div>
+            <div class="text-gray-600">五层架构：数据层、计算层、策略层、执行层、监控层</div>
+          </div>
+          <div class="stat-card">
+            <div class="text-3xl font-bold text-green-600 mb-2">协同机制</div>
+            <div class="text-gray-600">MCP协议集成，标准化通信，混合部署模式</div>
+          </div>
+          <div class="stat-card">
+            <div class="text-3xl font-bold text-purple-600 mb-2">智能演进</div>
+            <div class="text-gray-600">AutoML因子挖掘，自适应模型优化，持续学习</div>
+          </div>
+          <div class="stat-card">
+            <div class="text-3xl font-bold text-orange-600 mb-2">风险管控</div>
+            <div class="text-gray-600">全链路监控，实时预警，压力测试，归因分析</div>
+          </div>
+        </div>
+
+        <div class="highlight-box mt-8">
+          <h3 class="serif text-2xl font-bold mb-4 flex items-center">
+            <i class="fas fa-lightbulb text-yellow-500 mr-3"></i>
+            核心创新点
+          </h3>
+          <ul class="space-y-3">
+            <li class="flex items-start">
+              <i class="fas fa-chevron-right text-blue-500 mt-1 mr-3"></i>
+              <div>
+                <strong>蜂群智能架构</strong>：基于Ruflo Swarm的五类专业Agent协同，突破单Agent上下文限制
+                <a href="https://www.sitepoint.com/deploying-multiagent-swarms-with-ruflo-beyond-singleprompt-coding/" class="citation">[395]</a>
+              </div>
+            </li>
+            <li class="flex items-start">
+              <i class="fas fa-chevron-right text-blue-500 mt-1 mr-3"></i>
+              <div>
+                <strong>混合部署模式</strong>：本地Python+SQL计算 + Ruflo云端编排，兼顾安全与效率
+              </div>
+            </li>
+            <li class="flex items-start">
+              <i class="fas fa-chevron-right text-blue-500 mt-1 mr-3"></i>
+              <div>
+                <strong>自适应演进</strong>：五轮迭代从基础数据验证到自驱动智能系统的渐进式优化
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 系统架构设计 -->
+      <section id="architecture" class="max-w-6xl mx-auto px-6 py-12">
+        <h2 class="serif text-4xl font-bold mb-8 text-center">系统架构设计与核心概念</h2>
+
+        <!-- Ruflo核心能力 -->
+        <div id="ruflo-core" class="mb-16">
+          <h3 class="serif text-2xl font-bold mb-6">Ruflo平台核心能力解析</h3>
+
+          <div class="card p-6 mb-8">
+            <h4 class="text-xl font-semibold mb-4 text-blue-700">多Agent编排引擎：Swarm、Agent、Task三层架构</h4>
+            <p class="text-gray-700 mb-4">
+              Ruflo作为企业级多Agent编排平台，通过引入<strong>蜂群智能（Swarm Intelligence）</strong>架构，
+              使多个具有专业角色的AI Agent能够协同完成复杂任务
+              <a href="https://www.sitepoint.com/deploying-multiagent-swarms-with-ruflo-beyond-singleprompt-coding/" class="citation">[395]</a>。
+            </p>
+
+            <div class="grid md:grid-cols-3 gap-6 mt-6">
+              <div class="bg-blue-50 p-4 rounded-lg">
+                <h5 class="font-semibold mb-2 text-blue-800">Agent层</h5>
+                <ul class="text-sm space-y-1">
+                  <li>• <strong>角色定义</strong>：数据处理工程师、因子研究员等</li>
+                  <li>• <strong>系统提示词</strong>：约束行为边界和输出格式</li>
+                  <li>• <strong>工具绑定</strong>：文件系统、SQL查询等能力</li>
+                  <li>• <strong>输出契约</strong>：标准化产物格式与质量标准</li>
+                </ul>
+              </div>
+              <div class="bg-green-50 p-4 rounded-lg">
+                <h5 class="font-semibold mb-2 text-green-800">Swarm层</h5>
+                <ul class="text-sm space-y-1">
+                  <li>• <strong>层次化拓扑</strong>：明确汇报关系的团队结构</li>
+                  <li>• <strong>网状拓扑</strong>：点对点高容错通信</li>
+                  <li>• <strong>自适应拓扑</strong>：基于机器学习的动态优化</li>
+                  <li>• <strong>动态扩缩容</strong>：12/8活跃/最大Agent比例</li>
+                </ul>
+              </div>
+              <div class="bg-purple-50 p-4 rounded-lg">
+                <h5 class="font-semibold mb-2 text-purple-800">Task层</h5>
+                <ul class="text-sm space-y-1">
+                  <li>• <strong>任务路由</strong>：智能分解与分配</li>
+                  <li>• <strong>冲突解决</strong>：多Agent协调机制</li>
+                  <li>• <strong>输出合并</strong>：复杂工作流管理</li>
+                  <li>• <strong>检查点</strong>：断点续跑能力</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="card p-6">
+            <h4 class="text-xl font-semibold mb-4 text-blue-700">MCP协议集成：工具调用、上下文管理、状态持久化</h4>
+            <p class="text-gray-700 mb-4">
+              Ruflo原生支持<strong>MCP（Model Context Protocol）</strong>，为Agent与外部工具交互提供标准化接口，
+              被形象地比喻为&#34;AI应用的USB-C端口&#34;<a href="https://developers.cloudflare.com/agents/model-context-protocol/" class="citation">[311]</a>。
+            </p>
+
+            <div class="grid md:grid-cols-2 gap-6">
+              <div>
+                <h5 class="font-semibold mb-3">核心MCP工具</h5>
+                <ul class="text-sm space-y-2">
+                  <li>• <code>swarm_init</code>, <code>agent_spawn</code> - 蜂群管理</li>
+                  <li>• <code>task_orchestrate</code>, <code>parallel_execute</code> - 任务编排</li>
+                  <li>• <code>neural_train</code>, <code>neural_predict</code> - 神经网络</li>
+                  <li>• <code>daa_agent_create</code>, <code>daa_communication</code> - 动态架构</li>
+                </ul>
+                <p class="text-xs text-gray-500 mt-2">
+                  总计87个专用MCP工具<a href="https://github.com/ruvnet/ruflo/wiki/MCP-Tools" class="citation">[306]</a>
+                </p>
+              </div>
+              <div>
+                <h5 class="font-semibold mb-3">状态持久化</h5>
+                <ul class="text-sm space-y-2">
+                  <li>• <strong>RVF向量存储</strong>：HNSW索引算法</li>
+                  <li>• <strong>加速效果</strong>：150x-12,500x向量搜索加速</li>
+                  <li>• <strong>记忆保持</strong>：EWC++技术跨会话学习</li>
+                  <li>• <strong>Flash Attention</strong>：高效注意力机制</li>
+                </ul>
+                <p class="text-xs text-gray-500 mt-2">
+                  参考Ruflo向量系统<a href="https://netcup.best/blog/ruflo-netcup-guide/" class="citation">[415]</a>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 总体架构设计 -->
+        <div id="system-design" class="mb-16">
+          <h3 class="serif text-2xl font-bold mb-6">量化交易多Agent系统总体架构</h3>
+
+          <div class="card p-6 mb-8">
+            <h4 class="text-xl font-semibold mb-4 text-blue-700">分层设计：数据层、计算层、策略层、执行层、监控层</h4>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead>
+                  <tr class="bg-gray-50">
+                    <th class="text-left p-3 font-semibold">层级</th>
+                    <th class="text-left p-3 font-semibold">核心职责</th>
+                    <th class="text-left p-3 font-semibold">关键组件</th>
+                    <th class="text-left p-3 font-semibold">技术实现</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="border-t">
+                    <td class="p-3 font-medium text-blue-700">数据层</td>
+                    <td class="p-3">多源数据获取、清洗、存储、版本管理</td>
+                    <td class="p-3">Tushare/AkShare适配器、SQL数据仓库、质量监控</td>
+                    <td class="p-3">Python数据pipeline，PostgreSQL，Parquet缓存</td>
+                  </tr>
+                  <tr class="border-t bg-gray-50">
+                    <td class="p-3 font-medium text-green-700">计算层</td>
+                    <td class="p-3">因子计算、特征工程、模型训练推理</td>
+                    <td class="p-3">向量化计算引擎、分布式训练框架、GPU集群</td>
+                    <td class="p-3">Pandas/Numba/Dask，Ray，PyTorch/XGBoost</td>
+                  </tr>
+                  <tr class="border-t">
+                    <td class="p-3 font-medium text-purple-700">策略层</td>
+                    <td class="p-3">信号生成、组合优化、策略管理</td>
+                    <td class="p-3">因子库、模型库、优化求解器、策略模板</td>
+                    <td class="p-3">CVXPY/ORTools，Backtrader/Zipline集成</td>
+                  </tr>
+                  <tr class="border-t bg-gray-50">
+                    <td class="p-3 font-medium text-orange-700">执行层</td>
+                    <td class="p-3">回测模拟、订单管理、绩效追踪</td>
+                    <td class="p-3">事件驱动引擎、市场冲击模型、成本模拟</td>
+                    <td class="p-3">自研或Backtrader，预留实盘接口</td>
+                  </tr>
+                  <tr class="border-t">
+                    <td class="p-3 font-medium text-red-700">监控层</td>
+                    <td class="p-3">全链路可观测性、风险预警、归因分析</td>
+                    <td class="p-3">Agent健康监控、数据质量指标、策略绩效追踪</td>
+                    <td class="p-3">Prometheus/Grafana，自定义Dashboard</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="highlight-box">
+            <h4 class="text-xl font-semibold mb-4">Agent角色定义与职责边界</h4>
+            <p class="text-gray-700 mb-4">
+              系统定义<strong>五类核心Agent</strong>，每类Agent的职责边界和交互接口经过精心设计，
+              形成&#34;数据向下流动、决策向上汇聚&#34;的协作模式。
+            </p>
+
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+              <div class="bg-white p-4 rounded-lg border border-blue-200">
+                <h5 class="font-semibold text-blue-700 mb-2">DataEngineer</h5>
+                <p class="text-sm text-gray-600 mb-2">10-60分钟执行时长</p>
+                <ul class="text-xs space-y-1">
+                  <li>• 数据pipeline建设与维护</li>
+                  <li>• 同步、清洗、因子加工</li>
+                  <li>• SQL优化</li>
+                </ul>
+              </div>
+              <div class="bg-white p-4 rounded-lg border border-green-200">
+                <h5 class="font-semibold text-green-700 mb-2">FactorMiner</h5>
+                <p class="text-sm text-gray-600 mb-2">5-30分钟执行时长</p>
+                <ul class="text-xs space-y-1">
+                  <li>• 因子挖掘与有效性检验</li>
+                  <li>• 经典因子库、ML因子探索</li>
+                  <li>• 正交化、动态权重</li>
+                </ul>
+              </div>
+              <div class="bg-white p-4 rounded-lg border border-purple-200">
+                <h5 class="font-semibold text-purple-700 mb-2">ModelBuilder</h5>
+                <p class="text-sm text-gray-600 mb-2">30分钟-4小时执行时长</p>
+                <ul class="text-xs space-y-1">
+                  <li>• 预测模型开发与优化</li>
+                  <li>• 样本构建、模型选型</li>
+                  <li>• 超参优化、可解释性</li>
+                </ul>
+              </div>
+              <div class="bg-white p-4 rounded-lg border border-orange-200">
+                <h5 class="font-semibold text-orange-700 mb-2">PortfolioManager</h5>
+                <p class="text-sm text-gray-600 mb-2">5-20分钟执行时长</p>
+                <ul class="text-xs space-y-1">
+                  <li>• 策略生成与组合优化</li>
+                  <li>• 信号合成、回测执行</li>
+                  <li>• 绩效分析</li>
+                </ul>
+              </div>
+              <div class="bg-white p-4 rounded-lg border border-red-200">
+                <h5 class="font-semibold text-red-700 mb-2">RiskController</h5>
+                <p class="text-sm text-gray-600 mb-2">实时监控/1-5分钟分析</p>
+                <ul class="text-xs space-y-1">
+                  <li>• 全链路风险监控与控制</li>
+                  <li>• 仓位限制、压力测试</li>
+                  <li>• 实时指标、归因分析</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 核心Agent设计 -->
+      <section id="core-agents" class="max-w-6xl mx-auto px-6 py-12">
+        <h2 class="serif text-4xl font-bold mb-8 text-center">核心Agent设计与配置</h2>
+
+        <!-- 数据处理Agent -->
+        <div id="data-engineer" class="mb-16">
+          <h3 class="serif text-2xl font-bold mb-6 flex items-center">
+            <i class="fas fa-database text-blue-500 mr-3"></i>
+            数据处理Agent（DataEngineer）
+          </h3>
+
+          <div class="card p-6 mb-8">
+            <h4 class="text-xl font-semibold mb-4 text-blue-700">技能矩阵构建</h4>
+
+            <div class="space-y-6">
+              <div class="bg-blue-50 p-4 rounded-lg">
+                <h5 class="font-semibold mb-3 text-blue-800">数据同步能力</h5>
+                <p class="text-sm text-gray-700 mb-3">
+                  A股数据同步面临的核心挑战是数据源的不稳定性和历史数据的完整性保障。
+                  DataEngineer需要掌握多数据源故障转移策略。
+                </p>
+
+                <div class="overflow-x-auto">
+                  <table class="w-full text-xs">
+                    <thead>
+                      <tr class="bg-blue-100">
+                        <th class="p-2 text-left">数据源</th>
+                        <th class="p-2 text-left">数据类型</th>
+                        <th class="p-2 text-left">覆盖范围</th>
+                        <th class="p-2 text-left">限制条件</th>
+                        <th class="p-2 text-left">故障转移</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td class="p-2 font-medium">Tushare Pro</td>
+                        <td class="p-2">行情、财务、宏观</td>
+                        <td class="p-2">全市场，2004年至今</td>
+                        <td class="p-2">积分制，频次限制</td>
+                        <td class="p-2">限流时切换AkShare</td>
+                      </tr>
+                      <tr class="bg-blue-50">
+                        <td class="p-2 font-medium">AkShare</td>
+                        <td class="p-2">行情、财务、宏观</td>
+                        <td class="p-2">全市场，免费</td>
+                        <td class="p-2">稳定性依赖目标网站</td>
+                        <td class="p-2">失败时降级Tushare</td>
+                      </tr>
+                      <tr>
+                        <td class="p-2 font-medium">JoinQuant</td>
+                        <td class="p-2">清洗后行情、因子</td>
+                        <td class="p-2">全市场，2010年至今</td>
+                        <td class="p-2">数据导出受限，付费</td>
+                        <td class="p-2">核心数据校验基准</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div class="bg-green-50 p-4 rounded-lg">
+                <h5 class="font-semibold mb-3 text-green-800">数据清洗能力</h5>
+                <p class="text-sm text-gray-700 mb-3">
+                  数据清洗是量化数据工程中最易引入隐性错误的环节，需要建立可审计、可复现的处理流程。
+                </p>
+
+                <div class="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <h6 class="font-medium mb-2">价格数据处理</h6>
+                    <ul class="text-xs space-y-1">
+                      <li>• <strong>缺失值</strong>：价格前向填充（≤5日）</li>
+                      <li>• <strong>价格跳空</strong>：单日涨跌幅阈值检测</li>
+                      <li>• <strong>复权计算</strong>：前复权/后复权双版本</li>
+                      <li>• <strong>停牌处理</strong>：统一标识，复牌首日特殊处理</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <h6 class="font-medium mb-2">成交量与其他数据</h6>
+                    <ul class="text-xs space-y-1">
+                      <li>• <strong>成交量异常</strong>：超过20日均量10倍标记</li>
+                      <li>• <strong>零值陷阱</strong>：开盘价/收盘价为零检测</li>
+                      <li>• <strong>财务数据</strong>：报告期→公告日精确映射</li>
+                      <li>• <strong>质量标记</strong>：is_imputed标志位记录</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card p-6">
+            <h4 class="text-xl font-semibold mb-4 text-blue-700">代码资产整合</h4>
+
+            <div class="code-block">
+              <pre><code># 标准数据接口设计
+from pydantic import BaseModel
+from typing import Dict, Any, Optional, List
+import pandas as pd
+from datetime import datetime
+
+class DataRequest(BaseModel):
+    data_type: Literal[&#34;daily&#34;, &#34;minute&#34;, &#34;tick&#34;, &#34;financial&#34;, &#34;factor&#34;]
+    start_date: str  # YYYY-MM-DD
+    end_date: str
+    stock_pool: Optional[List[str]] = None  # None表示全市场
+    fields: Optional[List[str]] = None      # None表示全部字段
+    filters: Optional[Dict[str, Any]] = None  # 额外过滤条件
+
+class DataResponse(BaseModel):
+    data: pd.DataFrame
+    record_count: int
+    quality_score: float  # 0-1，基于缺失率、异常率计算
+    metadata: Dict[str, Any]  # 数据来源、更新时间、版本信息、血缘关系
+    processing_time_ms: int
+
+class DataEngineer:
+    &#34;&#34;&#34;数据处理Agent的核心类&#34;&#34;&#34;
+    
+    async def fetch_data(self, request: DataRequest) -&gt; DataResponse:
+        &#34;&#34;&#34;获取原始数据，支持多数据源自动切换&#34;&#34;&#34;
+        ...
+    
+    async def clean_data(self, raw_data: pd.DataFrame, 
+                         rules: DataCleaningRules) -&gt; DataResponse:
+        &#34;&#34;&#34;执行数据清洗，返回质量报告&#34;&#34;&#34;
+        ...
+    
+    async def compute_factor(self, request: FactorRequest) -&gt; DataResponse:
+        &#34;&#34;&#34;计算指定因子，支持缓存和增量更新&#34;&#34;&#34;
+        ...
+    
+    async def execute_query(self, sql: str, 
+                           params: Optional[Dict] = None) -&gt; DataResponse:
+        &#34;&#34;&#34;执行优化后的SQL查询&#34;&#34;&#34;
+        ...</code></pre>
+            </div>
+
+            <div class="mt-6 grid md:grid-cols-2 gap-6">
+              <div>
+                <h5 class="font-semibold mb-3">依赖包管理（推荐Poetry）</h5>
+                <div class="code-block !p-3">
+                  <pre><code># pyproject.toml 关键依赖
+[tool.poetry.dependencies]
+python = &#34;^3.10&#34;
+pandas = &#34;^2.1.0&#34;
+numpy = &#34;^1.24.0&#34;
+sqlalchemy = {extras = [&#34;asyncpg&#34;], version = &#34;^2.0.0&#34;}
+tushare = &#34;^1.3.0&#34;
+akshare = &#34;^1.12.0&#34;
+fastapi = &#34;^0.109.0&#34;
+xgboost = &#34;^2.0.0&#34;
+lightgbm = &#34;^4.2.0&#34;</code></pre>
+                </div>
+              </div>
+              <div>
+                <h5 class="font-semibold mb-3">数据库连接池配置</h5>
+                <div class="code-block !p-3">
+                  <pre><code># SQLAlchemy异步引擎配置
+engine = create_async_engine(
+    DATABASE_URL,
+    pool_size=10,
+    max_overflow=20,
+    pool_timeout=30,
+    pool_recycle=3600,
+    pool_pre_ping=True,
+    echo=False
+)</code></pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 因子挖掘Agent -->
+        <div id="factor-miner" class="mb-16">
+          <h3 class="serif text-2xl font-bold mb-6 flex items-center">
+            <i class="fas fa-search text-green-500 mr-3"></i>
+            因子挖掘Agent（FactorMiner）
+          </h3>
+
+          <div class="grid md:grid-cols-2 gap-6 mb-8">
+            <div class="card p-6">
+              <h4 class="text-xl font-semibold mb-4 text-green-700">传统因子投资能力</h4>
+
+              <div class="space-y-4">
+                <div>
+                  <h5 class="font-medium mb-2">经典因子库</h5>
+                  <ul class="text-sm space-y-1">
+                    <li>• <strong>Fama-French五因子</strong>：A股本土化实现</li>
+                    <li>• <strong>Barra风险模型</strong>：CNE5/CNE6体系</li>
+                    <li>• <strong>A股特色因子</strong>：散户情绪、北向资金等</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h5 class="font-medium mb-2">因子有效性检验</h5>
+                  <ul class="text-sm space-y-1">
+                    <li>• <strong>IC分析</strong>：|IC|&gt;0.03，IC_IR&gt;0.5</li>
+                    <li>• <strong>分层回测</strong>：单调性检验</li>
+                    <li>• <strong>换手率分析</strong>：月度&lt;50%低频</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h5 class="font-medium mb-2">因子正交化</h5>
+                  <ul class="text-sm space-y-1">
+                    <li>• <strong>Gram-Schmidt</strong>：按优先级正交化</li>
+                    <li>• <strong>PCA</strong>：主成分降维</li>
+                    <li>• <strong>因子聚类</strong>：相关性控制</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="card p-6">
+              <h4 class="text-xl font-semibold mb-4 text-green-700">机器学习因子挖掘</h4>
+
+              <div class="space-y-4">
+                <div>
+                  <h5 class="font-medium mb-2">特征工程自动化</h5>
+                  <ul class="text-sm space-y-1">
+                    <li>• <strong>遗传规划</strong>：因子表达式树进化</li>
+                    <li>• <strong>强化学习</strong>：PPO探索因子组合</li>
+                    <li>• <strong>集成学习</strong>：XGBoost/LightGBM</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h5 class="font-medium mb-2">非线性关系捕捉</h5>
+                  <ul class="text-sm space-y-1">
+                    <li>• <strong>SHAP值</strong>：个体预测可解释性</li>
+                    <li>• <strong>特征重要性</strong>：Gain/Cover排序</li>
+                    <li>• <strong>交互效应</strong>：因子协同作用分析</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h5 class="font-medium mb-2">动态权重调整</h5>
+                  <ul class="text-sm space-y-1">
+                    <li>• <strong>IC加权</strong>：奖励稳定预测因子</li>
+                    <li>• <strong>IR加权</strong>：风险调整后权重</li>
+                    <li>• <strong>在线学习</strong>：EWMA适应市场变化</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card p-6">
+            <h4 class="text-xl font-semibold mb-4 text-green-700">遗传规划因子生成示例</h4>
+
+            <div class="code-block">
+              <pre><code># 遗传规划因子生成框架
+class FactorGene:
+    def __init__(self, expression_tree):
+        self.expression_tree = expression_tree
+        self.fitness = None
+    
+    def evaluate(self, data):
+        &#34;&#34;&#34;评估因子在数据集上的表现&#34;&#34;&#34;
+        factor_values = self.expression_tree.evaluate(data)
+        ic = spearmanr(factor_values, data[&#39;future_returns&#39;])[0]
+        return {
+            &#39;IC&#39;: ic,
+            &#39;IC_IR&#39;: ic / np.std(factor_values),
+            &#39;complexity&#39;: self.expression_tree.complexity
+        }
+    
+    def mutate(self, mutation_rate=0.1):
+        &#34;&#34;&#34;随机变异因子表达式&#34;&#34;&#34;
+        if random.random() &lt; mutation_rate:
+            # 随机替换运算符或参数
+            node = random.choice(self.expression_tree.nodes)
+            node.mutate()
+    
+    def crossover(self, other_gene):
+        &#34;&#34;&#34;与另一个因子基因交叉&#34;&#34;&#34;
+        # 子树交换
+        subtree1 = self.expression_tree.get_random_subtree()
+        subtree2 = other_gene.expression_tree.get_random_subtree()
+        subtree1.swap(subtree2)
+
+# 运算符空间
+OPERATORS = {
+    &#39;arithmetic&#39;: [&#39;+&#39;, &#39;-&#39;, &#39;*&#39;, &#39;/&#39;],
+    &#39;statistical&#39;: [&#39;ts_mean&#39;, &#39;ts_std&#39;, &#39;ts_max&#39;, &#39;ts_min&#39;],
+    &#39;transformation&#39;: [&#39;rank&#39;, &#39;log&#39;, &#39;exp&#39;, &#39;sqrt&#39;]
+}
+
+# 原始特征
+RAW_FEATURES = [&#39;open&#39;, &#39;high&#39;, &#39;low&#39;, &#39;close&#39;, &#39;volume&#39;, 
+                &#39;turnover&#39;, &#39;market_cap&#39;, &#39;pe_ttm&#39;]</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- 预测模型Agent -->
+        <div id="model-builder" class="mb-16">
+          <h3 class="serif text-2xl font-bold mb-6 flex items-center">
+            <i class="fas fa-brain text-purple-500 mr-3"></i>
+            预测模型Agent（ModelBuilder）
+          </h3>
+
+          <div class="grid md:grid-cols-2 gap-6 mb-8">
+            <div class="card p-6">
+              <h4 class="text-xl font-semibold mb-4 text-purple-700">机器学习预测pipeline</h4>
+
+              <div class="space-y-4">
+                <div>
+                  <h5 class="font-medium mb-2">样本构建</h5>
+                  <ul class="text-sm space-y-1">
+                    <li>• <strong>标签设计</strong>：收益率/方向/分位数预测</li>
+                    <li>• <strong>时间窗口</strong>：训练/验证/测试集划分</li>
+                    <li>• <strong>Purge间隙</strong>：消除重叠样本影响</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h5 class="font-medium mb-2">模型选型</h5>
+                  <ul class="text-sm space-y-1">
+                    <li>• <strong>XGBoost</strong>：正则化丰富，自定义损失</li>
+                    <li>• <strong>LightGBM</strong>：训练速度快，Leaf-wise生长</li>
+                    <li>• <strong>CatBoost</strong>：类别特征原生支持</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h5 class="font-medium mb-2">交叉验证</h5>
+                  <ul class="text-sm space-y-1">
+                    <li>• <strong>Purged K-Fold</strong>：时序专用CV</li>
+                    <li>• <strong>Walk-Forward</strong>：滚动窗口验证</li>
+                    <li>• <strong>早停策略</strong>：防止过拟合</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="card p-6">
+              <h4 class="text-xl font-semibold mb-4 text-purple-700">深度学习架构</h4>
+
+              <div class="space-y-4">
+                <div>
+                  <h5 class="font-medium mb-2">时序模型</h5>
+                  <ul class="text-sm space-y-1">
+                    <li>• <strong>LSTM/GRU</strong>：门控循环单元</li>
+                    <li>• <strong>Transformer</strong>：自注意力机制</li>
+                    <li>• <strong>Informer</strong>：高效长序列建模</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h5 class="font-medium mb-2">图神经网络</h5>
+                  <ul class="text-sm space-y-1">
+                    <li>• <strong>GCN/GAT</strong>：图卷积与注意力</li>
+                    <li>• <strong>GraphSAGE</strong>：归纳学习</li>
+                    <li>• <strong>STGNN</strong>：时空联合建模</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h5 class="font-medium mb-2">多任务学习</h5>
+                  <ul class="text-sm space-y-1">
+                    <li>• <strong>收益率+波动率</strong>：联合预测</li>
+                    <li>• <strong>行业分类</strong>：强制学习特征</li>
+                    <li>• <strong>不确定性估计</strong>：风险预算</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card p-6">
+            <h4 class="text-xl font-semibold mb-4 text-purple-700">模型可解释性与风险控制</h4>
+
+            <div class="grid md:grid-cols-2 gap-6">
+              <div>
+                <h5 class="font-medium mb-3">可解释性工具矩阵</h5>
+                <div class="code-block !p-3">
+                  <pre><code># SHAP值分析示例
+import shap
+import xgboost as xgb
+
+# 训练模型
+model = xgb.XGBRegressor()
+model.fit(X_train, y_train)
+
+# SHAP解释
+explainer = shap.TreeExplainer(model)
+shap_values = explainer.shap_values(X_test)
+
+# 全局解释
+shap.summary_plot(shap_values, X_test)
+
+# 局部解释（单样本）
+shap.force_plot(explainer.expected_value, 
+                shap_values[0,:], X_test.iloc[0,:])</code></pre>
+                </div>
+
+                <ul class="text-sm mt-3 space-y-1">
+                  <li>• <strong>注意力可视化</strong>：Transformer权重热图</li>
+                  <li>• <strong>SHAP分析</strong>：个体预测贡献分解</li>
+                  <li>• <strong>PDP</strong>：部分依赖关系曲线</li>
+                </ul>
+              </div>
+
+              <div>
+                <h5 class="font-medium mb-3">模型失效检测</h5>
+                <ul class="text-sm space-y-2">
+                  <li>• <strong>协变量漂移</strong>：KS检验，PSI&gt;0.25预警</li>
+                  <li>• <strong>概念漂移</strong>：滚动AUC连续5期下降&gt;10%</li>
+                  <li>• <strong>标签漂移</strong>：预测分布与实际偏差&gt;15%</li>
+                </ul>
+
+                <div class="mt-4 p-3 bg-yellow-50 rounded-lg">
+                  <h6 class="font-medium text-yellow-800 mb-2">响应策略</h6>
+                  <ul class="text-xs space-y-1">
+                    <li>• 触发模型重训练</li>
+                    <li>• 切换至备用模型</li>
+                    <li>• 降低预测权重</li>
+                    <li>• 人工审核确认</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 策略组合Agent -->
+        <div id="portfolio-manager" class="mb-16">
+          <h3 class="serif text-2xl font-bold mb-6 flex items-center">
+            <i class="fas fa-chess text-orange-500 mr-3"></i>
+            策略组合Agent（PortfolioManager）
+          </h3>
+
+          <div class="grid md:grid-cols-2 gap-6 mb-8">
+            <div class="card p-6">
+              <h4 class="text-xl font-semibold mb-4 text-orange-700">策略生成与评估</h4>
+
+              <div class="space-y-4">
+                <div>
+                  <h5 class="font-medium mb-2">信号合成层次</h5>
+                  <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                      <span>L1：单因子信号</span>
+                      <span class="text-gray-500">Z-Score标准化</span>
+                    </div>
+                    <div class="flex justify-between">
+                      <span>L2：因子簇信号</span>
+                      <span class="text-gray-500">等权/IC加权/PCA</span>
+                    </div>
+                    <div class="flex justify-between">
+                      <span>L3：多源信号融合</span>
+                      <span class="text-gray-500">Stacking集成学习</span>
+                    </div>
+                    <div class="flex justify-between">
+                      <span>L4：最终投资信号</span>
+                      <span class="text-gray-500">组合优化求解</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h5 class="font-medium mb-2">组合优化方法</h5>
+                  <ul class="text-sm space-y-1">
+                    <li>• <strong>均值-方差</strong>：最大化夏普比率</li>
+                    <li>• <strong>风险平价</strong>：各资产风险贡献相等</li>
+                    <li>• <strong>Black-Litterman</strong>：融合主观观点</li>
+                    <li>• <strong>最大分散化</strong>：纯风险基础配置</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h5 class="font-medium mb-2">A股典型约束</h5>
+                  <ul class="text-sm space-y-1">
+                    <li>• <strong>个股上限</strong>：5%或10%</li>
+                    <li>• <strong>行业偏离</strong>：相对基准±5%</li>
+                    <li>• <strong>换手率</strong>：月度&lt;30%</li>
+                    <li>• <strong>做空限制</strong>：w &gt;= 0或有限融券</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="card p-6">
+              <h4 class="text-xl font-semibold mb-4 text-orange-700">策略迭代与进化</h4>
+
+              <div class="space-y-4">
+                <div>
+                  <h5 class="font-medium mb-2">遗传规划策略生成</h5>
+                  <div class="code-block !p-3">
+                    <pre><code># 策略基因编码示例
+strategy_gene = {
+    &#39;condition&#39;: {
+        &#39;type&#39;: &#39;technical&#39;,
+        &#39;indicator&#39;: &#39;MA&#39;,
+        &#39;params&#39;: {&#39;short&#39;: 20, &#39;long&#39;: 60},
+        &#39;comparison&#39;: &#39;cross_up&#39;
+    },
+    &#39;action&#39;: {
+        &#39;type&#39;: &#39;buy&#39;,
+        &#39;position_size&#39;: 0.1,
+        &#39;stop_loss&#39;: 0.05,
+        &#39;take_profit&#39;: 0.15
+    },
+    &#39;exit_condition&#39;: {
+        &#39;type&#39;: &#39;technical&#39;,
+        &#39;indicator&#39;: &#39;MA&#39;,
+        &#39;comparison&#39;: &#39;cross_down&#39;
+    }
+}</code></pre>
+                  </div>
+                </div>
+
+                <div>
+                  <h5 class="font-medium mb-2">强化学习仓位管理</h5>
+                  <ul class="text-sm space-y-1">
+                    <li>• <strong>状态空间</strong>：市场特征、持仓状态、账户状态</li>
+                    <li>• <strong>动作空间</strong>：离散{满仓,半仓,空仓}或连续仓位</li>
+                    <li>• <strong>奖励函数</strong>：夏普比率 + 回撤惩罚</li>
+                    <li>• <strong>算法选择</strong>：PPO/SAC/DQN</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h5 class="font-medium mb-2">策略池管理</h5>
+                  <ul class="text-sm space-y-1">
+                    <li>• <strong>生命周期</strong>：开发→模拟→实盘→观察→休眠→退役</li>
+                    <li>• <strong>健康监控</strong>：相关性、衰减速度、多样性</li>
+                    <li>• <strong>市场适应性</strong>：不同regime下表现</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card p-6">
+            <h4 class="text-xl font-semibold mb-4 text-orange-700">回测引擎架构</h4>
+
+            <div class="grid md:grid-cols-3 gap-6">
+              <div>
+                <h5 class="font-medium mb-3">事件驱动架构</h5>
+                <ul class="text-sm space-y-1">
+                  <li>• 逐K线/逐tick模拟</li>
+                  <li>• 真实交易流程还原</li>
+                  <li>• 订单生命周期管理</li>
+                  <li>• 资金结算与分红处理</li>
+                </ul>
+              </div>
+              <div>
+                <h5 class="font-medium mb-3">市场冲击模型</h5>
+                <ul class="text-sm space-y-1">
+                  <li>• Almgren-Chriss滑点估计</li>
+                  <li>• 临时冲击 + 永久冲击</li>
+                  <li>• 流动性消耗模拟</li>
+                  <li>• 价格影响参数估计</li>
+                </ul>
+              </div>
+              <div>
+                <h5 class="font-medium mb-3">交易成本模型</h5>
+                <ul class="text-sm space-y-1">
+                  <li>• 买入：0.03%佣金</li>
+                  <li>• 卖出：0.03%佣金 + 0.1%印花税</li>
+                  <li>• 过户费：0.001%</li>
+                  <li>• 冲击成本：基于持仓量计算</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="mt-6 p-4 bg-gray-50 rounded-lg">
+              <h5 class="font-medium mb-3">绩效指标体系</h5>
+              <div class="grid md:grid-cols-4 gap-4 text-sm">
+                <div>
+                  <strong>收益指标</strong>
+                  <ul class="mt-1 space-y-1 text-xs">
+                    <li>• 年化收益 &gt;15%优秀</li>
+                    <li>• 超额收益 &gt;8%</li>
+                    <li>• 信息比率 &gt;0.5</li>
+                  </ul>
+                </div>
+                <div>
+                  <strong>风险指标</strong>
+                  <ul class="mt-1 space-y-1 text-xs">
+                    <li>• 年化波动 &lt;25%</li>
+                    <li>• 最大回撤 &lt;20%</li>
+                    <li>• Calmar比率 &gt;1.0</li>
+                  </ul>
+                </div>
+                <div>
+                  <strong>风险调整</strong>
+                  <ul class="mt-1 space-y-1 text-xs">
+                    <li>• 夏普比率 &gt;1.0</li>
+                    <li>• 索提诺比率 &gt;1.5</li>
+                    <li>• VaR/CVaR监控</li>
+                  </ul>
+                </div>
+                <div>
+                  <strong>稳定性</strong>
+                  <ul class="mt-1 space-y-1 text-xs">
+                    <li>• 胜率 &gt;55%</li>
+                    <li>• 盈亏比 &gt;1.5</li>
+                    <li>• 月度胜率 &gt;60%</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 风险管理Agent -->
+        <div id="risk-controller" class="mb-16">
+          <h3 class="serif text-2xl font-bold mb-6 flex items-center">
+            <i class="fas fa-shield-alt text-red-500 mr-3"></i>
+            风险管理Agent（RiskController）
+          </h3>
+
+          <div class="grid md:grid-cols-3 gap-6 mb-8">
+            <div class="card p-6">
+              <h4 class="text-xl font-semibold mb-4 text-red-700">事前风险控制</h4>
+
+              <div class="space-y-4">
+                <div>
+                  <h5 class="font-medium mb-2">仓位限制</h5>
+                  <ul class="text-sm space-y-1">
+                    <li>• <strong>个股上限</strong>：5%（大盘股10%）</li>
+                    <li>• <strong>行业集中度</strong>：单一行业≤30%</li>
+                    <li>• <strong>风格暴露</strong>：±1标准差</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h5 class="font-medium mb-2">压力测试</h5>
+                  <ul class="text-sm space-y-1">
+                    <li>• <strong>历史重演</strong>：2008/2015/2020</li>
+                    <li>• <strong>假设情景</strong>：崩盘、流动性枯竭</li>
+                    <li>• <strong>组合情景</strong>：多因子同时极端</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h5 class="font-medium mb-2">流动性评估</h5>
+                  <ul class="text-sm space-y-1">
+                    <li>• <strong>持仓集中度</strong>：前10大&lt;50%&lt; /li&gt;
+                    </li><li>• <strong>成交额覆盖率</strong>：&lt;5&lt; /li&gt;
+                    </li><li>• <strong>应急退出</strong>：≤5天变现</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="card p-6">
+              <h4 class="text-xl font-semibold mb-4 text-red-700">事中监控</h4>
+
+              <div class="space-y-4">
+                <div>
+                  <h5 class="font-medium mb-2">实时指标</h5>
+                  <ul class="text-sm space-y-1">
+                    <li>• <strong>实时P&amp;L</strong>：tick级更新</li>
+                    <li>• <strong>日内VaR</strong>：15分钟计算</li>
+                    <li>• <strong>滚动夏普</strong>：60日窗口</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h5 class="font-medium mb-2">分级预警</h5>
+                  <ul class="text-sm space-y-1">
+                    <li>• <strong>INFO</strong>：单日回撤&lt;3%&lt; /li&gt;
+                    </li><li>• <strong>WARNING</strong>：单日回撤3-5%</li>
+                    <li>• <strong>ERROR</strong>：单日回撤&gt;5%</li>
+                    <li>• <strong>CRITICAL</strong>：连续回撤&gt;10%</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h5 class="font-medium mb-2">自动响应</h5>
+                  <ul class="text-sm space-y-1">
+                    <li>• <strong>减仓</strong>：超出风险限额</li>
+                    <li>• <strong>暂停</strong>：市场异常波动</li>
+                    <li>• <strong>通知</strong>：多渠道告警</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="card p-6">
+              <h4 class="text-xl font-semibold mb-4 text-red-700">事后分析</h4>
+
+              <div class="space-y-4">
+                <div>
+                  <h5 class="font-medium mb-2">归因分析</h5>
+                  <ul class="text-sm space-y-1">
+                    <li>• <strong>Brinson模型</strong>：配置+选择+交互</li>
+                    <li>• <strong>因子暴露</strong>：市值、价值、动量</li>
+                    <li>• <strong>特质收益</strong>：无法解释的alpha</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h5 class="font-medium mb-2">分布漂移</h5>
+                  <ul class="text-sm space-y-1">
+                    <li>• <strong>协变量漂移</strong>：KS检验，PSI监控</li>
+                    <li>• <strong>概念漂移</strong>：AUC滚动统计</li>
+                    <li>• <strong>标签漂移</strong>：涨跌比例偏差</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h5 class="font-medium mb-2">置信度校准</h5>
+                  <ul class="text-sm space-y-1">
+                    <li>• <strong>Platt Scaling</strong>：逻辑回归校准</li>
+                    <li>• <strong>Temperature Scaling</strong>：温度调整</li>
+                    <li>• <strong>Isotonic</strong>：非参数单调校准</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card p-6">
+            <h4 class="text-xl font-semibold mb-4 text-red-700">风险预算体系</h4>
+
+            <div class="grid md:grid-cols-4 gap-6">
+              <div class="text-center">
+                <div class="text-3xl font-bold text-red-600 mb-2">5%</div>
+                <div class="text-sm font-medium mb-1">个股上限</div>
+                <div class="text-xs text-gray-600">流动性好的大盘股可放宽至10%</div>
+              </div>
+              <div class="text-center">
+                <div class="text-3xl font-bold text-red-600 mb-2">30%</div>
+                <div class="text-sm font-medium mb-1">行业集中度</div>
+                <div class="text-xs text-gray-600">相对基准偏离≤±5%</div>
+              </div>
+              <div class="text-center">
+                <div class="text-3xl font-bold text-red-600 mb-2">120%</div>
+                <div class="text-sm font-medium mb-1">总敞口上限</div>
+                <div class="text-xs text-gray-600">净敞口80%-120%</div>
+              </div>
+              <div class="text-center">
+                <div class="text-3xl font-bold text-red-600 mb-2">10%</div>
+                <div class="text-sm font-medium mb-1">连续回撤</div>
+                <div class="text-xs text-gray-600">5日内最大回撤限额</div>
+              </div>
+            </div>
+
+            <div class="mt-6 p-4 bg-red-50 rounded-lg">
+              <h5 class="font-medium text-red-800 mb-3">应急响应流程</h5>
+              <div class="text-sm space-y-2">
+                <div class="flex items-center">
+                  <span class="bg-red-500 text-white px-2 py-1 rounded text-xs mr-3">1</span>
+                  <span><strong>检测</strong>：实时监控指标超出阈值</span>
+                </div>
+                <div class="flex items-center">
+                  <span class="bg-red-500 text-white px-2 py-1 rounded text-xs mr-3">2</span>
+                  <span><strong>评估</strong>：风险等级判定与影响分析</span>
+                </div>
+                <div class="flex items-center">
+                  <span class="bg-red-500 text-white px-2 py-1 rounded text-xs mr-3">3</span>
+                  <span><strong>响应</strong>：自动减仓/暂停/通知</span>
+                </div>
+                <div class="flex items-center">
+                  <span class="bg-red-500 text-white px-2 py-1 rounded text-xs mr-3">4</span>
+                  <span><strong>恢复</strong>：人工审核后逐步恢复</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 协同与通信机制 -->
+      <section id="collaboration" class="max-w-6xl mx-auto px-6 py-12">
+        <h2 class="serif text-4xl font-bold mb-8 text-center">Agent协同与通信机制</h2>
+
+        <!-- 通信协议设计 -->
+        <div id="communication" class="mb-16">
+          <h3 class="serif text-2xl font-bold mb-6">通信协议设计</h3>
+
+          <div class="card p-6 mb-8">
+            <h4 class="text-xl font-semibold mb-4 text-blue-700">消息格式标准化</h4>
+
+            <div class="grid md:grid-cols-2 gap-6">
+              <div>
+                <h5 class="font-medium mb-3">四类核心消息</h5>
+                <div class="space-y-3">
+                  <div class="bg-blue-50 p-3 rounded">
+                    <h6 class="font-medium text-blue-800 text-sm">任务请求（task_request）</h6>
+                    <p class="text-xs text-gray-600 mt-1">Agent间任务委派，包含输入输出规范</p>
+                  </div>
+                  <div class="bg-green-50 p-3 rounded">
+                    <h6 class="font-medium text-green-800 text-sm">数据传递（data_delivery）</h6>
+                    <p class="text-xs text-gray-600 mt-1">大规模数据传输，支持引用传递</p>
+                  </div>
+                  <div class="bg-purple-50 p-3 rounded">
+                    <h6 class="font-medium text-purple-800 text-sm">状态报告（status_report）</h6>
+                    <p class="text-xs text-gray-600 mt-1">任务进度与资源使用监控</p>
+                  </div>
+                  <div class="bg-red-50 p-3 rounded">
+                    <h6 class="font-medium text-red-800 text-sm">错误通知（error_notification）</h6>
+                    <p class="text-xs text-gray-600 mt-1">异常处理与恢复建议</p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h5 class="font-medium mb-3">数据序列化方案</h5>
+                <div class="space-y-3 text-sm">
+                  <div>
+                    <strong class="text-blue-600">Feather v2</strong>
+                    <p class="text-xs text-gray-600">&lt; 100MB，内存零拷贝</p>
+                  </div>
+                  <div>
+                    <strong class="text-green-600">Parquet + Snappy</strong>
+                    <p class="text-xs text-gray-600">100MB-10GB，列式压缩</p>
+                  </div>
+                  <div>
+                    <strong class="text-purple-600">Parquet + Zstd</strong>
+                    <p class="text-xs text-gray-600">&gt; 10GB，高压缩比</p>
+                  </div>
+                </div>
+
+                <div class="mt-4 p-3 bg-gray-50 rounded">
+                  <h6 class="font-medium mb-2">版本控制策略</h6>
+                  <ul class="text-xs space-y-1">
+                    <li>• <strong>数据Schema</strong>：SemVer，MAJOR不兼容</li>
+                    <li>• <strong>API接口</strong>：URL路径版本，多版本并行</li>
+                    <li>• <strong>模型文件</strong>：签名哈希，永久保留</li>
+                    <li>• <strong>计算逻辑</strong>：Git版本控制，可追溯</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card p-6">
+            <h4 class="text-xl font-semibold mb-4 text-blue-700">MCP协议实现示例</h4>
+
+            <div class="code-block">
+              <pre><code># Ruflo MCP工具绑定示例
+async def bind_data_engineer_tools(agent):
+    &#34;&#34;&#34;为DataEngineer Agent绑定MCP工具&#34;&#34;&#34;
+    
+    # 数据查询工具
+    await agent.bind_tool(
+        name=&#34;execute_sql_query&#34;,
+        handler=execute_sql_query,
+        description=&#34;执行SQL查询并返回DataFrame结果&#34;,
+        schema={
+            &#34;sql&#34;: {&#34;type&#34;: &#34;string&#34;, &#34;description&#34;: &#34;SQL查询语句&#34;},
+            &#34;params&#34;: {&#34;type&#34;: &#34;object&#34;, &#34;description&#34;: &#34;查询参数&#34;},
+            &#34;timeout&#34;: {&#34;type&#34;: &#34;integer&#34;, &#34;default&#34;: 30}
+        }
+    )
+    
+    # 因子计算工具
+    await agent.bind_tool(
+        name=&#34;compute_technical_factor&#34;,
+        handler=compute_technical_factor,
+        description=&#34;计算技术指标因子&#34;,
+        schema={
+            &#34;factor_name&#34;: {&#34;type&#34;: &#34;string&#34;, &#34;enum&#34;: [&#34;SMA&#34;, &#34;EMA&#34;, &#34;RSI&#34;, &#34;MACD&#34;]},
+            &#34;params&#34;: {&#34;type&#34;: &#34;object&#34;, &#34;description&#34;: &#34;因子参数&#34;},
+            &#34;universe&#34;: {&#34;type&#34;: &#34;array&#34;, &#34;items&#34;: {&#34;type&#34;: &#34;string&#34;}},
+            &#34;date_range&#34;: {&#34;type&#34;: &#34;object&#34;, &#34;properties&#34;: {&#34;start&#34;: &#34;string&#34;, &#34;end&#34;: &#34;string&#34;}}
+        }
+    )
+    
+    # 数据质量校验工具
+    await agent.bind_tool(
+        name=&#34;validate_data_quality&#34;,
+        handler=validate_data_quality,
+        description=&#34;验证数据质量并生成报告&#34;,
+        schema={
+            &#34;data_reference&#34;: {&#34;type&#34;: &#34;string&#34;, &#34;description&#34;: &#34;数据引用&#34;},
+            &#34;validation_rules&#34;: {&#34;type&#34;: &#34;object&#34;, &#34;description&#34;: &#34;校验规则&#34;}
+        }
+    )
+
+# 工具实现示例
+async def execute_sql_query(sql: str, params: dict = None, timeout: int = 30) -&gt; dict:
+    &#34;&#34;&#34;执行SQL查询的MCP工具实现&#34;&#34;&#34;
+    try:
+        async with AsyncSessionPrimary() as session:
+            result = await session.execute(text(sql), params)
+            df = pd.DataFrame(result.fetchall(), columns=result.keys())
+            
+            return {
+                &#34;status&#34;: &#34;success&#34;,
+                &#34;data&#34;: df.to_dict(&#39;records&#39;),
+                &#34;record_count&#34;: len(df),
+                &#34;execution_time&#34;: time.time() - start_time
+            }
+    except Exception as e:
+        return {
+            &#34;status&#34;: &#34;error&#34;,
+            &#34;error_code&#34;: &#34;DATABASE_ERROR&#34;,
+            &#34;message&#34;: str(e),
+            &#34;recovery_suggestions&#34;: [&#34;check_connection&#34;, &#34;validate_sql&#34;]
+        }</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- 工作流编排 -->
+        <div id="workflow" class="mb-16">
+          <h3 class="serif text-2xl font-bold mb-6">工作流编排模式</h3>
+
+          <div class="grid md:grid-cols-3 gap-6 mb-8">
+            <div class="card p-6">
+              <h4 class="text-xl font-semibold mb-4 text-green-700">线性流水线</h4>
+
+              <div class="space-y-4">
+                <div class="bg-gray-50 p-4 rounded-lg">
+                  <h5 class="font-medium mb-3">量化回测流水线</h5>
+                  <div class="text-sm space-y-2">
+                    <div class="flex items-center">
+                      <span class="bg-blue-500 text-white px-2 py-1 rounded text-xs mr-2">1</span>
+                      <span>数据清洗 → 因子计算</span>
+                    </div>
+                    <div class="flex items-center">
+                      <span class="bg-green-500 text-white px-2 py-1 rounded text-xs mr-2">2</span>
+                      <span>模型预测 → 组合优化</span>
+                    </div>
+                    <div class="flex items-center">
+                      <span class="bg-purple-500 text-white px-2 py-1 rounded text-xs mr-2">3</span>
+                      <span>回测执行 → 绩效分析</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="code-block !p-3">
+                  <pre><code># Ruflo流水线配置
+await mcp__claude-flow__task_orchestrate({
+  task: &#34;月度策略回测&#34;,
+  strategy: &#34;sequential&#34;,
+  checkpoint: true,
+  steps: [
+    {id: &#34;data_cleaning&#34;, agent: &#34;DataEngineer&#34;, 
+     action: &#34;clean_daily_price&#34;},
+    {id: &#34;factor_calc&#34;, agent: &#34;DataEngineer&#34;, 
+     action: &#34;calculate_factors&#34;, depends: [&#34;data_cleaning&#34;]},
+    {id: &#34;model_predict&#34;, agent: &#34;ModelBuilder&#34;, 
+     action: &#34;predict_returns&#34;, depends: [&#34;factor_calc&#34;]},
+    {id: &#34;portfolio_opt&#34;, agent: &#34;PortfolioManager&#34;, 
+     action: &#34;optimize_weights&#34;, depends: [&#34;model_predict&#34;]},
+    {id: &#34;backtest&#34;, agent: &#34;PortfolioManager&#34;, 
+     action: &#34;run_backtest&#34;, depends: [&#34;portfolio_opt&#34;]}
+  ]
+});</code></pre>
+                </div>
+              </div>
+            </div>
+
+            <div class="card p-6">
+              <h4 class="text-xl font-semibold mb-4 text-blue-700">并行分治</h4>
+
+              <div class="space-y-4">
+                <div>
+                  <h5 class="font-medium mb-3">适用场景</h5>
+                  <ul class="text-sm space-y-2">
+                    <li>• <strong>多因子并行计算</strong></li>
+                    <li>• <strong>多策略独立回测</strong></li>
+                    <li>• <strong>交叉验证折并行</strong></li>
+                    <li>• <strong>蒙特卡洛模拟</strong></li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h5 class="font-medium mb-3">Swarm配置</h5>
+                  <ul class="text-sm space-y-1">
+                    <li>• <code>max_workers=16</code></li>
+                    <li>• <code>auto_scale=true</code></li>
+                    <li>• <code>spot_instances=true</code></li>
+                    <li>• <code>cost_optimized</code></li>
+                  </ul>
+                </div>
+
+                <div class="code-block !p-3">
+                  <pre><code># 多因子并行计算示例
+await mcp__claude-flow__parallel_execute({
+  task: &#34;批量因子计算&#34;,
+  worker_count: 16,
+  items: [
+    {&#34;factor&#34;: &#34;tech_mom_20d&#34;, &#34;params&#34;: {&#34;window&#34;: 20}},
+    {&#34;factor&#34;: &#34;tech_vol_20d&#34;, &#34;params&#34;: {&#34;window&#34;: 20}},
+    {&#34;factor&#34;: &#34;fund_pe_ttm&#34;, &#34;params&#34;: {}},
+    {&#34;factor&#34;: &#34;fund_roe_ttm&#34;, &#34;params&#34;: {}},
+    # ... 更多因子
+  ],
+  worker_template: {
+    agent: &#34;DataEngineer&#34;,
+    action: &#34;compute_single_factor&#34;,
+    input_mapping: {&#34;factor&#34;: &#34;factor_name&#34;, &#34;params&#34;: &#34;params&#34;}
+  }
+});</code></pre>
+                </div>
+              </div>
+            </div>
+
+            <div class="card p-6">
+              <h4 class="text-xl font-semibold mb-4 text-purple-700">迭代优化循环</h4>
+
+              <div class="space-y-4">
+                <div class="bg-purple-50 p-4 rounded-lg">
+                  <h5 class="font-medium mb-3">反馈循环流程</h5>
+                  <div class="text-sm space-y-2">
+                    <div class="flex items-center">
+                      <i class="fas fa-chart-line text-purple-500 mr-2"></i>
+                      <span><strong>监控</strong>：策略性能衰减检测</span>
+                    </div>
+                    <div class="flex items-center">
+                      <i class="fas fa-search text-purple-500 mr-2"></i>
+                      <span><strong>诊断</strong>：归因分析与根因定位</span>
+                    </div>
+                    <div class="flex items-center">
+                      <i class="fas fa-cog text-purple-500 mr-2"></i>
+                      <span><strong>优化</strong>：参数调优与模型重训练</span>
+                    </div>
+                    <div class="flex items-center">
+                      <i class="fas fa-sync text-purple-500 mr-2"></i>
+                      <span><strong>验证</strong>：回测验证与模拟盘测试</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h5 class="font-medium mb-3">优化技术</h5>
+                  <ul class="text-sm space-y-1">
+                    <li>• <strong>贝叶斯优化</strong>：超参数自动调优</li>
+                    <li>• <strong>AutoML</strong>：模型架构搜索</li>
+                    <li>• <strong>A/B测试</strong>：策略对比验证</li>
+                    <li>• <strong>持续集成</strong>：自动化部署</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card p-6">
+            <h4 class="text-xl font-semibold mb-4 text-blue-700">混合部署模式实现</h4>
+
+            <div class="grid md:grid-cols-2 gap-6">
+              <div>
+                <h5 class="font-medium mb-3">本地计算层</h5>
+                <ul class="text-sm space-y-2">
+                  <li>• <strong>Python服务</strong>：FastAPI/gRPC接口</li>
+                  <li>• <strong>SQL数据库</strong>：PostgreSQL + TimescaleDB</li>
+                  <li>• <strong>向量存储</strong>：ChromaDB或Pinecone</li>
+                  <li>• <strong>依赖管理</strong>：Poetry环境隔离</li>
+                </ul>
+
+                <div class="mt-4 code-block !p-3">
+                  <pre><code># FastAPI服务示例
+@app.post(&#34;/factor/compute&#34;)
+async def compute_factor(request: FactorRequest):
+    &#34;&#34;&#34;因子计算服务端点&#34;&#34;&#34;
+    try:
+        # 执行计算
+        result = await factor_engine.compute(request)
+        
+        # 返回结果
+        return {
+            &#34;status&#34;: &#34;success&#34;,
+            &#34;data&#34;: result.to_dict(&#39;records&#39;),
+            &#34;metadata&#34;: {
+                &#34;record_count&#34;: len(result),
+                &#34;computation_time&#34;: time.time() - start_time
+            }
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, 
+            detail=str(e)
+        )</code></pre>
+                </div>
+              </div>
+
+              <div>
+                <h5 class="font-medium mb-3">Ruflo编排层</h5>
+                <ul class="text-sm space-y-2">
+                  <li>• <strong>Agent生命周期</strong>：动态创建与销毁</li>
+                  <li>• <strong>任务调度</strong>：基于资源智能分配</li>
+                  <li>• <strong>上下文协调</strong>：共享内存与向量检索</li>
+                  <li>• <strong>知识库检索</strong>：RAG集成</li>
+                </ul>
+
+                <div class="mt-4 code-block !p-3">
+                  <pre><code># Ruflo Swarm配置
+const swarm = await ruflo.createSwarm({
+  name: &#34;quant_trading_system&#34;,
+  topology: &#34;hierarchical&#34;,
+  agents: {
+    data_engineer: { count: 2, role: &#34;data_engineer&#34; },
+    factor_miner: { count: 1, role: &#34;factor_miner&#34; },
+    model_builder: { count: 1, role: &#34;model_builder&#34; },
+    portfolio_manager: { count: 1, role: &#34;portfolio_manager&#34; },
+    risk_controller: { count: 1, role: &#34;risk_controller&#34; }
+  },
+  communication: {
+    protocol: &#34;mcp&#34;,
+    serialization: &#34;json&#34;,
+    compression: &#34;gzip&#34;
+  },
+  persistence: {
+    vector_store: &#34;ruvector&#34;,
+    shared_context: true
+  }
+});</code></pre>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-6 p-4 bg-blue-50 rounded-lg">
+              <h5 class="font-medium text-blue-800 mb-3">任务调度策略</h5>
+              <ul class="text-sm space-y-2">
+                <li>• <strong>数据位置优先</strong>：涉及敏感持仓的任务强制本地执行</li>
+                <li>• <strong>成本优化</strong>：大规模并行任务使用云端Spot实例</li>
+                <li>• <strong>资源匹配</strong>：GPU任务调度至专用集群</li>
+                <li>• <strong>故障恢复</strong>：自动检查点保存与重试机制</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 迭代优化规划 -->
+      <section id="optimization" class="max-w-6xl mx-auto px-6 py-12">
+        <h2 class="serif text-4xl font-bold mb-8 text-center">迭代优化规划</h2>
+
+        <div class="space-y-8">
+          <div class="card p-6">
+            <h3 class="serif text-2xl font-bold mb-6 text-green-700">五轮迭代演进路径</h3>
+
+            <div class="space-y-6">
+              <div class="border-l-4 border-green-500 pl-6">
+                <h4 class="text-xl font-semibold mb-3 text-green-700">第一轮：基础数据验证</h4>
+                <div class="grid md:grid-cols-3 gap-4">
+                  <div>
+                    <h5 class="font-medium mb-2">核心目标</h5>
+                    <ul class="text-sm space-y-1">
+                      <li>• 数据pipeline稳定运行</li>
+                      <li>• 基础因子计算准确</li>
+                      <li>• 质量监控体系建立</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <h5 class="font-medium mb-2">关键指标</h5>
+                    <ul class="text-sm space-y-1">
+                      <li>• 数据完整性 &gt;99%</li>
+                      <li>• 日度更新延迟&lt;1&lt; /li&gt;
+                      </li><li>• 质量报告自动生成</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <h5 class="font-medium mb-2">验收标准</h5>
+                    <ul class="text-sm space-y-1">
+                      <li>• 3个月无中断运行</li>
+                      <li>• 回测结果可复现</li>
+                      <li>• 性能基准建立</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div class="border-l-4 border-blue-500 pl-6">
+                <h4 class="text-xl font-semibold mb-3 text-blue-700">第二轮：单因子策略验证</h4>
+                <div class="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <h5 class="font-medium mb-2">策略开发</h5>
+                    <ul class="text-sm space-y-1">
+                      <li>• 10个经典因子实现</li>
+                      <li>• 分层回测框架</li>
+                      <li>• IC/IR分析自动化</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <h5 class="font-medium mb-2">性能目标</h5>
+                    <ul class="text-sm space-y-1">
+                      <li>• 3个因子IC&gt;0.03</li>
+                      <li>• 2个策略夏普&gt;0.8</li>
+                      <li>• 回测时间&lt;30&lt; /li&gt;
+                    </li></ul>
+                  </div>
+                </div>
+              </div>
+
+              <div class="border-l-4 border-purple-500 pl-6">
+                <h4 class="text-xl font-semibold mb-3 text-purple-700">第三轮：多策略组合</h4>
+                <div class="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <h5 class="font-medium mb-2">系统整合</h5>
+                    <ul class="text-sm space-y-1">
+                      <li>• 多Agent协同工作</li>
+                      <li>• 信号合成与优化</li>
+                      <li>• 风险预算体系</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <h5 class="font-medium mb-2">组合目标</h5>
+                    <ul class="text-sm space-y-1">
+                      <li>• 3个低相关性策略</li>
+                      <li>• 组合夏普&gt;1.2</li>
+                      <li>• 最大回撤&lt;15%&lt; /li&gt;
+                    </li></ul>
+                  </div>
+                </div>
+              </div>
+
+              <div class="border-l-4 border-orange-500 pl-6">
+                <h4 class="text-xl font-semibold mb-3 text-orange-700">第四轮：机器学习增强</h4>
+                <div class="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <h5 class="font-medium mb-2">技术升级</h5>
+                    <ul class="text-sm space-y-1">
+                      <li>• AutoML因子挖掘</li>
+                      <li>• 深度学习预测</li>
+                      <li>• 实时模型更新</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <h5 class="font-medium mb-2">性能提升</h5>
+                    <ul class="text-sm space-y-1">
+                      <li>• IC_IR提升30%</li>
+                      <li>• 预测准确率&gt;55%</li>
+                      <li>• 模型衰减速度降低</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div class="border-l-4 border-red-500 pl-6">
+                <h4 class="text-xl font-semibold mb-3 text-red-700">第五轮：自适应智能系统</h4>
+                <div class="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <h5 class="font-medium mb-2">智能化特性</h5>
+                    <ul class="text-sm space-y-1">
+                      <li>• 市场状态自动识别</li>
+                      <li>• 策略动态权重调整</li>
+                      <li>• 自我诊断与修复</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <h5 class="font-medium mb-2">最终目标</h5>
+                    <ul class="text-sm space-y-1">
+                      <li>• 稳定年化收益 &gt;15%</li>
+                      <li>• 夏普比率 &gt;1.5</li>
+                      <li>• 人工干预&lt;1&lt; /li&gt;
+                    </li></ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card p-6">
+            <h3 class="serif text-2xl font-bold mb-6 text-orange-700">核心成功要素</h3>
+
+            <div class="grid md:grid-cols-2 gap-8">
+              <div>
+                <h4 class="text-xl font-semibold mb-4">技术要素</h4>
+                <ul class="space-y-3">
+                  <li class="flex items-start">
+                    <i class="fas fa-check-circle text-green-500 mt-1 mr-3"></i>
+                    <div>
+                      <strong>数据质量</strong>
+                      <br/>
+                      <span class="text-sm text-gray-600">建立完整的数据血缘追溯和质量监控体系</span>
+                    </div>
+                  </li>
+                  <li class="flex items-start">
+                    <i class="fas fa-check-circle text-green-500 mt-1 mr-3"></i>
+                    <div>
+                      <strong>计算效率</strong>
+                      <br/>
+                      <span class="text-sm text-gray-600">向量化计算与分布式处理的完美结合</span>
+                    </div>
+                  </li>
+                  <li class="flex items-start">
+                    <i class="fas fa-check-circle text-green-500 mt-1 mr-3"></i>
+                    <div>
+                      <strong>模型可解释性</strong>
+                      <br/>
+                      <span class="text-sm text-gray-600">SHAP分析、注意力机制可视化等技术</span>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 class="text-xl font-semibold mb-4">管理要素</h4>
+                <ul class="space-y-3">
+                  <li class="flex items-start">
+                    <i class="fas fa-check-circle text-green-500 mt-1 mr-3"></i>
+                    <div>
+                      <strong>迭代节奏</strong>
+                      <br/>
+                      <span class="text-sm text-gray-600">每轮迭代设定明确目标和时间节点</span>
+                    </div>
+                  </li>
+                  <li class="flex items-start">
+                    <i class="fas fa-check-circle text-green-500 mt-1 mr-3"></i>
+                    <div>
+                      <strong>风险控制</strong>
+                      <br/>
+                      <span class="text-sm text-gray-600">分层次的风险预算和实时监控体系</span>
+                    </div>
+                  </li>
+                  <li class="flex items-start">
+                    <i class="fas fa-check-circle text-green-500 mt-1 mr-3"></i>
+                    <div>
+                      <strong>知识沉淀</strong>
+                      <br/>
+                      <span class="text-sm text-gray-600">RAG知识库和最佳实践文档化</span>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 实施路线图 -->
+      <section id="implementation" class="max-w-6xl mx-auto px-6 py-12">
+        <h2 class="serif text-4xl font-bold mb-8 text-center">实施路线图</h2>
+
+        <div class="card p-6">
+          <div class="grid md:grid-cols-2 gap-8">
+            <div>
+              <h3 class="serif text-xl font-bold mb-4">阶段一：基础架构搭建（2-3个月）</h3>
+              <ul class="space-y-3">
+                <li class="flex items-start">
+                  <i class="fas fa-server text-blue-500 mt-1 mr-3"></i>
+                  <div>
+                    <strong>数据基础设施</strong>
+                    <br/>
+                    <span class="text-sm text-gray-600">PostgreSQL + TimescaleDB部署，数据源集成</span>
+                  </div>
+                </li>
+                <li class="flex items-start">
+                  <i class="fas fa-code text-green-500 mt-1 mr-3"></i>
+                  <div>
+                    <strong>Python服务开发</strong>
+                    <br/>
+                    <span class="text-sm text-gray-600">FastAPI接口封装，数据处理逻辑模块化</span>
+                  </div>
+                </li>
+                <li class="flex items-start">
+                  <i class="fas fa-cloud text-purple-500 mt-1 mr-3"></i>
+                  <div>
+                    <strong>Ruflo环境配置</strong>
+                    <br/>
+                    <span class="text-sm text-gray-600">Swarm编排平台搭建，Agent模板定义</span>
+                  </div>
+                </li>
+                <li class="flex items-start">
+                  <i class="fas fa-database text-orange-500 mt-1 mr-3"></i>
+                  <div>
+                    <strong>DataEngineer实现</strong>
+                    <br/>
+                    <span class="text-sm text-gray-600">数据同步、清洗、因子加工功能</span>
+                  </div>
+                </li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 class="serif text-xl font-bold mb-4">阶段二：策略系统开发（3-4个月）</h3>
+              <ul class="space-y-3">
+                <li class="flex items-start">
+                  <i class="fas fa-search text-green-500 mt-1 mr-3"></i>
+                  <div>
+                    <strong>FactorMiner实现</strong>
+                    <br/>
+                    <span class="text-sm text-gray-600">因子有效性检验，遗传规划挖掘</span>
+                  </div>
+                </li>
+                <li class="flex items-start">
+                  <i class="fas fa-brain text-purple-500 mt-1 mr-3"></i>
+                  <div>
+                    <strong>ModelBuilder实现</strong>
+                    <br/>
+                    <span class="text-sm text-gray-600">机器学习预测pipeline，超参数优化</span>
+                  </div>
+                </li>
+                <li class="flex items-start">
+                  <i class="fas fa-chess text-orange-500 mt-1 mr-3"></i>
+                  <div>
+                    <strong>PortfolioManager实现</strong>
+                    <br/>
+                    <span class="text-sm text-gray-600">组合优化，遗传规划策略生成</span>
+                  </div>
+                </li>
+                <li class="flex items-start">
+                  <i class="fas fa-shield-alt text-red-500 mt-1 mr-3"></i>
+                  <div>
+                    <strong>RiskController实现</strong>
+                    <br/>
+                    <span class="text-sm text-gray-600">实时监控，压力测试，归因分析</span>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="mt-8 grid md:grid-cols-2 gap-8">
+            <div>
+              <h3 class="serif text-xl font-bold mb-4">阶段三：系统集成测试（2个月）</h3>
+              <ul class="space-y-3">
+                <li class="flex items-start">
+                  <i class="fas fa-plug text-blue-500 mt-1 mr-3"></i>
+                  <div>
+                    <strong>Agent协同测试</strong>
+                    <br/>
+                    <span class="text-sm text-gray-600">通信协议验证，工作流编排调试</span>
+                  </div>
+                </li>
+                <li class="flex items-start">
+                  <i class="fas fa-vial text-green-500 mt-1 mr-3"></i>
+                  <div>
+                    <strong>端到端回测</strong>
+                    <br/>
+                    <span class="text-sm text-gray-600">历史数据验证，性能基准建立</span>
+                  </div>
+                </li>
+                <li class="flex items-start">
+                  <i class="fas fa-bug text-purple-500 mt-1 mr-3"></i>
+                  <div>
+                    <strong>异常场景测试</strong>
+                    <br/>
+                    <span class="text-sm text-gray-600">故障恢复，降级策略验证</span>
+                  </div>
+                </li>
+                <li class="flex items-start">
+                  <i class="fas fa-tachometer-alt text-orange-500 mt-1 mr-3"></i>
+                  <div>
+                    <strong>性能优化</strong>
+                    <br/>
+                    <span class="text-sm text-gray-600">计算效率提升，资源利用率优化</span>
+                  </div>
+                </li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 class="serif text-xl font-bold mb-4">阶段四：实盘试运行（3个月）</h3>
+              <ul class="space-y-3">
+                <li class="flex items-start">
+                  <i class="fas fa-play text-green-500 mt-1 mr-3"></i>
+                  <div>
+                    <strong>小资金实盘</strong>
+                    <br/>
+                    <span class="text-sm text-gray-600">模拟盘与实盘一致性验证</span>
+                  </div>
+                </li>
+                <li class="flex items-start">
+                  <i class="fas fa-chart-line text-purple-500 mt-1 mr-3"></i>
+                  <div>
+                    <strong>性能监控</strong>
+                    <br/>
+                    <span class="text-sm text-gray-600">实时跟踪，归因分析，风险预警</span>
+                  </div>
+                </li>
+                <li class="flex items-start">
+                  <i class="fas fa-sync text-orange-500 mt-1 mr-3"></i>
+                  <div>
+                    <strong>持续优化</strong>
+                    <br/>
+                    <span class="text-sm text-gray-600">模型更新，策略迭代，参数调优</span>
+                  </div>
+                </li>
+                <li class="flex items-start">
+                  <i class="fas fa-expand-arrows-alt text-red-500 mt-1 mr-3"></i>
+                  <div>
+                    <strong>规模扩展</strong>
+                    <br/>
+                    <span class="text-sm text-gray-600">逐步增加资金，扩展策略容量</span>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="mt-8 p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg">
+            <h3 class="serif text-2xl font-bold mb-4 text-center">关键成功指标</h3>
+
+            <div class="grid md:grid-cols-4 gap-6">
+              <div class="text-center">
+                <div class="text-3xl font-bold text-green-600 mb-2">15%+</div>
+                <div class="text-sm font-medium mb-1">年化收益</div>
+                <div class="text-xs text-gray-600">风险调整后收益</div>
+              </div>
+              <div class="text-center">
+                <div class="text-3xl font-bold text-blue-600 mb-2">1.5+</div>
+                <div class="text-sm font-medium mb-1">夏普比率</div>
+                <div class="text-xs text-gray-600">风险调整后收益</div>
+              </div>
+              <div class="text-center">
+                <div class="text-3xl font-bold text-purple-600 mb-2">&lt;1&lt; /div&gt;
+                    <div class="text-sm font-medium mb-1">人工干预</div>
+                    <div class="text-xs text-gray-600">自动化程度</div>
+                </div>
+                <div class="text-center">
+                  <div class="text-3xl font-bold text-orange-600 mb-2">99%+</div>
+                  <div class="text-sm font-medium mb-1">系统可用性</div>
+                  <div class="text-xs text-gray-600">稳定性指标</div>
+                </div>
+              </div>
+            </div>
+          </div>
+      </div></section>
+    </main>
+
+    <!-- 目录切换按钮（移动端） -->
+    <button id="tocToggle" class="fixed top-4 left-4 z-50 bg-white p-2 rounded-lg shadow-lg md:hidden">
+      <i class="fas fa-bars text-gray-700"></i>
+    </button>
+
+    <script>
+        // 目录切换功能
+        const tocToggle = document.getElementById('tocToggle');
+        const toc = document.getElementById('toc');
+        
+        tocToggle.addEventListener('click', () => {
+            toc.classList.toggle('open');
+        });
+
+        // 点击目录外部关闭目录
+        document.addEventListener('click', (e) => {
+            if (!toc.contains(e.target) && !tocToggle.contains(e.target)) {
+                toc.classList.remove('open');
+            }
+        });
+
+        // 目录激活状态管理
+        const tocLinks = document.querySelectorAll('.toc-link');
+        const sections = document.querySelectorAll('section[id], div[id]');
+
+        function updateActiveTocLink() {
+            let current = '';
+            sections.forEach(section => {
+                const rect = section.getBoundingClientRect();
+                if (rect.top <= 100) {
+                    current = section.id;
+                }
+            });
+
+            tocLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === `#${current}`) {
+                    link.classList.add('active');
+                }
+            });
+        }
+
+        window.addEventListener('scroll', updateActiveTocLink);
+        updateActiveTocLink();
+
+        // 平滑滚动
+        tocLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const targetId = link.getAttribute('href').substring(1);
+                const targetElement = document.getElementById(targetId);
+                if (targetElement) {
+                    targetElement.scrollIntoView({ behavior: 'smooth' });
+                    // 移动端点击后关闭目录
+                    if (window.innerWidth <= 1024) {
+                        toc.classList.remove('open');
+                    }
+                }
+            });
+        });
+    </script>
+  
+
+</body></html>

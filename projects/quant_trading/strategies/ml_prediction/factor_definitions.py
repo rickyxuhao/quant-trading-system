@@ -72,6 +72,10 @@ class FactorDefinition:
     winsorize: bool = False
     valid_range: Optional[tuple] = None
 
+    # 运行时字段 - 由 FactorRegistry 设置，不属于 SSoT 元数据
+    compute_fn: Optional[Callable] = field(default=None, repr=False, compare=False)
+    sql_cte: Optional[str] = None
+
     # 扩展
     extra: Dict[str, Any] = field(default_factory=dict)
 
