@@ -31,11 +31,18 @@ warnings.filterwarnings('ignore')
 # 将项目根目录加入 sys.path，使脚本可以独立运行
 # ---------------------------------------------------------------------------
 _SCRIPT_DIR = Path(__file__).resolve().parent
-_PROJECT_ROOT = _SCRIPT_DIR.parents[4]  # ml_prediction -> strategies -> quant_trading -> projects -> root
+
+def _find_project_root(start: Path) -> Path:
+    """向上查找包含 'core' 目录的项目根目录。"""
+    current = start
+    for _ in range(10):
+        if (current / "core").is_dir() and (current / "projects").is_dir():
+            return current
+        current = current.parent
+    raise RuntimeError(f"无法找到项目根目录（从 {start} 向上搜索）")
+
+_PROJECT_ROOT = _find_project_root(_SCRIPT_DIR)
 sys.path.insert(0, str(_PROJECT_ROOT))
-# Also add current working directory if running from project root
-if Path('.').resolve() != _PROJECT_ROOT and (Path('.') / 'core').exists():
-    sys.path.insert(0, str(Path('.').resolve()))
 
 # ---------------------------------------------------------------------------
 # 项目内部导入
@@ -134,40 +141,53 @@ def check_and_sync_hs300_data(start_date: datetime, end_date: datetime) -> bool:
     """
     检查HS300数据完整性，如缺失则触发同步。
 
+    注意：Tushare index_weight API 每月只返回一次月末数据，
+    因此用"月份覆盖率"而非"交易日覆盖率"来判断完整性。
+
     Returns:
         True表示数据完整或同步成功，False表示同步失败。
     """
     print("[STEP 1a] 检查HS300数据完整性...")
 
-    # 获取需要的交易日列表
-    required_dates = _get_trade_dates_from_db(start_date, end_date)
-    if not required_dates:
-        print("  [WARN] 无法获取交易日历，跳过完整性检查")
-        return True
+    start_str = start_date.strftime("%Y%m%d")
+    end_str = end_date.strftime("%Y%m%d")
 
-    print(f"  [INFO] 目标区间交易日: {len(required_dates)} 天 ({required_dates[0]} ~ {required_dates[-1]})")
+    # 计算目标月份数
+    from datetime import date
+    months_required = set()
+    d = date(start_date.year, start_date.month, 1)
+    end_d = date(end_date.year, end_date.month, 1)
+    while d <= end_d:
+        months_required.add((d.year, d.month))
+        # 下个月
+        if d.month == 12:
+            d = date(d.year + 1, 1, 1)
+        else:
+            d = date(d.year, d.month + 1, 1)
 
-    # 查询已存在的HS300数据日期
+    # 查询已存在的HS300月份
     try:
         existing = DatabaseManager.fetchall(
             "tushare_biz",
             "SELECT DISTINCT trade_date FROM t_index_weight WHERE index_code = %s AND trade_date >= %s AND trade_date <= %s",
-            ("000300.SH", required_dates[0], required_dates[-1]),
+            ("000300.SH", start_str, end_str),
         )
-        existing_dates = {r["trade_date"] for r in existing}
+        existing_months = {(r["trade_date"][:4], r["trade_date"][4:6]) for r in existing}
+        existing_months = {(int(y), int(m)) for y, m in existing_months}
     except Exception as e:
         print(f"  [WARN] 无法查询已存在数据: {e}")
-        existing_dates = set()
+        existing_months = set()
 
-    missing = [d for d in required_dates if d not in existing_dates]
+    missing_months = months_required - existing_months
+    coverage = len(existing_months) / len(months_required) * 100 if months_required else 100
 
-    if not missing:
-        print(f"  [OK] HS300数据完整，共 {len(existing_dates)} 个交易日有数据")
+    print(f"  [INFO] 目标月份: {len(months_required)} 个, 已覆盖: {len(existing_months)} 个 (覆盖率 {coverage:.1f}%)")
+
+    if coverage >= 80:
+        print(f"  [OK] HS300数据覆盖率达标（{coverage:.1f}% >= 80%），共 {len(existing)} 条记录")
         return True
 
-    coverage = len(existing_dates) / len(required_dates) * 100 if required_dates else 0
-    print(f"  [WARN] 数据不完整: 已有 {len(existing_dates)} 天，缺失 {len(missing)} 天 (覆盖率 {coverage:.1f}%)")
-    print(f"  [INFO] 缺失示例: {missing[:5]}")
+    print(f"  [WARN] 覆盖率不足，缺失月份示例: {sorted(missing_months)[:5]}")
 
     # 触发同步
     if not _SYNC_SCRIPT.exists():
@@ -184,7 +204,9 @@ def check_and_sync_hs300_data(start_date: datetime, end_date: datetime) -> bool:
              "--mode", "incremental",
              "--start-date", sync_start,
              "--end-date", sync_end],
-            capture_output=True, text=True, timeout=300,
+            capture_output=True, text=True, timeout=600,
+            cwd=str(_PROJECT_ROOT),
+            env={**os.environ, "PYTHONPATH": str(_PROJECT_ROOT)},
         )
         if result.returncode == 0:
             print("  [OK] 同步完成")
@@ -194,26 +216,11 @@ def check_and_sync_hs300_data(start_date: datetime, end_date: datetime) -> bool:
             print(f"  stderr: {result.stderr[-500:] if result.stderr else ''}")
             return False
     except subprocess.TimeoutExpired:
-        print("  [ERROR] 同步超时（5分钟）")
+        print("  [ERROR] 同步超时（10分钟）")
         return False
     except Exception as e:
         print(f"  [ERROR] 同步异常: {e}")
         return False
-
-    # 同步后再次验证
-    try:
-        existing2 = DatabaseManager.fetchall(
-            "tushare_biz",
-            "SELECT DISTINCT trade_date FROM t_index_weight WHERE index_code = %s AND trade_date >= %s AND trade_date <= %s",
-            ("000300.SH", required_dates[0], required_dates[-1]),
-        )
-        still_missing = len(required_dates) - len(existing2)
-        if still_missing > len(required_dates) * 0.2:  # 允许20%缺失（假期等原因）
-            print(f"  [ERROR] 同步后仍缺失 {still_missing} 个交易日数据，超过20%阈值，退出")
-            return False
-        print(f"  [OK] 同步验证通过，覆盖 {len(existing2)}/{len(required_dates)} 天")
-    except Exception as e:
-        print(f"  [WARN] 同步后验证失败: {e}")
 
     return True
 
