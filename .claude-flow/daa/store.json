@@ -25,6 +25,83 @@
       },
       "createdAt": "2026-03-20T15:14:23.099Z",
       "lastActivity": "2026-03-20T15:14:23.099Z"
+    },
+    "factor-seeker-001": {
+      "id": "factor-seeker-001",
+      "name": "Factor Seeker",
+      "type": "factor-researcher",
+      "status": "active",
+      "cognitivePattern": "adaptive",
+      "learningRate": 0.15,
+      "memory": true,
+      "capabilities": [
+        "traditional_factor_investing",
+        "fama_french_factors",
+        "barra_factors",
+        "ashare_specific_factors",
+        "factor_validity_testing",
+        "ic_icir_analysis",
+        "layered_backtest",
+        "fama_macbeth_regression",
+        "factor_turnover_analysis",
+        "dimensionality_reduction",
+        "pca_lasso",
+        "ml_factor_mining",
+        "alpha_factor_discovery",
+        "genetic_programming",
+        "reinforcement_learning_ppo",
+        "xgboost_lightgbm",
+        "shap_interpretability",
+        "factor_decay_analysis",
+        "dynamic_weight_ic_ir",
+        "online_learning_ewma",
+        "feature_engineering_automation"
+      ],
+      "metrics": {
+        "tasksCompleted": 0,
+        "successRate": 1,
+        "adaptations": 0
+      },
+      "createdAt": "2026-03-21T00:42:01.141Z",
+      "lastActivity": "2026-03-21T00:42:01.141Z"
+    },
+    "strategy-researcher-001": {
+      "id": "strategy-researcher-001",
+      "name": "Strategy Researcher",
+      "type": "strategy-researcher",
+      "status": "active",
+      "cognitivePattern": "adaptive",
+      "learningRate": 0.12,
+      "memory": true,
+      "capabilities": [
+        "multi_factor_model",
+        "ml_stock_selection",
+        "xgboost_lightgbm_lgbm",
+        "lstm_gru_sequence",
+        "factor_combination_optimization",
+        "signal_generation",
+        "alpha_decay_analysis",
+        "cross_sectional_regression",
+        "ensemble_methods",
+        "ic_weighted_combination",
+        "signal_backtesting",
+        "portfolio_construction",
+        "sector_neutral_long_short",
+        "position_sizing",
+        "shap_interpretability",
+        "rolling_window_training",
+        "walk_forward_validation",
+        "regime_detection",
+        "signal_turnover_control",
+        "transaction_cost_aware_optimization"
+      ],
+      "metrics": {
+        "tasksCompleted": 0,
+        "successRate": 1,
+        "adaptations": 0
+      },
+      "createdAt": "2026-03-21T00:56:33.954Z",
+      "lastActivity": "2026-03-21T00:56:33.954Z"
     }
   },
   "workflows": {},
@@ -90,6 +167,286 @@
       },
       "sharedBy": "data-engineer-001",
       "timestamp": "2026-03-20T15:15:34.648Z"
+    },
+    "knowledge-1774053772478": {
+      "domain": "traditional-factor-investing",
+      "content": {
+        "scope": "全面因子体系",
+        "factor_families": {
+          "fama_french_5": [
+            "市场风险溢价MKT",
+            "规模因子SMB",
+            "价值因子HML",
+            "盈利因子RMW",
+            "投资因子CMA"
+          ],
+          "barra": [
+            "市值Size",
+            "Beta",
+            "动量Momentum",
+            "波动Volatility",
+            "成长Growth",
+            "价值Value",
+            "杠杆Leverage",
+            "流动性Liquidity",
+            "非线性规模NLSIZE"
+          ],
+          "ashare_specific": [
+            "融资融券余额",
+            "龙虎榜资金",
+            "北向资金",
+            "股权质押比例",
+            "商誉占净资产比",
+            "研报覆盖度"
+          ],
+          "value": [
+            "PE_TTM",
+            "PB",
+            "PS_TTM",
+            "PCF",
+            "股息率DY",
+            "EV_EBITDA"
+          ],
+          "momentum": [
+            "return_5d",
+            "return_20d",
+            "return_60d",
+            "return_120d",
+            "return_250d",
+            "RSI",
+            "MACD",
+            "KDJ"
+          ],
+          "quality": [
+            "ROE",
+            "ROA",
+            "毛利率",
+            "净利率",
+            "资产负债率",
+            "营收YoY",
+            "净利润YoY"
+          ],
+          "volatility": [
+            "vol_20d",
+            "vol_60d",
+            "Beta",
+            "最大回撤",
+            "下行波动率"
+          ],
+          "technical": [
+            "均线系统SMA/EMA",
+            "布林带",
+            "ATR",
+            "OBV",
+            "VWAP",
+            "价格位置"
+          ]
+        },
+        "validity_testing": {
+          "ic_analysis": "因子与未来收益率的横截面Spearman相关系数",
+          "icir": "IC均值/IC标准差，>0.5为有效",
+          "layered_backtest": "十分组单调性检验",
+          "fama_macbeth": "横截面+时序联合回归",
+          "turnover_analysis": "因子换手率与交易成本平衡"
+        },
+        "dimensionality_reduction": {
+          "pca": "主成分分析，保留85%方差",
+          "lasso": "L1正则化自动选择",
+          "elastic_net": "L1+L2结合",
+          "correlation_clustering": "高相关因子归组，每组取代表"
+        },
+        "existing_files": {
+          "factor_definitions": "projects/quant_trading/strategies/ml_prediction/factor_definitions.py",
+          "factor_registry": "projects/quant_trading/strategies/ml_prediction/factor_registry.py",
+          "factor_selection": "projects/quant_trading/strategies/ml_prediction/factor_selection.py",
+          "factor_analysis": "projects/quant_trading/strategies/ml_prediction/factor_analysis.py",
+          "factor_validator": "projects/quant_trading/strategies/ml_prediction/factor_validator.py",
+          "cross_sectional": "projects/quant_trading/strategies/ml_prediction/cross_sectional_strategy.py",
+          "industry_factors": "projects/quant_trading/strategies/ml_prediction/industry_factors.py"
+        }
+      },
+      "sharedBy": "factor-seeker-001",
+      "timestamp": "2026-03-21T00:42:52.478Z"
+    },
+    "knowledge-1774053775047": {
+      "domain": "ml-factor-mining",
+      "content": {
+        "scope": "机器学习因子挖掘",
+        "alpha_discovery": {
+          "genetic_programming": "用表达式树进化自动生成因子公式，操作符包括+/-/*/除/log/abs/rank/delay/corr/ts_std等",
+          "search_space": "原始价量数据 → 操作符组合 → 验证IC>0.03 → 存活筛选"
+        },
+        "factor_evaluation": {
+          "ic_icir": "按因子分组计算IC序列，ICIR = mean(IC)/std(IC)",
+          "layered_backtest": "五/十分组构建多空组合，检验Excess Return单调性",
+          "fama_macbeth": "每期横截面回归取系数均值t检验",
+          "decay_analysis": "计算1d/5d/10d/20d前瞻IC，分析因子预测能力衰减曲线"
+        },
+        "factor_synthesis": {
+          "xgboost_lightgbm": "将多因子作为特征，预测未来5日/20日收益，SHAP分解贡献",
+          "ensemble": "多模型集成投票，降低过拟合",
+          "shap": "TreeExplainer分解个股预测来源",
+          "feature_importance": "Gain(纯度提升) + Cover(覆盖样本数) 双排序"
+        },
+        "dynamic_weights": {
+          "ic_weighted": "以历史IC均值作为因子权重，奖励稳定因子",
+          "ir_weighted": "以ICIR作为权重，风险调整后分配",
+          "ewma": "指数加权移动平均适应近期市场变化，lambda=0.94",
+          "ppo_rl": "用强化学习PPO动态调整因子组合权重，reward=夏普比率"
+        },
+        "interaction_effects": {
+          "pairwise": "两两因子乘积/比值挖掘交互效应",
+          "nonlinear": "XGBoost天然捕捉非线性关系"
+        },
+        "existing_files": {
+          "fast_factor_computer": "projects/quant_trading/strategies/ml_prediction/fast_factor_computer.py",
+          "feature_engineering": "projects/quant_trading/strategies/ml_prediction/feature_engineering.py",
+          "xgboost_model": "projects/quant_trading/strategies/ml_prediction/xgboost_model.py",
+          "factor_analysis": "projects/quant_trading/strategies/ml_prediction/factor_analysis.py",
+          "sql_factor_engine": "projects/quant_trading/strategies/ml_prediction/sql_factor_engine.py",
+          "precomputed_factors": "projects/quant_trading/strategies/ml_prediction/precomputed_factors.py",
+          "cross_sectional_features": "projects/quant_trading/strategies/ml_prediction/cross_sectional_features.py"
+        },
+        "data_infra": {
+          "price_table": "t_stock_dailymarketdata (tushare_biz)",
+          "valuation_table": "t_stock_daily_basic (tushare_biz)",
+          "moneyflow_table": "t_stock_moneyflow (tushare_biz)",
+          "precomputed": "t_precomputed_factors (interface) - 已有40+因子预计算结果",
+          "stock_pool": "~4500只A股，CLI: poetry run python main.py sync --all"
+        }
+      },
+      "sharedBy": "factor-seeker-001",
+      "timestamp": "2026-03-21T00:42:55.047Z"
+    },
+    "knowledge-1774054616113": {
+      "domain": "factor-output-interface",
+      "content": {
+        "scope": "Factor Seeker → Strategy Researcher 接口协议",
+        "input_from_factor_seeker": {
+          "validated_factors": {
+            "description": "通过IC/ICIR/分层回测有效性筛选后的因子列表",
+            "source_files": [
+              "projects/quant_trading/strategies/ml_prediction/factor_validator.py",
+              "projects/quant_trading/strategies/ml_prediction/factor_analysis.py"
+            ],
+            "format": "DataFrame: [ts_code, trade_date, factor_name, factor_value, ic, icir, stability]"
+          },
+          "precomputed_factors": {
+            "description": "数据库预计算好的40+因子",
+            "table": "t_precomputed_factors (interface DB)",
+            "source_file": "projects/quant_trading/strategies/ml_prediction/precomputed_factors.py",
+            "access": "projects/quant_trading/strategies/ml_prediction/sql_factor_engine.py"
+          },
+          "factor_categories": {
+            "value": [
+              "PE_TTM",
+              "PB",
+              "PS_TTM",
+              "股息率DY"
+            ],
+            "momentum": [
+              "return_5d",
+              "return_20d",
+              "return_60d",
+              "RSI",
+              "MACD"
+            ],
+            "quality": [
+              "ROE",
+              "ROA",
+              "毛利率",
+              "营收YoY",
+              "净利润YoY"
+            ],
+            "volatility": [
+              "vol_20d",
+              "vol_60d",
+              "Beta",
+              "最大回撤"
+            ],
+            "technical": [
+              "SMA",
+              "EMA",
+              "布林带",
+              "ATR",
+              "VWAP"
+            ],
+            "ashare_specific": [
+              "北向资金",
+              "融资融券余额",
+              "龙虎榜资金"
+            ]
+          }
+        },
+        "output_to_downstream": {
+          "daily_signals": {
+            "description": "每日股票评分/信号，供手动交易参考",
+            "format": "DataFrame: [ts_code, trade_date, signal_score, direction, confidence, rank_pct]",
+            "target": "Streamlit可视化层 / 回测引擎"
+          },
+          "strategy_config": {
+            "description": "可传入回测引擎的策略配置",
+            "engine": "projects/quant_trading/backtest/engine.py",
+            "strategy_base": "projects/quant_trading/backtest/strategy.py"
+          }
+        },
+        "existing_relevant_files": {
+          "xgboost_model": "projects/quant_trading/strategies/ml_prediction/xgboost_model.py",
+          "feature_engineering": "projects/quant_trading/strategies/ml_prediction/feature_engineering.py",
+          "cross_sectional_strategy": "projects/quant_trading/strategies/ml_prediction/cross_sectional_strategy.py",
+          "cross_sectional_features": "projects/quant_trading/strategies/ml_prediction/cross_sectional_features.py",
+          "fast_factor_computer": "projects/quant_trading/strategies/ml_prediction/fast_factor_computer.py"
+        }
+      },
+      "sharedBy": "factor-seeker-001",
+      "timestamp": "2026-03-21T00:56:56.113Z"
+    },
+    "knowledge-1774054668548": {
+      "domain": "strategy-researcher-capabilities",
+      "content": {
+        "scope": "Strategy Researcher 内部建模方法论",
+        "multi_factor_model": {
+          "linear_combination": {
+            "ic_weighted": "以IC均値作因子权重，奖励预测稳定性",
+            "icir_weighted": "IC/标准差风险调整后分配",
+            "equal_weight": "基准线"
+          },
+          "composite_score": "按因子类别先内部合成再加权，降低类内相关性"
+        },
+        "ml_stock_selection": {
+          "xgboost_pipeline": {
+            "target": "未来N日收益（N=5/10/20）分位数",
+            "features": "预计算因子 + 动态ICIR权重",
+            "validation": "Walk-forward滚动训练+时间序列交叉验证",
+            "output": "Stock score 分位数 → Top-N选股信号"
+          },
+          "lstm_pipeline": {
+            "input_window": "60交易日",
+            "architecture": "LSTM(128) → LSTM(64) → Dense(32) → Signal",
+            "target": "二分类：涨/跌 或 三分类：强/中/弱"
+          },
+          "ensemble": "XGBoost + LSTM + 线性多因子 集成投票"
+        },
+        "signal_generation": {
+          "daily_rebalance": "每日引收后计算最新因子，生成次日开盘信号",
+          "signal_format": "[ts_code, trade_date, score, direction(1/-1/0), confidence(0-1), rank_pct(0-1)]",
+          "top_k_selection": "按score取Top 30-50支作多头候选",
+          "turnover_control": "上期持仓头寸不变，限制日换手率<20%"
+        },
+        "risk_control": {
+          "sector_neutral": "行业中性，防止行业集中风险",
+          "size_neutral": "市値中性，防止小盘刯因子混杂",
+          "stop_loss": "15%跌幅止损，对应risk_manager.py",
+          "max_drawdown_control": "回测工作期间监测最大回撤，>20%减仓"
+        },
+        "output_files_to_create": {
+          "strategy_signal_builder": "projects/quant_trading/strategies/ml_prediction/strategy_signal_builder.py",
+          "multi_factor_combiner": "projects/quant_trading/strategies/ml_prediction/multi_factor_combiner.py",
+          "ml_pipeline": "projects/quant_trading/strategies/ml_prediction/ml_pipeline.py"
+        }
+      },
+      "sharedBy": "strategy-researcher-001",
+      "timestamp": "2026-03-21T00:57:48.548Z"
     }
   },
   "version": "3.0.0"
