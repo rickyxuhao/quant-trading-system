@@ -1,9 +1,14 @@
 """
-增强版市场环境分类器 - Phase 4
+增强版市场环境分类器 - Phase 4 (修正版)
 实现3类市场环境识别：
-- 牛市 (BULL): 20日收益 > 10% 且 波动率 < 中位数
-- 熊市 (BEAR): 20日收益 < -10% 或 波动率 > 80分位
+- 牛市 (BULL): (20日收益 > 5% AND 波动率 < 80分位) OR (均线多头排列 AND 20日收益 >= 0)
+- 熊市 (BEAR): 20日收益 < -7% 或 (波动率 > 80分位 AND 20日收益 < -3%)
 - 震荡市 (OSCILLATING): 其他情况
+
+修正原因：
+- 原阈值10%过严，错过924行情(2024-10)和2025年夏季牛市
+- 新增均线多头排列(MA5>MA20>MA60)作为牛市信号
+- 放宽熊市条件（仅负向高波动才判为熊）
 
 不同市场环境使用不同因子权重:
 - 牛市: 偏动量/成长因子
@@ -113,14 +118,16 @@ class EnhancedRegimeDetector:
     使用沪深300或全市场平均收益+波动率来分类当前市场环境
     """
 
-    def __init__(self, return_threshold_bull: float = 0.10,
-                 return_threshold_bear: float = -0.10,
+    def __init__(self, return_threshold_bull: float = 0.05,
+                 return_threshold_bear: float = -0.07,
                  vol_bear_percentile: float = 0.80,
-                 smooth_window: int = 3):
+                 smooth_window: int = 3,
+                 use_ma_cross: bool = True):
         self.return_threshold_bull = return_threshold_bull
         self.return_threshold_bear = return_threshold_bear
         self.vol_bear_percentile = vol_bear_percentile
         self.smooth_window = smooth_window
+        self.use_ma_cross = use_ma_cross
         self._regime_cache: Dict[str, EnhancedMarketRegime] = {}
 
     def detect_regime(self, date: str, index_returns: pd.Series,
@@ -150,23 +157,20 @@ class EnhancedRegimeDetector:
         # 计算当前波动率（20日年化）
         current_vol = index_returns.tail(20).std() * np.sqrt(252)
 
-        # 计算历史波动率中位数和80分位
+        # 计算历史波动率80分位
         if len(vol_history) >= 60:
-            vol_median = vol_history.median()
             vol_p80 = vol_history.quantile(0.80)
         else:
-            vol_median = current_vol
-            vol_p80 = current_vol * 1.2
+            vol_p80 = current_vol * 1.3
 
         # 市场环境分类
-        is_bull_return = return_20d > self.return_threshold_bull
-        is_low_vol = current_vol < vol_median
-        is_bear_return = return_20d < self.return_threshold_bear
-        is_high_vol = current_vol > vol_p80
+        is_bull = return_20d > self.return_threshold_bull and current_vol <= vol_p80
+        is_bear = (return_20d < self.return_threshold_bear or
+                   (current_vol > vol_p80 and return_20d < -0.03))
 
-        if is_bull_return and is_low_vol:
+        if is_bull:
             regime = EnhancedMarketRegime.BULL
-        elif is_bear_return or is_high_vol:
+        elif is_bear:
             regime = EnhancedMarketRegime.BEAR
         else:
             regime = EnhancedMarketRegime.OSCILLATING
@@ -198,6 +202,15 @@ class EnhancedRegimeDetector:
         )
         df['vol_20d'] = df['return_pct'].rolling(20).std() * np.sqrt(252)
 
+        # 均线多头排列（MA5 > MA20 > MA60）- 需要close列
+        df['golden_cross'] = False
+        if 'close' in df.columns and self.use_ma_cross:
+            close = pd.to_numeric(df['close'], errors='coerce')
+            ma5 = close.rolling(5).mean()
+            ma20 = close.rolling(20).mean()
+            ma60 = close.rolling(60).mean()
+            df['golden_cross'] = (ma5 > ma20) & (ma20 > ma60)
+
         # 历史波动率（用于计算分位数，使用过去252天）
         vol_series = df['vol_20d'].dropna()
 
@@ -209,18 +222,27 @@ class EnhancedRegimeDetector:
 
             current_vol = row['vol_20d']
             current_return_20d = row['return_20d']
+            golden_cross = bool(row.get('golden_cross', False))
 
             # 获取截至当前的历史波动率
             hist_vol = vol_series.loc[:idx]
             if len(hist_vol) >= 60:
-                vol_median = hist_vol.quantile(0.5)
                 vol_p80 = hist_vol.quantile(0.80)
             else:
-                vol_median = current_vol
-                vol_p80 = current_vol * 1.2
+                vol_p80 = current_vol * 1.3
 
-            is_bull = current_return_20d > self.return_threshold_bull and current_vol < vol_median
-            is_bear = current_return_20d < self.return_threshold_bear or current_vol > vol_p80
+            # 牛市判定（两个条件之一满足即可）：
+            # 1. 20日收益 > 5% 且波动率不太高（允许到80分位）
+            # 2. 均线多头排列且市场不下跌
+            is_bull_return = (current_return_20d > self.return_threshold_bull
+                              and current_vol <= vol_p80)
+            is_bull_ma = (golden_cross and current_return_20d >= 0.0)
+            is_bull = is_bull_return or is_bull_ma
+
+            # 熊市判定（条件更严格，避免把高波动牛市误判为熊）：
+            # 20日收益 < -7% 或 (高波动 且 收益 < -3%)
+            is_bear = (current_return_20d < self.return_threshold_bear or
+                       (current_vol > vol_p80 and current_return_20d < -0.03))
 
             if is_bull:
                 regime = EnhancedMarketRegime.BULL.value
@@ -237,7 +259,8 @@ class EnhancedRegimeDetector:
         if self.smooth_window > 1:
             df['regime'] = self._smooth_regimes(df['regime'], self.smooth_window)
 
-        return df[[date_col, 'regime', 'return_20d', 'vol_20d']]
+        extra_cols = ['golden_cross'] if 'golden_cross' in df.columns else []
+        return df[[date_col, 'regime', 'return_20d', 'vol_20d'] + extra_cols]
 
     def _smooth_regimes(self, regime_series: pd.Series, window: int) -> pd.Series:
         """平滑市场环境（取滚动窗口众数）"""
