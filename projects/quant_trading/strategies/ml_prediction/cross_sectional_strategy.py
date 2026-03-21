@@ -601,10 +601,14 @@ class CrossSectionalMLStrategy:
     def _generate_targets(
         self, date: datetime, stock_pool: List[str], horizon: int = 5
     ) -> pd.Series:
-        """生成训练目标（未来收益）"""
+        """生成训练目标（未来收益）
+
+        使用次日开盘价作为基准价格，避免T+0执行偏差。
+        计算公式：future_close[horizon] / open[1] - 1
+        """
         try:
-            # 获取未来价格
-            future_date = date + pd.Timedelta(days=horizon * 2)  # 留出足够时间
+            # 获取未来价格，留出足够时间
+            future_date = date + pd.Timedelta(days=horizon * 2)
 
             batch_data = self.data_manager.get_batch_stock_data(
                 stock_pool, date, future_date, adjust=True
@@ -613,16 +617,36 @@ class CrossSectionalMLStrategy:
             targets = pd.Series(index=stock_pool, dtype=float)
 
             for ts_code, df in batch_data.items():
-                if df.empty or "adj_close" not in df.columns:
+                if df.empty:
                     continue
 
-                closes = df["adj_close"]
+                # 确定基准价格：优先使用次日开盘价（index 1），避免T+0偏差
+                current_price = None
+                if "adj_open" in df.columns and len(df) > 1:
+                    open_val = df["adj_open"].iloc[1]
+                    if open_val > 0:
+                        current_price = open_val
+                elif "open" in df.columns and len(df) > 1:
+                    open_val = df["open"].iloc[1]
+                    if open_val > 0:
+                        current_price = open_val
 
-                if len(closes) <= 1:
+                # 回退到当日收盘价
+                if current_price is None:
+                    if "adj_close" in df.columns and len(df) > 0:
+                        current_price = df["adj_close"].iloc[0]
+                    elif "close" in df.columns and len(df) > 0:
+                        current_price = df["close"].iloc[0]
+
+                if current_price is None or current_price <= 0:
                     continue
 
-                # 计算horizon日后的收益
-                current_price = closes.iloc[0]
+                # 计算horizon日后的收益（基于收盘价）
+                close_col = "adj_close" if "adj_close" in df.columns else "close"
+                if close_col not in df.columns or len(df) <= 1:
+                    continue
+
+                closes = df[close_col]
                 future_idx = min(horizon, len(closes) - 1)
                 future_price = closes.iloc[future_idx]
 

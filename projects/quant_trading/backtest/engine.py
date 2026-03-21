@@ -330,7 +330,8 @@ class BacktestEngine:
                     if self._should_rebalance(date, i):
                         self.stats.rebalance_count += 1
                         self._emit_event(BacktestEvent.REBALANCE_START, date)
-                        self._rebalance(date)
+                        next_date = self.trade_dates[i + 1] if i + 1 < len(self.trade_dates) else date
+                        self._rebalance(date, next_date)
                         self._emit_event(BacktestEvent.REBALANCE_END, date)
 
                     # 更新持仓市值
@@ -453,9 +454,11 @@ class BacktestEngine:
         else:
             return True
 
-    def _rebalance(self, date: datetime) -> None:
-        """执行调仓"""
+    def _rebalance(self, date: datetime, next_date: Optional[datetime] = None) -> None:
+        """执行调仓（T+1执行价格，涨跌停过滤）"""
+        exec_date = next_date if next_date is not None else date
         date_str = date.strftime("%Y%m%d")
+        exec_date_str = exec_date.strftime("%Y%m%d")
 
         # 1. 前置筛选
         try:
@@ -480,7 +483,10 @@ class BacktestEngine:
         data_start_date = self.trade_dates[start_idx]
 
         stock_data: Dict[str, pd.DataFrame] = {}
-        current_prices: Dict[str, float] = {}
+        mark_prices: Dict[str, float] = {}  # 收盘价，用于估值
+        exec_prices: Dict[str, float] = {}  # T+1执行价格
+        limit_up_stocks: set = set()        # 涨停股（禁止买入）
+        limit_down_stocks: set = set()      # 跌停股（禁止卖出）
 
         # Load data for available stocks
         for ts_code in available_stocks[:100]:  # Limit to top 100 for performance
@@ -488,12 +494,36 @@ class BacktestEngine:
                 df = self._get_stock_data(ts_code, data_start_date, date)
                 if df is not None and not df.empty:
                     stock_data[ts_code] = df
-                    price = self._extract_price(df, date)
+                    price = self._extract_mark_price(df, date)
                     if price is not None:
-                        current_prices[ts_code] = price
+                        mark_prices[ts_code] = price
+
+                    # 涨跌停检查
+                    if self._is_limit_up(df, date):
+                        limit_up_stocks.add(ts_code)
+                    elif self._is_limit_down(df, date):
+                        limit_down_stocks.add(ts_code)
             except Exception as e:
                 logger.debug(f"Failed to load data for {ts_code}: {e}")
                 continue
+
+        # 获取T+1执行价格（高低均价）
+        if exec_date != date:
+            for ts_code in list(stock_data.keys()):
+                try:
+                    exec_df = self._get_stock_data(ts_code, exec_date, exec_date)
+                    if exec_df is not None and not exec_df.empty:
+                        ep = self._extract_exec_price(exec_df, exec_date)
+                        if ep is not None:
+                            exec_prices[ts_code] = ep
+                except Exception as e:
+                    logger.debug(f"Failed to get exec price for {ts_code}: {e}")
+            # 回退：无T+1数据使用收盘价
+            for ts_code, price in mark_prices.items():
+                if ts_code not in exec_prices:
+                    exec_prices[ts_code] = price
+        else:
+            exec_prices = mark_prices.copy()
 
         if len(stock_data) < self.config.min_positions:
             logger.warning(
@@ -510,6 +540,14 @@ class BacktestEngine:
             logger.error(f"Strategy signal generation failed: {e}")
             return
 
+        # 4. 涨停过滤：涨停股不可买入（无卖盘）
+        if limit_up_stocks:
+            original_count = len(target_stocks)
+            target_stocks = [s for s in target_stocks if s not in limit_up_stocks]
+            filtered = original_count - len(target_stocks)
+            if filtered > 0:
+                logger.info(f"[调仓] 过滤涨停股 {filtered} 只，无法买入")
+
         # 限制持仓数量
         target_stocks = target_stocks[: self.config.max_positions]
 
@@ -519,16 +557,26 @@ class BacktestEngine:
             )
             return
 
-        # 4. 构建目标权重（等权）
+        # 5. 构建目标权重（等权）
         target_weights = {stock: 1.0 / len(target_stocks) for stock in target_stocks}
 
-        # 5. 执行调仓
+        # 跌停股处理：当前持仓中的跌停股无法卖出，保留其现有权重
+        if limit_down_stocks:
+            untradeable_sell = set(self.portfolio.positions.keys()) & limit_down_stocks
+            if untradeable_sell:
+                logger.info(f"[调仓] {len(untradeable_sell)} 只跌停股无法卖出，保留持仓")
+                for ts_code in untradeable_sell:
+                    if ts_code not in target_weights and self.portfolio.total_value > 0:
+                        pos = self.portfolio.positions[ts_code]
+                        target_weights[ts_code] = pos.market_value / self.portfolio.total_value
+
+        # 6. 执行调仓（使用T+1执行价格）
         trades = self.portfolio.rebalance(
-            target_weights=target_weights, current_prices=current_prices, date=date
+            target_weights=target_weights, current_prices=exec_prices, date=exec_date
         )
 
         if trades:
-            logger.info(f"[调仓] {date_str} 执行 {len(trades)} 笔交易")
+            logger.info(f"[调仓] {date_str}→{exec_date_str} 执行 {len(trades)} 笔交易")
 
     def _get_stock_data(
         self, ts_code: str, start_date: datetime, end_date: datetime
@@ -560,24 +608,75 @@ class BacktestEngine:
             return None
 
     def _extract_price(self, df: pd.DataFrame, date: datetime) -> Optional[float]:
-        """从DataFrame中提取指定日期的价格"""
+        """从DataFrame中提取指定日期的收盘价（向后兼容）"""
+        return self._extract_mark_price(df, date)
+
+    def _extract_mark_price(self, df: pd.DataFrame, date: datetime) -> Optional[float]:
+        """从DataFrame中提取指定日期的收盘价，用于持仓估值"""
         try:
             date_str = date.strftime("%Y%m%d")
-            row = df[df["trade_date"] == date]
-            if not row.empty:
-                return float(row["close"].values[0])
-
-            # Try different date formats
             for col in ["trade_date", "date"]:
                 if col in df.columns:
                     row = df[df[col] == date_str]
-                    if not row.empty:
+                    if row.empty:
+                        row = df[df[col] == date]
+                    if not row.empty and "close" in row.columns:
                         return float(row["close"].values[0])
-
             return None
         except Exception as e:
-            logger.debug(f"Failed to extract price: {e}")
+            logger.debug(f"Failed to extract mark price: {e}")
             return None
+
+    def _extract_exec_price(self, df: pd.DataFrame, exec_date: datetime) -> Optional[float]:
+        """获取T+1日执行价格：(high+low)/2，用于模拟实际成交"""
+        try:
+            date_str = exec_date.strftime("%Y%m%d")
+            for col in ["trade_date", "date"]:
+                if col in df.columns:
+                    row = df[df[col] == date_str]
+                    if row.empty:
+                        row = df[df[col] == exec_date]
+                    if not row.empty:
+                        if "high" in row.columns and "low" in row.columns:
+                            high = float(row["high"].values[0])
+                            low = float(row["low"].values[0])
+                            return (high + low) / 2
+                        if "close" in row.columns:
+                            return float(row["close"].values[0])
+            return None
+        except Exception as e:
+            logger.debug(f"Failed to extract exec price for {exec_date}: {e}")
+            return None
+
+    def _is_limit_up(self, df: pd.DataFrame, date: datetime) -> bool:
+        """检查股票当日是否涨停（pct_chg >= 9.9%）"""
+        try:
+            date_str = date.strftime("%Y%m%d")
+            for col in ["trade_date", "date"]:
+                if col in df.columns:
+                    row = df[df[col] == date_str]
+                    if row.empty:
+                        row = df[df[col] == date]
+                    if not row.empty and "pct_chg" in row.columns:
+                        return float(row["pct_chg"].values[0]) >= 9.9
+            return False
+        except Exception:
+            return False
+
+    def _is_limit_down(self, df: pd.DataFrame, date: datetime) -> bool:
+        """检查股票当日是否跌停（pct_chg <= -9.9%）"""
+        try:
+            date_str = date.strftime("%Y%m%d")
+            for col in ["trade_date", "date"]:
+                if col in df.columns:
+                    row = df[df[col] == date_str]
+                    if row.empty:
+                        row = df[df[col] == date]
+                    if not row.empty and "pct_chg" in row.columns:
+                        return float(row["pct_chg"].values[0]) <= -9.9
+            return False
+        except Exception:
+            return False
 
     def _update_portfolio_value(self, date: datetime) -> None:
         """更新持仓市值"""

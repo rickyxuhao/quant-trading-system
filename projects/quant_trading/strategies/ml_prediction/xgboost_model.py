@@ -30,12 +30,12 @@ class XGBoostConfig:
 
     # 模型参数
     n_estimators: int = 100
-    max_depth: int = 6
-    learning_rate: float = 0.1
+    max_depth: int = 4           # 降低树深度，防止过拟合（原6→4）
+    learning_rate: float = 0.05  # 降低学习率，更稳定（原0.1→0.05）
     subsample: float = 0.8
     colsample_bytree: float = 0.8
     colsample_bylevel: float = 0.8
-    min_child_weight: int = 1
+    min_child_weight: int = 5    # 提高最小叶节点样本数，防止过拟合（原1→5）
     gamma: float = 0
     reg_alpha: float = 0.1  # L1正则化
     reg_lambda: float = 1.0  # L2正则化
@@ -68,6 +68,7 @@ def get_xgb_params(config: XGBoostConfig) -> Dict[str, Any]:
         "reg_lambda": config.reg_lambda,
         "scale_pos_weight": config.scale_pos_weight,
         "objective": config.objective,
+        "tree_method": "hist",  # 使用直方图算法，大幅提速
         "random_state": 42,
         "n_jobs": -1,
         "early_stopping_rounds": config.early_stopping_rounds,

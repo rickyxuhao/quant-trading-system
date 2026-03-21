@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 from enum import Enum
 import logging
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import numpy as np
 import pandas as pd
@@ -49,6 +50,7 @@ class ICResult:
     p_value: float
     ic_series: pd.Series
     dates: List[str]
+    rolling_icir_63d: Optional[pd.Series] = None  # 63日滚动ICIR序列
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -157,17 +159,59 @@ class FactorAnalyzer:
             )
         return self._trade_dates
 
+    def _fetch_forward_return_for_date(
+        self,
+        args: Tuple,
+    ) -> Optional[pd.DataFrame]:
+        """单日前瞻收益计算（供并行调用）"""
+        i, date, trade_dates, all_stocks, forward_period, min_stocks = args
+        if i + forward_period >= len(trade_dates):
+            return None
+
+        target_date = trade_dates[i + forward_period]
+        date_str = date.strftime('%Y%m%d')
+
+        try:
+            df_current = self.data_manager.get_batch_stock_data(
+                ts_codes=all_stocks, fields=['close'], trade_date=date
+            )
+            df_target = self.data_manager.get_batch_stock_data(
+                ts_codes=all_stocks, fields=['close'], trade_date=target_date
+            )
+
+            if df_current.empty or df_target.empty:
+                return None
+
+            merged = df_current[['close']].join(
+                df_target[['close']], rsuffix='_target', how='inner'
+            )
+
+            if len(merged) < min_stocks:
+                return None
+
+            merged['forward_return'] = merged['close_target'] / merged['close'] - 1
+            merged['trade_date'] = date_str
+            merged.reset_index(inplace=True)
+            merged.set_index(['trade_date', 'ts_code'], inplace=True)
+            return merged[['forward_return']]
+
+        except Exception as e:
+            logger.warning(f"Failed to compute forward return for {date_str}: {e}")
+            return None
+
     def _get_forward_returns(
         self,
         forward_period: int = 20,
-        refresh_cache: bool = False
+        refresh_cache: bool = False,
+        max_workers: int = 4,
     ) -> pd.DataFrame:
         """
-        获取前瞻收益率数据
+        获取前瞻收益率数据（并行批量拉取）
 
         Args:
             forward_period: 前瞻期（交易日）
             refresh_cache: 是否刷新缓存
+            max_workers: 并行线程数
 
         Returns:
             DataFrame: index=[trade_date, ts_code], columns=[forward_return]
@@ -179,69 +223,36 @@ class FactorAnalyzer:
 
         # 获取股票池
         if self.stock_pool is None:
-            # 使用最后一天的全市场股票
             all_stocks = self.precomputer._get_all_stocks(trade_dates[-1])
         else:
             all_stocks = self.stock_pool
 
-        logger.info(f"Computing {forward_period}d forward returns for {len(all_stocks)} stocks...")
+        logger.info(
+            f"Computing {forward_period}d forward returns for {len(all_stocks)} stocks "
+            f"(parallel, workers={max_workers})..."
+        )
+
+        # 构建任务列表
+        tasks = [
+            (i, date, trade_dates, all_stocks, forward_period, self.min_stocks_per_day)
+            for i, date in enumerate(trade_dates)
+            if i + forward_period < len(trade_dates)
+        ]
 
         forward_returns_list = []
 
-        for i, date in enumerate(trade_dates):
-            # 跳过最后forward_period天（无法计算前瞻收益）
-            if i + forward_period >= len(trade_dates):
-                continue
-
-            target_date = trade_dates[i + forward_period]
-            date_str = date.strftime('%Y%m%d')
-            target_str = target_date.strftime('%Y%m%d')
-
-            try:
-                # 获取当日收盘价
-                df_current = self.data_manager.get_batch_stock_data(
-                    ts_codes=all_stocks,
-                    fields=['close'],
-                    trade_date=date
-                )
-
-                # 获取前瞻日期收盘价
-                df_target = self.data_manager.get_batch_stock_data(
-                    ts_codes=all_stocks,
-                    fields=['close'],
-                    trade_date=target_date
-                )
-
-                if df_current.empty or df_target.empty:
-                    continue
-
-                # 计算收益率
-                merged = df_current[['close']].join(
-                    df_target[['close']],
-                    rsuffix='_target',
-                    how='inner'
-                )
-
-                if len(merged) < self.min_stocks_per_day:
-                    continue
-
-                merged['forward_return'] = (
-                    merged['close_target'] / merged['close'] - 1
-                )
-
-                # 添加日期索引
-                merged['trade_date'] = date_str
-                merged.reset_index(inplace=True)
-                merged.set_index(['trade_date', 'ts_code'], inplace=True)
-
-                forward_returns_list.append(merged[['forward_return']])
-
-            except Exception as e:
-                logger.warning(f"Failed to compute forward return for {date_str}: {e}")
-                continue
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {
+                executor.submit(self._fetch_forward_return_for_date, task): task
+                for task in tasks
+            }
+            for future in as_completed(futures):
+                result = future.result()
+                if result is not None:
+                    forward_returns_list.append(result)
 
         if forward_returns_list:
-            result = pd.concat(forward_returns_list)
+            result = pd.concat(forward_returns_list).sort_index()
         else:
             result = pd.DataFrame(columns=['forward_return'])
 
@@ -312,38 +323,35 @@ class FactorAnalyzer:
         if aligned.empty:
             raise ValueError("No aligned data between factor and forward returns")
 
-        # 计算每日IC
-        ic_by_date = []
-        dates = []
-
-        for date in aligned.index.get_level_values(0).unique():
-            day_data = aligned.loc[date]
-
-            if len(day_data) < self.min_stocks_per_day:
-                continue
-
-            factor_vals = day_data[factor_name].dropna()
-            returns_vals = day_data['forward_return'].dropna()
-
-            # 再次对齐
-            common_idx = factor_vals.index.intersection(returns_vals.index)
-            factor_vals = factor_vals.loc[common_idx]
-            returns_vals = returns_vals.loc[common_idx]
-
-            if len(factor_vals) < 10:  # 最少需要10个样本
-                continue
-
+        # 向量化计算每日IC（使用 groupby + apply）
+        def _calc_ic_for_group(group: pd.DataFrame) -> float:
+            fv = group[factor_name].dropna()
+            rv = group['forward_return'].dropna()
+            common = fv.index.intersection(rv.index)
+            if len(common) < 10:
+                return np.nan
+            fv, rv = fv.loc[common], rv.loc[common]
             if method == 'spearman':
-                ic, _ = stats.spearmanr(factor_vals, returns_vals)
+                ic, _ = stats.spearmanr(fv, rv)
             else:
-                ic, _ = stats.pearsonr(factor_vals, returns_vals)
+                ic, _ = stats.pearsonr(fv, rv)
+            return ic if not np.isnan(ic) else np.nan
 
-            if not np.isnan(ic):
-                ic_by_date.append(ic)
-                dates.append(date)
+        # 过滤掉股票数量不足的日期
+        date_counts = aligned.groupby(level=0).size()
+        valid_dates = date_counts[date_counts >= self.min_stocks_per_day].index
 
-        if not ic_by_date:
+        if len(valid_dates) == 0:
             raise ValueError("Could not calculate IC for any date")
+
+        ic_raw = aligned.loc[valid_dates].groupby(level=0).apply(_calc_ic_for_group)
+        ic_raw = ic_raw.dropna()
+
+        if len(ic_raw) == 0:
+            raise ValueError("Could not calculate IC for any date")
+
+        ic_by_date = ic_raw.tolist()
+        dates = ic_raw.index.tolist()
 
         ic_series = pd.Series(ic_by_date, index=dates)
 
@@ -361,6 +369,12 @@ class FactorAnalyzer:
         # t检验
         t_stat, p_value = stats.ttest_1samp(ic_series, 0)
 
+        # 63日滚动ICIR（季度窗口）
+        rolling_window = 63
+        rolling_ic_mean = ic_series.rolling(rolling_window, min_periods=rolling_window // 2).mean()
+        rolling_ic_std = ic_series.rolling(rolling_window, min_periods=rolling_window // 2).std()
+        rolling_icir_63d = rolling_ic_mean / rolling_ic_std.replace(0, np.nan)
+
         return ICResult(
             factor_name=factor_name,
             ic_mean=ic_mean,
@@ -371,7 +385,8 @@ class FactorAnalyzer:
             t_statistic=t_stat,
             p_value=p_value,
             ic_series=ic_series,
-            dates=dates
+            dates=dates,
+            rolling_icir_63d=rolling_icir_63d,
         )
 
     def quantile_backtest(

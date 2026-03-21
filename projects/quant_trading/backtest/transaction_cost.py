@@ -56,6 +56,7 @@ class CostBreakdown:
         tax: 税费（印花税等）
         transfer_fee: 过户费
         exchange_fee: 交易所费用
+        slippage: 滑点成本（固定滑点+量化冲击）
         other_fees: 其他费用
         total: 总费用
         total_pct: 总费用占交易金额比例
@@ -66,6 +67,7 @@ class CostBreakdown:
     tax: float = 0.0
     transfer_fee: float = 0.0
     exchange_fee: float = 0.0
+    slippage: float = 0.0
     other_fees: float = 0.0
     total: float = 0.0
     total_pct: float = 0.0
@@ -74,7 +76,8 @@ class CostBreakdown:
     def __post_init__(self):
         """计算总费用"""
         self.total = (
-            self.commission + self.tax + self.transfer_fee + self.exchange_fee + self.other_fees
+            self.commission + self.tax + self.transfer_fee + self.exchange_fee
+            + self.slippage + self.other_fees
         )
         if self.metadata is None:
             self.metadata = {}
@@ -86,6 +89,7 @@ class CostBreakdown:
             "tax": self.tax,
             "transfer_fee": self.transfer_fee,
             "exchange_fee": self.exchange_fee,
+            "slippage": self.slippage,
             "other_fees": self.other_fees,
             "total": self.total,
             "total_pct": self.total_pct,
@@ -158,11 +162,14 @@ class StockCostModel(CostModel):
 
     def __init__(
         self,
-        commission_rate: float = 0.00025,  # 佣金率0.025%
-        min_commission: float = 5.0,  # 最低佣金5元
-        stamp_duty_rate: float = 0.001,  # 印花税0.1%（仅卖出）
-        transfer_fee_rate: float = 0.00001,  # 过户费0.001‰（双向，沪市）
-        is_shanghai: bool = True,  # 是否为沪市股票
+        commission_rate: float = 0.00025,    # 佣金率0.025%
+        min_commission: float = 5.0,          # 最低佣金5元
+        stamp_duty_rate: float = 0.001,       # 印花税0.1%（仅卖出）
+        transfer_fee_rate: float = 0.00001,   # 过户费0.001‰（双向，沪市）
+        is_shanghai: bool = True,             # 是否为沪市股票
+        fixed_slippage_rate: float = 0.001,   # 固定滑点0.1%
+        market_impact_rate: float = 0.1,      # 量化冲击系数
+        reference_amount: float = 1_000_000.0,  # 参考交易金额（1百万）
     ):
         super().__init__(AssetType.STOCK, "A股股票")
         self.commission_rate = commission_rate
@@ -170,11 +177,15 @@ class StockCostModel(CostModel):
         self.stamp_duty_rate = stamp_duty_rate
         self.transfer_fee_rate = transfer_fee_rate
         self.is_shanghai = is_shanghai
+        self.fixed_slippage_rate = fixed_slippage_rate
+        self.market_impact_rate = market_impact_rate
+        self.reference_amount = reference_amount
 
     def calculate_cost(
         self, price: float, size: float, direction: TradeDirection, **kwargs
     ) -> CostBreakdown:
-        """计算股票交易成本"""
+        """计算股票交易成本（含滑点）"""
+        import math
         amount = price * abs(size)
 
         # 佣金（双向，有最低）
@@ -190,7 +201,20 @@ class StockCostModel(CostModel):
         if direction in [TradeDirection.SELL]:
             tax = amount * self.stamp_duty_rate
 
-        breakdown = CostBreakdown(commission=commission, tax=tax, transfer_fee=transfer_fee)
+        # 滑点 = 固定滑点 + 量化冲击（与交易规模平方根正相关）
+        slippage = 0.0
+        if amount > 0:
+            fixed_slip = amount * self.fixed_slippage_rate
+            size_ratio = amount / self.reference_amount
+            market_impact = amount * self.market_impact_rate * math.sqrt(size_ratio)
+            slippage = fixed_slip + market_impact
+
+        breakdown = CostBreakdown(
+            commission=commission,
+            tax=tax,
+            transfer_fee=transfer_fee,
+            slippage=slippage,
+        )
 
         # 计算总成本占比
         if amount > 0:
