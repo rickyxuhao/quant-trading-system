@@ -102,6 +102,44 @@
       },
       "createdAt": "2026-03-21T00:56:33.954Z",
       "lastActivity": "2026-03-21T00:56:33.954Z"
+    },
+    "backtest-engineer-001": {
+      "id": "backtest-engineer-001",
+      "name": "Backtest Engineer",
+      "type": "backtest-engineer",
+      "status": "active",
+      "cognitivePattern": "critical",
+      "learningRate": 0.08,
+      "memory": true,
+      "capabilities": [
+        "vectorized_backtest",
+        "ic_icir_fast_validation",
+        "layered_quantile_backtest",
+        "fama_macbeth_regression",
+        "lookahead_bias_detection",
+        "pit_data_alignment",
+        "survivorship_bias_control",
+        "walk_forward_validation",
+        "multi_stock_backtest",
+        "transaction_cost_modeling",
+        "performance_metrics_26",
+        "risk_attribution",
+        "bootstrap_significance_test",
+        "factor_decay_curve",
+        "event_study_backtest",
+        "parameter_sensitivity_analysis",
+        "turnover_cost_breakdown",
+        "standardized_factor_api",
+        "backtest_report_generation",
+        "data_integrity_check"
+      ],
+      "metrics": {
+        "tasksCompleted": 0,
+        "successRate": 1,
+        "adaptations": 0
+      },
+      "createdAt": "2026-03-21T01:11:39.656Z",
+      "lastActivity": "2026-03-21T01:11:39.656Z"
     }
   },
   "workflows": {},
@@ -447,6 +485,126 @@
       },
       "sharedBy": "strategy-researcher-001",
       "timestamp": "2026-03-21T00:57:48.548Z"
+    },
+    "knowledge-1774055598816": {
+      "domain": "factor-validation-input-contract",
+      "content": {
+        "scope": "Factor Seeker → Backtest Engineer 因子验证输入合同",
+        "factor_output_format": {
+          "validated_factor_df": "DataFrame: [ts_code, trade_date, factor_name, factor_value, ic, icir, stability]",
+          "precomputed_table": "t_precomputed_factors (interface DB)，已存储40+因子",
+          "access_file": "projects/quant_trading/strategies/ml_prediction/precomputed_factors.py"
+        },
+        "validation_requirements": {
+          "ic_threshold": "ICIR > 0.5 为有效因子",
+          "layered_test": "十分组单调性检验，多空收益差应按组单调",
+          "decay_window": "1d/5d/10d/20d 前瞻 IC",
+          "turnover_penalty": "换手率 > 50%/周 需成本调整"
+        },
+        "existing_ic_implementations": {
+          "full": "projects/quant_trading/strategies/ml_prediction/factor_analysis.py → FactorAnalyzer.calculate_ic() + quantile_backtest()",
+          "lightweight": "projects/quant_trading/evaluation/ic_analysis.py → ICAnalyzer + QuantileAnalyzer"
+        },
+        "known_lookahead_risks": {
+          "financial_pit": "cross_sectional_features.py 用 end_date(报告期) 而非 ann_date(公告日)，财务数据存在 1-4 月未来泄漏",
+          "close_price_trade": "BacktestEngine 用当日收盘价调仓，应改为次日开盘价"
+        }
+      },
+      "sharedBy": "factor-seeker-001",
+      "timestamp": "2026-03-21T01:13:18.816Z"
+    },
+    "knowledge-1774055599803": {
+      "domain": "strategy-signal-input-contract",
+      "content": {
+        "scope": "Strategy Researcher → Backtest Engineer 信号输入合同",
+        "signal_format": {
+          "columns": [
+            "ts_code",
+            "trade_date",
+            "signal_score",
+            "direction",
+            "confidence",
+            "rank_pct"
+          ],
+          "direction_values": "1=多头, -1=做空, 0=观望",
+          "confidence_range": "0.0 - 1.0",
+          "rank_pct_range": "0.0 - 1.0 (全市场百分位排名)"
+        },
+        "expected_backtest_outputs": {
+          "performance_metrics": "26项结果 (MetricsCalculator.calculate())",
+          "nav_history": "List[Tuple[datetime, float]]",
+          "trades_df": "DataFrame交易记录",
+          "attribution": "行业/市値/风格因子归因"
+        },
+        "backtest_config": {
+          "engine": "BacktestEngine (projects/quant_trading/backtest/engine.py)",
+          "multi_stock_engine": "MultiStockBacktestEngine (projects/quant_trading/backtest/multi_stock_engine.py)",
+          "risk_manager": "RiskManager (projects/quant_trading/backtest/risk_manager.py)",
+          "cost_model": "CompositeCostModel (projects/quant_trading/backtest/transaction_cost.py)"
+        },
+        "turnover_control": "上游层已限制日换手率 < 20%，回测层需对应计算净可实现收益"
+      },
+      "sharedBy": "strategy-researcher-001",
+      "timestamp": "2026-03-21T01:13:19.803Z"
+    },
+    "knowledge-1774055657817": {
+      "domain": "backtest-api-contract",
+      "content": {
+        "scope": "Backtest Engineer 标准化 API 与已知风险清单",
+        "backtest_infrastructure": {
+          "engines": {
+            "event_driven": "projects/quant_trading/backtest/engine.py → BacktestEngine",
+            "multi_stock": "projects/quant_trading/backtest/multi_stock_engine.py → MultiStockBacktestEngine",
+            "metrics": "projects/quant_trading/backtest/metrics.py → MetricsCalculator，26项指标",
+            "risk": "projects/quant_trading/backtest/risk_manager.py → RiskManager，回撤 15% 清仓、个股 8% 止损",
+            "cost": "projects/quant_trading/backtest/transaction_cost.py → CompositeCostModel，印花税 0.1%/佣金 0.025%/过户费 0.002%"
+          },
+          "ic_implementations": {
+            "full": "factor_analysis.py → FactorAnalyzer.calculate_ic() + quantile_backtest()",
+            "lightweight": "evaluation/ic_analysis.py → ICAnalyzer + QuantileAnalyzer"
+          }
+        },
+        "lookahead_bias_risk_register": {
+          "RISK-001": {
+            "name": "财务数据 PIT 缺口",
+            "severity": "HIGH",
+            "location": "projects/quant_trading/strategies/ml_prediction/cross_sectional_features.py",
+            "description": "当前用 end_date(报告期) 过滤财务数据，应改为 ann_date(实际公告日)，财报公告滞后 1-4 月",
+            "fix": "将 SQL 条件改为 WHERE ann_date <= %s ORDER BY ts_code, ann_date DESC"
+          },
+          "RISK-002": {
+            "name": "收盘价调仓",
+            "severity": "MEDIUM",
+            "location": "projects/quant_trading/backtest/engine.py → _rebalance()",
+            "description": "BacktestEngine 用当日收盘价下单，实际应用次日开盘价成交",
+            "fix": "在 rebalance date 的下一个交易日执行成交"
+          },
+          "RISK-003": {
+            "name": "指数成件历史快照",
+            "severity": "MEDIUM",
+            "location": "projects/quant_trading/strategies/ml_prediction/universe_selector.py → IndexUniverseSelector",
+            "description": "如果数据库不保存历史成件快照，用当前成件匹配历史会引入生存者偏差",
+            "fix": "确认 t_index_weight 表是否存储历史成件快照，加入 WHERE index_date <= %s"
+          }
+        },
+        "factor_validation_api": {
+          "fast_ic": "FactorAnalyzer.calculate_ic(factor_df, return_df, method='spearman') → ICResult(ic_mean, icir, positive_ratio)",
+          "layered": "FactorAnalyzer.quantile_backtest(factor_df, return_df, n_quantiles=10) → QuantileBacktestResult",
+          "decay": "调用 calculate_ic 不同 forward 参数 [1,5,10,20] 得到衰减曲线"
+        },
+        "portfolio_backtest_api": {
+          "input": "Signal DataFrame: [ts_code, trade_date, signal_score, direction, confidence, rank_pct]",
+          "engine_config": "BacktestConfig(start_date, end_date, initial_cash=200000, max_positions=30, rebalance_freq='weekly')",
+          "output": "PerformanceMetrics(26项) + nav_history + trades_df"
+        },
+        "data_integrity_checks": {
+          "missing_dates": "DataManager.check_data_integrity(ts_code, start, end, trade_dates)",
+          "stock_validity": "DataManager.validate_data_requirements(stock_list, start, end, min_data_ratio=0.95)",
+          "pit_filter": "t_stock_basic WHERE list_date <= %s AND (delist_date IS NULL OR delist_date > %s)"
+        }
+      },
+      "sharedBy": "backtest-engineer-001",
+      "timestamp": "2026-03-21T01:14:17.817Z"
     }
   },
   "version": "3.0.0"

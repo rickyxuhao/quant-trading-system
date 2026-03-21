@@ -93,6 +93,13 @@ class TushareClient(metaclass=TushareClientMeta):
         self._lock = threading.RLock()  # 用于线程安全的操作
         print("✅ Tushare 客户端初始化成功")
 
+    def __getattr__(self, name):
+        """转发所有未定义属性到 self.pro，兼容直接访问 pro 的接口"""
+        # 避免初始化期间的递归问题
+        if name in ('_initialized', 'pro', '_lock'):
+            raise AttributeError(name)
+        return getattr(self.pro, name)
+
     def _safe_api_call(self, api_func: Callable, *args, **kwargs) -> pd.DataFrame:
         """
         线程安全的 API 调用包装器
