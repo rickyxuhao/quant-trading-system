@@ -1,0 +1,58 @@
+{
+  "original": {
+    "cumulative": 0.3631,
+    "ann_return": 0.1603,
+    "ann_vol": 0.2561,
+    "sharpe": 0.6115,
+    "max_drawdown": -0.2096,
+    "ir": 0.037,
+    "bench_cumulative": 0.3906,
+    "bench_ann_return": 0.1715
+  },
+  "enhanced": {
+    "cumulative": 0.3631,
+    "ann_return": 0.1603,
+    "ann_vol": 0.2561,
+    "sharpe": 0.6115,
+    "max_drawdown": -0.2096,
+    "ir": 0.037,
+    "bench_cumulative": 0.3906,
+    "bench_ann_return": 0.1715
+  },
+  "new_factors": [
+    "bb_rsi_reversal",
+    "revenue_acceleration",
+    "momentum_diff",
+    "rd_ratio",
+    "rsi_reversal",
+    "price_vol_divergence"
+  ],
+  "regime_stats_original": {
+    "bull": {
+      "days": 0,
+      "pct": 0.0
+    },
+    "bear": {
+      "days": 106,
+      "pct": 17.8
+    },
+    "oscillating": {
+      "days": 488,
+      "pct": 82.2
+    }
+  },
+  "regime_stats_enhanced": {
+    "bull": {
+      "days": 0,
+      "pct": 0.0
+    },
+    "bear": {
+      "days": 106,
+      "pct": 17.8
+    },
+    "oscillating": {
+      "days": 488,
+      "pct": 82.2
+    }
+  }
+}

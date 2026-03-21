@@ -251,7 +251,6 @@ class EnhancedFactorStrategy(RegimeAwareStrategy):
             if not regime_df.empty:
                 date_regime_row = regime_df[regime_df['trade_date'].astype(str) == date]
                 if not date_regime_row.empty:
-                    from projects.quant_trading.strategies.ml_prediction.enhanced_regime_detector import EnhancedMarketRegime
                     last_regime = EnhancedMarketRegime(date_regime_row.iloc[0]['regime'])
             regime = last_regime
 

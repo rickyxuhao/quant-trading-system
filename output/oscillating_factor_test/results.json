@@ -1,0 +1,77 @@
+{
+  "ic_results": {
+    "bb_rsi_reversal": {
+      "ic_mean": 0.0512,
+      "ic_std": 0.1047,
+      "icir": 1.6933,
+      "n_obs": 206,
+      "positive_pct": 0.699
+    },
+    "revenue_acceleration": {
+      "ic_mean": 0.0061,
+      "ic_std": 0.0191,
+      "icir": 1.1038,
+      "n_obs": 207,
+      "positive_pct": 0.6522
+    },
+    "rsi_14d": {
+      "ic_mean": -0.0228,
+      "ic_std": 0.1321,
+      "icir": -0.5978,
+      "n_obs": 189,
+      "positive_pct": 0.4603
+    }
+  },
+  "metrics_a_bb_rsi_only": {
+    "total_return": -0.2069,
+    "ann_return": -0.1813,
+    "bench_ann_return": 0.1372,
+    "ann_vol": 0.2226,
+    "sharpe": -0.8993,
+    "max_drawdown": -0.3784,
+    "ir": -1.7329,
+    "win_rate": 0.4829,
+    "calmar": -0.4792
+  },
+  "metrics_b_dual_factor": {
+    "total_return": -0.2214,
+    "ann_return": -0.1132,
+    "bench_ann_return": 0.1715,
+    "ann_vol": 0.3017,
+    "sharpe": -0.3295,
+    "max_drawdown": -0.3503,
+    "ir": -1.0941,
+    "win_rate": 0.5257,
+    "calmar": -0.3231
+  },
+  "metrics_c_oscillating_only": {
+    "total_return": -0.3276,
+    "ann_return": -0.1735,
+    "bench_ann_return": 0.1715,
+    "ann_vol": 0.2082,
+    "sharpe": -0.9293,
+    "max_drawdown": -0.3261,
+    "ir": -1.5459,
+    "win_rate": 0.4952,
+    "calmar": -0.532
+  },
+  "original_metrics": {
+    "cumulative": 0.3631,
+    "ann_return": 0.1603,
+    "ann_vol": 0.2561,
+    "sharpe": 0.6115,
+    "max_drawdown": -0.2096,
+    "ir": 0.037,
+    "bench_cumulative": 0.3906,
+    "bench_ann_return": 0.1715
+  },
+  "regime_distribution": {
+    "oscillating_days": 450,
+    "bear_days": 84,
+    "oscillating_pct": 84.26966292134831
+  },
+  "factors_used": [
+    "bb_rsi_reversal",
+    "revenue_acceleration"
+  ]
+}
