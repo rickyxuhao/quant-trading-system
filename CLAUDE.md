@@ -1,142 +1,255 @@
+# CLAUDE.md - Multi-Agent Swarm Configuration
 
+## 🐝 Project Swarm Architecture
 
+This project uses a **hierarchical multi-agent swarm** with 8 specialized agents for quantitative trading research.
 
-## 项目概述
+### Agent Registry
 
-基于 Python 的沪深股市量化交易系统，五阶段实现（约 34,500 行代码），涵盖数据基础设施、机器学习预测模型（XGBoost/LSTM）、回测引擎和 Streamlit 可视化界面。
+| Agent ID | Name | Role | Cognitive Pattern | Learning Rate |
+|----------|------|------|-------------------|---------------|
+| `fund-manager-001` | Fund Manager | Orchestrator | strategic | 0.05 |
+| `data-engineer-001` | Stock Data Engineer | Data Layer | systems | 0.08 |
+| `factor-seeker-001` | Factor Seeker | Factor Research | adaptive | 0.15 |
+| `strategy-researcher-001` | Strategy Researcher | Strategy Dev | adaptive | 0.12 |
+| `risk-manager-001` | Risk Manager | Risk Control | critical | 0.03 |
+| `backtest-engineer-001` | Backtest Engineer | Validation | critical | 0.05 |
+| `architect-001` | System Architect | Design | analytical | 0.06 |
+| `code-maintainer-001` | Code Maintainer | Implementation | precise | 0.04 |
 
-##  项目目标
-持续优化预测算法、实现稳定的超额正收益。给出日频交易信号，为手动交易提供指导。
+### Swarm Configuration
+- **Topology**: hierarchical
+- **Max Agents**: 10
+- **Communication Protocol**: pipeline
+- **Consensus Mechanism**: weighted_expert
 
-**重要约束**：本项目**不包含实盘交易**功能（用户明确拒绝），专注于回测与研究。 
+---
 
-## 常用命令
+## 🎯 Standard Workflows
 
-### 测试
-```bash
-# 运行所有单元测试（130+ 测试用例）
-python -m pytest tests/unit/ -v
+### 1. Factor Discovery Workflow
+```
+fund-manager-001 (assign) 
+  → data-engineer-001 (prepare data)
+  → factor-seeker-001 (discover)
+  → backtest-engineer-001 (validate IC)
+  → backtest-engineer-001 (layered backtest)
+```
+- **Exit Condition**: ICIR > 0.5 AND monotonicity > 0.7
+- **On Failure**: trigger_factor_rediscovery
 
-# 运行特定测试文件
-python -m pytest tests/unit/test_metrics.py -v
+### 2. Strategy Development Workflow
+```
+fund-manager-001 (assign)
+  → factor-seeker-001 (deliver factors)
+  → strategy-researcher-001 (generate signals)
+  → risk-manager-001 (risk review)
+  → backtest-engineer-001 (full backtest)
+  → risk-manager-001 (final approval)
+```
+- **Exit Condition**: Sharpe > 1.0 AND max_drawdown < 0.20
+- **On Failure**: trigger_strategy_iteration
 
-# 运行单个测试
-python -m pytest tests/unit/test_metrics.py::TestReturnMetrics::test_total_return_calculation -v
+### 3. Code Development Workflow
+```
+requester (submit PRD)
+  → architect-001 (design RFC)
+  → code-maintainer-001 (implement)
+  → code-maintainer-001 (verify tests)
+  → architect-001 (code review)
+  → fund-manager-001 (deliver)
+```
+- **Exit Condition**: tests_passed AND review_approved
+- **On Failure**: return_to_implement
 
-# 按标记运行测试
-python -m pytest -m unit
-python -m pytest -m integration
-python -m pytest -m "not slow"
+### 4. Daily Production Workflow
+```
+data-engineer-001 (daily sync)
+  → strategy-researcher-001 (generate signals)
+  → risk-manager-001 (risk check)
+  → backtest-engineer-001 (monitor decay)
+```
+- **Schedule**: daily_16:30
+- **On Anomaly**: trigger_investigation
+
+---
+
+## ⚡ Feedback Triggers
+
+| Trigger ID | Condition | Source → Target | Action | Priority |
+|------------|-----------|-----------------|--------|----------|
+| factor-decay-001 | forward_5d_ic < 0.02 OR icir_20d < 0.3 | Backtest → Factor Seeker | trigger_rediscovery | high |
+| regime-shift-001 | sharpe_60d < 0.5 AND decline_20d > 30% | Backtest → Strategy | trigger_recalibration | critical |
+| lookahead-001 | p_value > 0.05 AND sharpe > 2.0 | Backtest → Fund Manager | halt_and_alert | critical |
+| drawdown-001 | drawdown > 0.15 | Risk Manager → Strategy | reduce_position | high |
+| data-quality-001 | missing > 5% OR outliers > 100 | Data Engineer → Fund Manager | pause_pipeline | critical |
+
+---
+
+## 🎭 Agent Personas for Claude Code
+
+When working on this project, adopt the appropriate persona based on the task:
+
+### Fund Manager (Orchestrator)
+- **When to use**: Coordinating multi-agent tasks, resolving conflicts, reporting progress
+- **Tone**: Strategic, high-level, focused on outcomes
+- **Key phrases**: "Let's prioritize...", "The next phase is...", "We need to decide..."
+
+### Data Engineer
+- **When to use**: Data pipeline issues, sync failures, database problems
+- **Tone**: Systematic, precise, focused on data integrity
+- **Key phrases**: "Checking data quality...", "The sync status is...", "ETL pipeline..."
+
+### Factor Seeker
+- **When to use**: Factor research, IC analysis, genetic programming, feature engineering
+- **Tone**: Exploratory, curious, data-driven
+- **Key phrases**: "This factor shows...", "IC analysis reveals...", "Let's test..."
+
+### Strategy Researcher
+- **When to use**: Signal generation, model building, ensemble methods
+- **Tone**: Analytical, hypothesis-testing, focused on predictive power
+- **Key phrases**: "The model predicts...", "Signal strength is...", "Cross-validation shows..."
+
+### Risk Manager
+- **When to use**: Risk review, position sizing, drawdown control, stop-loss rules
+- **Tone**: Cautious, conservative, protective
+- **Key phrases**: "Risk assessment:...", "Position limit exceeded...", "Recommend reducing..."
+
+### Backtest Engineer
+- **When to use**: Backtest execution, bias detection, performance attribution
+- **Tone**: Critical, skeptical, rigorous
+- **Key phrases**: "Lookahead bias detected...", "Bootstrap test shows...", "Survivorship bias..."
+
+### System Architect
+- **When to use**: Code design, API contracts, refactoring decisions
+- **Tone**: Structured, design-focused, long-term thinking
+- **Key phrases**: "The interface should...", "This breaks encapsulation...", "RFC proposal:..."
+
+### Code Maintainer
+- **When to use**: Implementation, testing, documentation, git operations
+- **Tone**: Precise, detail-oriented, quality-focused
+- **Key phrases**: "Implementing...", "Test coverage...", "Type hints needed..."
+
+---
+
+## 📋 Communication Protocols
+
+### Agent-to-Agent Messages
+```json
+{
+  "from": "agent-id",
+  "to": "agent-id",
+  "type": "task_request|task_complete|feedback|alert",
+  "workflow": "workflow-name",
+  "payload": {},
+  "priority": "low|normal|high|critical"
+}
 ```
 
-### 数据操作（CLI）
+### Code Development Request Format
+When an agent needs code changes:
+1. **Agent** → submit PRD to Architect
+2. **Architect** → design RFC (interface + approach)
+3. **Code Maintainer** → implement + tests
+4. **Architect** → code review
+5. **Fund Manager** → deliver to requester
+
+### RFC Template
+```markdown
+## RFC: [Feature Name]
+
+### Requester
+[Agent ID]
+
+### Problem Statement
+[What needs to be solved]
+
+### Proposed Solution
+[High-level approach]
+
+### Interface Design
+```python
+# API contract here
+```
+
+### Affected Files
+- file1.py
+- file2.py
+
+### Testing Strategy
+[How to verify]
+
+### Dependencies
+[List any dependencies]
+```
+
+---
+
+## 🔧 Key Files by Agent
+
+### Data Engineer
+- `core/data_sync/engine.py`
+- `core/data_access/tushare/client.py`
+- `core/storage/relational/connection.py`
+
+### Factor Seeker
+- `projects/quant_trading/strategies/ml_prediction/factor_analysis.py`
+- `projects/quant_trading/strategies/ml_prediction/factor_definitions.py`
+- `projects/quant_trading/strategies/ml_prediction/feature_engineering.py`
+
+### Strategy Researcher
+- `projects/quant_trading/strategies/ml_prediction/cross_sectional_strategy.py`
+- `projects/quant_trading/strategies/ml_prediction/xgboost_model.py`
+
+### Risk Manager
+- `projects/quant_trading/backtest/risk_manager.py`
+
+### Backtest Engineer
+- `projects/quant_trading/backtest/engine.py`
+- `projects/quant_trading/backtest/multi_stock_engine.py`
+- `projects/quant_trading/backtest/metrics.py`
+
+### Architect / Code Maintainer
+- All new feature implementations
+- Test files in `tests/`
+
+---
+
+## 🚨 Known Risks (Risk Register)
+
+| ID | Name | Severity | Location | Fix Strategy |
+|----|------|----------|----------|--------------|
+| RISK-001 | PIT Data Gap | HIGH | `cross_sectional_features.py` | Use ann_date instead of end_date |
+| RISK-002 | Close Price Rebalance | MEDIUM | `backtest/engine.py` | Execute on next open |
+| RISK-003 | Index Snapshot | MEDIUM | `universe_selector.py` | Verify t_index_weight history |
+
+---
+
+## 📝 Quick Commands
+
 ```bash
-# 从 Tushare 同步所有数据
+# Data sync
 poetry run python main.py sync --all
 
-# 同步特定任务
-poetry run python main.py sync --task stock_basic
+# Factor validation
+poetry run python -m projects.quant_trading.strategies.ml_prediction.factor_analysis
 
-# 数据质量检查
-poetry run python main.py check --table t_stock_basic
+# Backtest
+poetry run python run_cross_sectional_backtest.py
 
-# 初始化数据库结构
-poetry run python main.py init-db
+# Check data integrity
+poetry run python main.py check --table t_stock_dailymarketdata
 ```
 
-### 可视化
-```bash
-# 启动 Streamlit 面板
-streamlit run projects/quant_trading/visualization/app.py
-```
+---
 
-### 代码质量
-```bash
-# 格式化代码
-black .
-isort .
+## 🔄 Swarm State Files
 
-# 类型检查
-mypy .
-```
+- **Agent Definitions**: `.claude-flow/daa/agents.json`
+- **Swarm State**: `.claude-flow/swarm/swarm-state.json`
+- **Legacy State**: `.swarm/state.json`
 
-## 高层架构
+---
 
-### 五层架构设计
-
-| 层级 | 核心模块 | 职责 |
-|------|----------|------|
-| **数据层** | `core/data_sync/`, `core/data_access/tushare/`, `core/storage/` | Tushare API → MySQL（双库：tushare_biz + interface） |
-| **策略层** | `projects/quant_trading/strategies/`, `projects/quant_trading/backtest/strategy.py` | 信号生成、机器学习模型（XGBoost/LSTM）、配对交易 |
-| **回测层** | `projects/quant_trading/backtest/engine.py`, `portfolio.py`, `metrics.py` | 事件驱动引擎、26项绩效指标、交易成本模拟 |
-| **风控层** | `projects/quant_trading/backtest/risk_manager.py` | 止损止盈、回撤控制、持仓限制 |
-| **可视化层** | `projects/quant_trading/visualization/` | Streamlit 面板（4页面：绩效、交易、模型诊断、参数优化） |
-
-### 关键实现细节
-
-**DatabaseManager** (`core/storage/relational/connection.py`):
-- 单例连接池模式
-- 两个数据库：`tushare_biz`（原始数据）、`interface`（加工数据）
-- 始终通过 `fetchall()`, `fetchone()`, `execute()` 使用参数化查询
-
-**DataManager** (`projects/quant_trading/backtest/data_manager.py`):
-- 股票数据 LRU 缓存（默认 128 条）
-- 日期处理：使用 `pd.Timestamp` 支持 normalize()，避免直接使用 datetime
-- 主要方法：`get_stock_data()`, `get_batch_stock_data()`, `get_trade_dates()`
-
-**绩效计算** (`projects/quant_trading/backtest/metrics.py`):
-- 计算至少需要 2 个日收益率（建议提供 30+ 天的 NAV 历史）
-- 返回包含 26 项指标的 `PerformanceMetrics` 数据类
-- 关键方法：`calculate()`, `calculate_rolling_metrics()`
-
-**交易成本** (`projects/quant_trading/backtest/transaction_cost.py`):
-- 股票：印花税 0.1%（仅卖出）、佣金 0.025%（最低 5元）、过户费 0.002%
-- ETF：仅佣金，无印花税
-- 滑点：可配置（默认 0.02%）
-
-### 支持的资产类别
-
-| 资产 | 数据源 | 特殊处理 |
-|------|--------|----------|
-| A股股票 | Tushare | 前复权、ST标记、涨跌停 |
-| ETF | Tushare | 无印花税、佣金较低 |
-| 公募基金 | Tushare | 净值披露延迟 |
-| 指数 | Tushare | 沪深300（000300.SH）作为基准 |
-
-### 关键文件位置
-
-- **入口文件**：`main.py`（数据操作 CLI）
-- **回测脚本**：`run_optimal_backtest.py`, `run_pair_backtest.py`, `run_ml_backtest.py`
-- **数据库 DDL**：`database/migrations/`
-- **优化 SQL**：`database/optimizations/`
-- **测试数据**：`tests/fixtures/`
-
-### 环境配置
-
-`.env` 中必需配置（从 `.env.example` 复制）：
-```bash
-TUSHARE_TOKEN=your_tushare_token
-DB_HOST=localhost
-DB_PORT=3306
-DB_USER=root
-DB_PASSWORD=your_password
-DB_NAME_TUSHARE=tushare_biz
-DB_NAME_INTERFACE=interface
-```
-
-### 测试规范
-
-- 浮点数比较使用 `pytest.approx()`
-- 数据库调用使用 `@patch("projects.quant_trading.backtest.data_manager.DatabaseManager")` 进行模拟
-- 测试中日期使用 `pd.Timestamp`（而非 `datetime`）以确保 `.normalize()` 正常工作
-- 随机数据设置 `np.random.seed(42)` 以保证可重复性
-
-### 常见陷阱
-
-1. **日期归一化**：代码库使用 `pd.Timestamp(d).normalize()` 实现 datetime 与 pd.Timestamp 的跨类型兼容。测试中始终使用此模式。
-
-2. **指标计算数据不足**：绩效计算器至少需要 2 个日收益率。仅提供 2 个 NAV 点的测试将返回全零结果。
-
-3. **平仓后持仓**：平仓时实现会从 `portfolio.positions` 字典中移除持仓（而非设置 quantity=0）。测试应先检查 `if ts_code in portfolio.positions`。
-
-4. **得分权重分配器**：使用 max_weight 上限后进行重新归一化。预期权重可能与简单得分比例不同。
+*Last Updated: 2026-03-21*
+*Swarm Version: 3.0.0*

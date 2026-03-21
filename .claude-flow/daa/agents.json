@@ -1,0 +1,410 @@
+{
+  "agents": {
+    "fund-manager-001": {
+      "id": "fund-manager-001",
+      "name": "Fund Manager",
+      "type": "orchestrator",
+      "status": "active",
+      "cognitivePattern": "strategic",
+      "learningRate": 0.05,
+      "memory": true,
+      "capabilities": [
+        "workflow_orchestration",
+        "agent_coordination",
+        "resource_allocation",
+        "conflict_resolution",
+        "pipeline_scheduling",
+        "progress_monitoring",
+        "quality_gatekeeping",
+        "human_interface",
+        "research_prioritization",
+        "risk_budget_allocation"
+      ],
+      "responsibilities": [
+        "接收高层研究目标并分解为子任务",
+        "调度各agent执行pipeline",
+        "监控任务进度和质量",
+        "处理agent间的冲突和依赖",
+        "决定是否进入下一阶段",
+        "向人类汇报研究进展"
+      ],
+      "metrics": {
+        "tasksCompleted": 0,
+        "successRate": 1,
+        "adaptations": 0
+      },
+      "createdAt": "2026-03-21T10:15:00.000Z",
+      "lastActivity": "2026-03-21T10:15:00.000Z"
+    },
+    "data-engineer-001": {
+      "id": "data-engineer-001",
+      "name": "Stock Data Engineer",
+      "type": "data-engineer",
+      "status": "active",
+      "cognitivePattern": "systems",
+      "learningRate": 0.08,
+      "memory": true,
+      "capabilities": [
+        "data_sync",
+        "database_management",
+        "tushare_api",
+        "data_quality_check",
+        "etl_pipeline",
+        "data_modeling",
+        "pit_data_management",
+        "survivorship_bias_control"
+      ],
+      "responsibilities": [
+        "维护数据基础设施",
+        "执行每日数据同步",
+        "确保数据质量",
+        "处理数据异常"
+      ],
+      "upstream": ["fund-manager-001"],
+      "downstream": ["factor-seeker-001"],
+      "metrics": {
+        "tasksCompleted": 0,
+        "successRate": 1,
+        "adaptations": 0
+      },
+      "createdAt": "2026-03-20T15:14:23.099Z",
+      "lastActivity": "2026-03-20T15:14:23.099Z"
+    },
+    "factor-seeker-001": {
+      "id": "factor-seeker-001",
+      "name": "Factor Seeker",
+      "type": "factor-researcher",
+      "status": "active",
+      "cognitivePattern": "adaptive",
+      "learningRate": 0.15,
+      "memory": true,
+      "capabilities": [
+        "traditional_factor_investing",
+        "fama_french_factors",
+        "barra_factors",
+        "ashare_specific_factors",
+        "factor_validity_testing",
+        "ic_icir_analysis",
+        "layered_backtest",
+        "fama_macbeth_regression",
+        "ml_factor_mining",
+        "genetic_programming",
+        "xgboost_lightgbm",
+        "shap_interpretability",
+        "factor_decay_analysis"
+      ],
+      "responsibilities": [
+        "挖掘新因子",
+        "验证因子有效性(ICIR>0.5)",
+        "维护预计算因子库",
+        "响应回测反馈重新挖掘"
+      ],
+      "upstream": ["data-engineer-001", "backtest-engineer-001"],
+      "downstream": ["strategy-researcher-001"],
+      "feedbackFrom": ["backtest-engineer-001"],
+      "metrics": {
+        "tasksCompleted": 0,
+        "successRate": 1,
+        "adaptations": 0
+      },
+      "createdAt": "2026-03-21T00:42:01.141Z",
+      "lastActivity": "2026-03-21T00:42:01.141Z"
+    },
+    "strategy-researcher-001": {
+      "id": "strategy-researcher-001",
+      "name": "Strategy Researcher",
+      "type": "strategy-researcher",
+      "status": "active",
+      "cognitivePattern": "adaptive",
+      "learningRate": 0.12,
+      "memory": true,
+      "capabilities": [
+        "multi_factor_model",
+        "ml_stock_selection",
+        "xgboost_lightgbm_lgbm",
+        "lstm_gru_sequence",
+        "factor_combination_optimization",
+        "signal_generation",
+        "cross_sectional_regression",
+        "ensemble_methods",
+        "rolling_window_training",
+        "walk_forward_validation",
+        "regime_detection"
+      ],
+      "responsibilities": [
+        "构建多因子选股模型",
+        "生成每日交易信号",
+        "优化因子权重",
+        "监控策略表现"
+      ],
+      "upstream": ["factor-seeker-001"],
+      "downstream": ["risk-manager-001", "backtest-engineer-001"],
+      "metrics": {
+        "tasksCompleted": 0,
+        "successRate": 1,
+        "adaptations": 0
+      },
+      "createdAt": "2026-03-21T00:56:33.954Z",
+      "lastActivity": "2026-03-21T00:56:33.954Z"
+    },
+    "risk-manager-001": {
+      "id": "risk-manager-001",
+      "name": "Risk Manager",
+      "type": "risk-manager",
+      "status": "active",
+      "cognitivePattern": "critical",
+      "learningRate": 0.03,
+      "memory": true,
+      "capabilities": [
+        "risk_budget_allocation",
+        "position_sizing",
+        "sector_neutral_constraint",
+        "size_neutral_constraint",
+        "drawdown_control",
+        "stop_loss_rules",
+        "var_cvar_calculation",
+        "stress_testing",
+        "tail_risk_analysis",
+        "correlation_monitoring",
+        "leverage_control"
+      ],
+      "responsibilities": [
+        "审查策略风险敞口",
+        "设置仓位限制",
+        "监控回撤和止损",
+        "批准/否决交易信号",
+        "计算风险调整后仓位"
+      ],
+      "upstream": ["strategy-researcher-001"],
+      "downstream": ["backtest-engineer-001"],
+      "approvalAuthority": true,
+      "metrics": {
+        "tasksCompleted": 0,
+        "successRate": 1,
+        "adaptations": 0
+      },
+      "createdAt": "2026-03-21T10:15:00.000Z",
+      "lastActivity": "2026-03-21T10:15:00.000Z"
+    },
+    "backtest-engineer-001": {
+      "id": "backtest-engineer-001",
+      "name": "Backtest Engineer",
+      "type": "backtest-engineer",
+      "status": "active",
+      "cognitivePattern": "critical",
+      "learningRate": 0.05,
+      "memory": true,
+      "capabilities": [
+        "vectorized_backtest",
+        "ic_icir_fast_validation",
+        "layered_quantile_backtest",
+        "lookahead_bias_detection",
+        "pit_data_alignment",
+        "survivorship_bias_control",
+        "walk_forward_validation",
+        "multi_stock_backtest",
+        "transaction_cost_modeling",
+        "performance_metrics_26",
+        "risk_attribution",
+        "bootstrap_significance_test",
+        "factor_decay_curve",
+        "feedback_trigger"
+      ],
+      "responsibilities": [
+        "执行因子验证回测",
+        "执行策略完整回测",
+        "检测前瞻偏差",
+        "生成性能报告",
+        "触发因子重新挖掘(衰减时)"
+      ],
+      "upstream": ["risk-manager-001", "strategy-researcher-001"],
+      "downstream": ["factor-seeker-001"],
+      "feedbackTo": ["factor-seeker-001", "strategy-researcher-001"],
+      "metrics": {
+        "tasksCompleted": 0,
+        "successRate": 1,
+        "adaptations": 0
+      },
+      "createdAt": "2026-03-21T01:11:39.656Z",
+      "lastActivity": "2026-03-21T01:11:39.656Z"
+    },
+    "architect-001": {
+      "id": "architect-001",
+      "name": "System Architect",
+      "type": "architect",
+      "status": "active",
+      "cognitivePattern": "analytical",
+      "learningRate": 0.06,
+      "memory": true,
+      "capabilities": [
+        "interface_design",
+        "api_contract_definition",
+        "code_review",
+        "technical_decision",
+        "refactoring_planning",
+        "dependency_analysis",
+        "performance_optimization",
+        "pattern_recognition"
+      ],
+      "responsibilities": [
+        "审查各agent的代码需求",
+        "设计接口契约",
+        "决定复用/修改/新建",
+        "输出技术方案文档(RFC)",
+        "确保代码架构一致性"
+      ],
+      "upstream": ["fund-manager-001", "data-engineer-001", "factor-seeker-001", "strategy-researcher-001", "risk-manager-001", "backtest-engineer-001"],
+      "downstream": ["code-maintainer-001"],
+      "metrics": {
+        "tasksCompleted": 0,
+        "successRate": 1,
+        "adaptations": 0
+      },
+      "createdAt": "2026-03-21T10:15:00.000Z",
+      "lastActivity": "2026-03-21T10:15:00.000Z"
+    },
+    "code-maintainer-001": {
+      "id": "code-maintainer-001",
+      "name": "Code Maintainer",
+      "type": "code-maintainer",
+      "status": "active",
+      "cognitivePattern": "precise",
+      "learningRate": 0.04,
+      "memory": true,
+      "capabilities": [
+        "python_coding",
+        "sql_optimization",
+        "test_writing",
+        "code_refactoring",
+        "documentation",
+        "type_hints",
+        "lint_formatting",
+        "git_version_control",
+        "ci_cd_pipeline",
+        "dependency_management"
+      ],
+      "responsibilities": [
+        "实现Architect设计的方案",
+        "编写单元测试和集成测试",
+        "维护代码质量",
+        "管理git版本控制",
+        "确保测试通过后才交付"
+      ],
+      "upstream": ["architect-001"],
+      "downstream": ["fund-manager-001"],
+      "metrics": {
+        "tasksCompleted": 0,
+        "successRate": 1,
+        "adaptations": 0
+      },
+      "createdAt": "2026-03-21T10:15:00.000Z",
+      "lastActivity": "2026-03-21T10:15:00.000Z"
+    }
+  },
+  "workflows": {
+    "factor_discovery": {
+      "name": "因子发现流程",
+      "steps": [
+        {"agent": "fund-manager-001", "task": "assign_factor_research", "output": "research_brief"},
+        {"agent": "data-engineer-001", "task": "prepare_data", "input": "research_brief", "output": "data_ready"},
+        {"agent": "factor-seeker-001", "task": "discover_factors", "input": "data_ready", "output": "factor_candidates"},
+        {"agent": "backtest-engineer-001", "task": "validate_ic", "input": "factor_candidates", "output": "ic_results"},
+        {"agent": "backtest-engineer-001", "task": "layered_backtest", "input": "ic_results", "output": "layered_results"}
+      ],
+      "exitCondition": "icir > 0.5 AND monotonicity > 0.7",
+      "onFailure": "trigger_factor_rediscovery"
+    },
+    "strategy_development": {
+      "name": "策略开发流程",
+      "steps": [
+        {"agent": "fund-manager-001", "task": "assign_strategy_development", "output": "strategy_brief"},
+        {"agent": "factor-seeker-001", "task": "deliver_validated_factors", "input": "strategy_brief", "output": "factor_pool"},
+        {"agent": "strategy-researcher-001", "task": "generate_signals", "input": "factor_pool", "output": "raw_signals"},
+        {"agent": "risk-manager-001", "task": "risk_review", "input": "raw_signals", "output": "risk_approved_signals"},
+        {"agent": "backtest-engineer-001", "task": "full_backtest", "input": "risk_approved_signals", "output": "backtest_report"},
+        {"agent": "risk-manager-001", "task": "final_approval", "input": "backtest_report", "output": "go_no_go_decision"}
+      ],
+      "exitCondition": "sharpe > 1.0 AND max_drawdown < 0.20",
+      "onFailure": "trigger_strategy_iteration"
+    },
+    "code_development": {
+      "name": "代码开发流程",
+      "steps": [
+        {"agent": "requester", "task": "submit_prd", "output": "feature_request"},
+        {"agent": "architect-001", "task": "design_solution", "input": "feature_request", "output": "rfc_document"},
+        {"agent": "code-maintainer-001", "task": "implement", "input": "rfc_document", "output": "code_with_tests"},
+        {"agent": "code-maintainer-001", "task": "verify_tests", "input": "code_with_tests", "output": "test_results"},
+        {"agent": "architect-001", "task": "code_review", "input": "code_with_tests", "output": "review_approval"},
+        {"agent": "fund-manager-001", "task": "deliver_to_requester", "input": "review_approval", "output": "completed_feature"}
+      ],
+      "exitCondition": "tests_passed AND review_approved",
+      "onFailure": "return_to_implement"
+    },
+    "daily_production": {
+      "name": "每日生产流程",
+      "steps": [
+        {"agent": "data-engineer-001", "task": "daily_sync", "output": "data_updated"},
+        {"agent": "strategy-researcher-001", "task": "generate_signals", "input": "data_updated", "output": "today_signals"},
+        {"agent": "risk-manager-001", "task": "risk_check", "input": "today_signals", "output": "approved_signals"},
+        {"agent": "backtest-engineer-001", "task": "monitor_decay", "input": "approved_signals", "output": "decay_report"}
+      ],
+      "schedule": "daily_16:30",
+      "exitCondition": "signals_generated",
+      "onAnomaly": "trigger_investigation"
+    }
+  },
+  "feedbackTriggers": {
+    "factor_decay": {
+      "triggerId": "factor-decay-001",
+      "name": "因子衰减检测",
+      "condition": "forward_5d_ic < 0.02 OR icir_20d < 0.3",
+      "sourceAgent": "backtest-engineer-001",
+      "targetAgent": "factor-seeker-001",
+      "action": "trigger_rediscovery",
+      "priority": "high",
+      "message": "因子衰减严重，需重新挖掘替代因子"
+    },
+    "regime_shift": {
+      "triggerId": "regime-shift-001", 
+      "name": "市场环境变化",
+      "condition": "rolling_sharpe_60d < 0.5 AND sharpe_decline_20d > 30%",
+      "sourceAgent": "backtest-engineer-001",
+      "targetAgent": "strategy-researcher-001",
+      "action": "trigger_recalibration",
+      "priority": "critical",
+      "message": "市场环境变化，策略需重新校准权重"
+    },
+    "lookahead_detected": {
+      "triggerId": "lookahead-001",
+      "name": "前瞻偏差检测",
+      "condition": "bootstrap_p_value > 0.05 AND historical_sharpe > 2.0",
+      "sourceAgent": "backtest-engineer-001",
+      "targetAgent": "fund-manager-001",
+      "action": "halt_and_alert",
+      "priority": "critical",
+      "message": "疑似前瞻偏差，立即停止研究并审查"
+    },
+    "drawdown_breach": {
+      "triggerId": "drawdown-001",
+      "name": "回撤超限",
+      "condition": "current_drawdown > 0.15",
+      "sourceAgent": "risk-manager-001",
+      "targetAgent": "strategy-researcher-001",
+      "action": "reduce_position",
+      "priority": "high",
+      "message": "回撤超过15%，建议减仓或暂停策略"
+    },
+    "data_quality_issue": {
+      "triggerId": "data-quality-001",
+      "name": "数据质量异常",
+      "condition": "missing_data_ratio > 0.05 OR outlier_count > 100",
+      "sourceAgent": "data-engineer-001",
+      "targetAgent": "fund-manager-001",
+      "action": "pause_pipeline",
+      "priority": "critical",
+      "message": "数据质量异常，暂停生产流程"
+    }
+  },
+  "version": "3.0.0",
+  "updatedAt": "2026-03-21T10:15:00.000Z"
+}
