@@ -36,7 +36,9 @@ FACTOR_GROUPS = {
     'momentum': [
         'return_5d', 'return_10d', 'return_20d', 'return_60d',
         'return_120d', 'return_250d', 'sector_alpha_20d', 'sector_alpha_60d',
-        'market_alpha_20d', 'market_alpha_60d', 'rs_20d_market', 'rs_60d_market',
+        'market_alpha_20d', 'market_alpha_60d',
+        # rs_20d_market / rs_60d_market removed per RFC (docs/rfc_data_patch.md)
+        # replaced by market_alpha_20d / market_alpha_60d (semantically equivalent, 99%+ complete)
     ],
     'volatility': [
         'volatility_5d', 'volatility_10d', 'volatility_20d', 'volatility_60d',
@@ -58,6 +60,7 @@ FACTOR_GROUPS = {
         'kdj_k', 'kdj_d', 'kdj_j',
         'obv_norm',
         'amihud',
+        'entropy_20d',
     ],
     'risk': [
         'turnover_volatility_20d', 'price_position_20d',

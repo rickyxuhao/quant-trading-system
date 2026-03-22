@@ -1,0 +1,869 @@
+{
+  "all_results": [
+    {
+      "factor": "entropy_20d",
+      "group": "technical",
+      "ic_mean": 0.0653,
+      "ic_std": 0.0572,
+      "icir": 3.9542,
+      "ic_positive_pct": 0.8937,
+      "n_obs": 207
+    },
+    {
+      "factor": "net_inflow_20d",
+      "group": "moneyflow",
+      "ic_mean": 0.0267,
+      "ic_std": 0.0691,
+      "icir": 1.3352,
+      "ic_positive_pct": 0.6667,
+      "n_obs": 207
+    },
+    {
+      "factor": "bb_width",
+      "group": "technical",
+      "ic_mean": 0.012,
+      "ic_std": 0.0422,
+      "icir": 0.988,
+      "ic_positive_pct": 0.6296,
+      "n_obs": 189
+    },
+    {
+      "factor": "net_inflow_5d",
+      "group": "moneyflow",
+      "ic_mean": 0.0162,
+      "ic_std": 0.0585,
+      "icir": 0.9579,
+      "ic_positive_pct": 0.5604,
+      "n_obs": 207
+    },
+    {
+      "factor": "bp",
+      "group": "value",
+      "ic_mean": 0.0353,
+      "ic_std": 0.1448,
+      "icir": 0.8459,
+      "ic_positive_pct": 0.5631,
+      "n_obs": 206
+    },
+    {
+      "factor": "amihud",
+      "group": "technical",
+      "ic_mean": 0.0244,
+      "ic_std": 0.1277,
+      "icir": 0.6608,
+      "ic_positive_pct": 0.5942,
+      "n_obs": 207
+    },
+    {
+      "factor": "max_drawdown_20d",
+      "group": "volatility",
+      "ic_mean": 0.0212,
+      "ic_std": 0.1122,
+      "icir": 0.6551,
+      "ic_positive_pct": 0.5503,
+      "n_obs": 189
+    },
+    {
+      "factor": "macd_signal",
+      "group": "technical",
+      "ic_mean": 0.0051,
+      "ic_std": 0.0286,
+      "icir": 0.6171,
+      "ic_positive_pct": 0.5767,
+      "n_obs": 189
+    },
+    {
+      "factor": "max_drawdown_60d",
+      "group": "volatility",
+      "ic_mean": 0.0163,
+      "ic_std": 0.1103,
+      "icir": 0.5115,
+      "ic_positive_pct": 0.5185,
+      "n_obs": 189
+    },
+    {
+      "factor": "ep_ttm",
+      "group": "value",
+      "ic_mean": 0.0167,
+      "ic_std": 0.1352,
+      "icir": 0.4284,
+      "ic_positive_pct": 0.5534,
+      "n_obs": 206
+    },
+    {
+      "factor": "main_net_inflow",
+      "group": "moneyflow",
+      "ic_mean": 0.0039,
+      "ic_std": 0.0431,
+      "icir": 0.3135,
+      "ic_positive_pct": 0.5362,
+      "n_obs": 207
+    },
+    {
+      "factor": "dividend_yield",
+      "group": "value",
+      "ic_mean": 0.0077,
+      "ic_std": 0.1474,
+      "icir": 0.1804,
+      "ic_positive_pct": 0.5266,
+      "n_obs": 207
+    },
+    {
+      "factor": "atr_14d",
+      "group": "volatility",
+      "ic_mean": -0.0002,
+      "ic_std": 0.1247,
+      "icir": -0.0049,
+      "ic_positive_pct": 0.4903,
+      "n_obs": 206
+    },
+    {
+      "factor": "macd",
+      "group": "technical",
+      "ic_mean": -0.0055,
+      "ic_std": 0.0602,
+      "icir": -0.3157,
+      "ic_positive_pct": 0.4709,
+      "n_obs": 189
+    },
+    {
+      "factor": "pe_ttm",
+      "group": "value",
+      "ic_mean": -0.0181,
+      "ic_std": 0.1363,
+      "icir": -0.4601,
+      "ic_positive_pct": 0.4444,
+      "n_obs": 207
+    },
+    {
+      "factor": "rsi_14d",
+      "group": "technical",
+      "ic_mean": -0.0186,
+      "ic_std": 0.1306,
+      "icir": -0.493,
+      "ic_positive_pct": 0.4762,
+      "n_obs": 189
+    },
+    {
+      "factor": "bb_position",
+      "group": "technical",
+      "ic_mean": -0.0186,
+      "ic_std": 0.1273,
+      "icir": -0.506,
+      "ic_positive_pct": 0.4762,
+      "n_obs": 189
+    },
+    {
+      "factor": "ps_ttm",
+      "group": "value",
+      "ic_mean": -0.0233,
+      "ic_std": 0.1286,
+      "icir": -0.6269,
+      "ic_positive_pct": 0.4348,
+      "n_obs": 207
+    },
+    {
+      "factor": "macd_hist",
+      "group": "technical",
+      "ic_mean": -0.0144,
+      "ic_std": 0.0687,
+      "icir": -0.7255,
+      "ic_positive_pct": 0.4233,
+      "n_obs": 189
+    },
+    {
+      "factor": "volatility_120d",
+      "group": "volatility",
+      "ic_mean": -0.0384,
+      "ic_std": 0.163,
+      "icir": -0.8164,
+      "ic_positive_pct": 0.4126,
+      "n_obs": 206
+    },
+    {
+      "factor": "kdj_j",
+      "group": "technical",
+      "ic_mean": -0.0259,
+      "ic_std": 0.1069,
+      "icir": -0.8389,
+      "ic_positive_pct": 0.4203,
+      "n_obs": 207
+    },
+    {
+      "factor": "pb",
+      "group": "value",
+      "ic_mean": -0.0356,
+      "ic_std": 0.1445,
+      "icir": -0.8541,
+      "ic_positive_pct": 0.4348,
+      "n_obs": 207
+    },
+    {
+      "factor": "return_250d",
+      "group": "momentum",
+      "ic_mean": -0.0351,
+      "ic_std": 0.1372,
+      "icir": -0.8859,
+      "ic_positive_pct": 0.4312,
+      "n_obs": 109
+    },
+    {
+      "factor": "kdj_d",
+      "group": "technical",
+      "ic_mean": -0.0235,
+      "ic_std": 0.0906,
+      "icir": -0.8994,
+      "ic_positive_pct": 0.4106,
+      "n_obs": 207
+    },
+    {
+      "factor": "kdj_k",
+      "group": "technical",
+      "ic_mean": -0.0269,
+      "ic_std": 0.0948,
+      "icir": -0.9815,
+      "ic_positive_pct": 0.4058,
+      "n_obs": 207
+    },
+    {
+      "factor": "turnover_volatility_20d",
+      "group": "risk",
+      "ic_mean": -0.0131,
+      "ic_std": 0.046,
+      "icir": -0.9874,
+      "ic_positive_pct": 0.4126,
+      "n_obs": 206
+    },
+    {
+      "factor": "price_position_20d",
+      "group": "risk",
+      "ic_mean": -0.0268,
+      "ic_std": 0.0928,
+      "icir": -0.9985,
+      "ic_positive_pct": 0.3786,
+      "n_obs": 206
+    },
+    {
+      "factor": "volatility_60d",
+      "group": "volatility",
+      "ic_mean": -0.047,
+      "ic_std": 0.1566,
+      "icir": -1.041,
+      "ic_positive_pct": 0.372,
+      "n_obs": 207
+    },
+    {
+      "factor": "return_120d",
+      "group": "momentum",
+      "ic_mean": -0.0339,
+      "ic_std": 0.1089,
+      "icir": -1.0781,
+      "ic_positive_pct": 0.3495,
+      "n_obs": 206
+    },
+    {
+      "factor": "downside_vol_20d",
+      "group": "volatility",
+      "ic_mean": -0.017,
+      "ic_std": 0.0494,
+      "icir": -1.1938,
+      "ic_positive_pct": 0.3228,
+      "n_obs": 189
+    },
+    {
+      "factor": "turnover_20d",
+      "group": "liquidity",
+      "ic_mean": -0.0396,
+      "ic_std": 0.0968,
+      "icir": -1.4149,
+      "ic_positive_pct": 0.3478,
+      "n_obs": 207
+    },
+    {
+      "factor": "return_5d",
+      "group": "momentum",
+      "ic_mean": -0.0508,
+      "ic_std": 0.1171,
+      "icir": -1.5038,
+      "ic_positive_pct": 0.3495,
+      "n_obs": 206
+    },
+    {
+      "factor": "rsi_6d",
+      "group": "technical",
+      "ic_mean": -0.0454,
+      "ic_std": 0.1002,
+      "icir": -1.5687,
+      "ic_positive_pct": 0.3092,
+      "n_obs": 207
+    },
+    {
+      "factor": "return_20d",
+      "group": "momentum",
+      "ic_mean": -0.0518,
+      "ic_std": 0.112,
+      "icir": -1.6039,
+      "ic_positive_pct": 0.3043,
+      "n_obs": 207
+    },
+    {
+      "factor": "volatility_20d",
+      "group": "volatility",
+      "ic_mean": -0.0681,
+      "ic_std": 0.1455,
+      "icir": -1.6216,
+      "ic_positive_pct": 0.3333,
+      "n_obs": 207
+    },
+    {
+      "factor": "obv_norm",
+      "group": "technical",
+      "ic_mean": -0.0384,
+      "ic_std": 0.0807,
+      "icir": -1.6475,
+      "ic_positive_pct": 0.2947,
+      "n_obs": 207
+    },
+    {
+      "factor": "market_alpha_20d",
+      "group": "momentum",
+      "ic_mean": -0.0531,
+      "ic_std": 0.1077,
+      "icir": -1.7079,
+      "ic_positive_pct": 0.2802,
+      "n_obs": 207
+    },
+    {
+      "factor": "return_60d",
+      "group": "momentum",
+      "ic_mean": -0.0568,
+      "ic_std": 0.1137,
+      "icir": -1.7296,
+      "ic_positive_pct": 0.3592,
+      "n_obs": 206
+    },
+    {
+      "factor": "volatility_10d",
+      "group": "volatility",
+      "ic_mean": -0.0693,
+      "ic_std": 0.1378,
+      "icir": -1.743,
+      "ic_positive_pct": 0.3301,
+      "n_obs": 206
+    },
+    {
+      "factor": "rsi_12d",
+      "group": "technical",
+      "ic_mean": -0.0483,
+      "ic_std": 0.095,
+      "icir": -1.7617,
+      "ic_positive_pct": 0.2705,
+      "n_obs": 207
+    },
+    {
+      "factor": "rsi_24d",
+      "group": "technical",
+      "ic_mean": -0.0499,
+      "ic_std": 0.097,
+      "icir": -1.781,
+      "ic_positive_pct": 0.3092,
+      "n_obs": 207
+    },
+    {
+      "factor": "volatility_5d",
+      "group": "volatility",
+      "ic_mean": -0.0657,
+      "ic_std": 0.1278,
+      "icir": -1.7818,
+      "ic_positive_pct": 0.3301,
+      "n_obs": 206
+    },
+    {
+      "factor": "market_alpha_60d",
+      "group": "momentum",
+      "ic_mean": -0.056,
+      "ic_std": 0.1065,
+      "icir": -1.8226,
+      "ic_positive_pct": 0.3398,
+      "n_obs": 206
+    },
+    {
+      "factor": "turnover_rate",
+      "group": "liquidity",
+      "ic_mean": -0.0717,
+      "ic_std": 0.1265,
+      "icir": -1.9645,
+      "ic_positive_pct": 0.2961,
+      "n_obs": 206
+    },
+    {
+      "factor": "volume_ratio",
+      "group": "liquidity",
+      "ic_mean": -0.0482,
+      "ic_std": 0.0813,
+      "icir": -2.0552,
+      "ic_positive_pct": 0.2754,
+      "n_obs": 207
+    },
+    {
+      "factor": "return_10d",
+      "group": "momentum",
+      "ic_mean": -0.0623,
+      "ic_std": 0.0969,
+      "icir": -2.2254,
+      "ic_positive_pct": 0.233,
+      "n_obs": 206
+    },
+    {
+      "factor": "amount_norm",
+      "group": "liquidity",
+      "ic_mean": -0.0534,
+      "ic_std": 0.0826,
+      "icir": -2.2402,
+      "ic_positive_pct": 0.2657,
+      "n_obs": 207
+    },
+    {
+      "factor": "turnover_rate_f",
+      "group": "liquidity",
+      "ic_mean": -0.0831,
+      "ic_std": 0.1218,
+      "icir": -2.3651,
+      "ic_positive_pct": 0.2621,
+      "n_obs": 206
+    }
+  ],
+  "valid_factors": [
+    {
+      "factor": "entropy_20d",
+      "group": "technical",
+      "ic_mean": 0.0653,
+      "ic_std": 0.0572,
+      "icir": 3.9542,
+      "ic_positive_pct": 0.8937,
+      "n_obs": 207
+    },
+    {
+      "factor": "net_inflow_20d",
+      "group": "moneyflow",
+      "ic_mean": 0.0267,
+      "ic_std": 0.0691,
+      "icir": 1.3352,
+      "ic_positive_pct": 0.6667,
+      "n_obs": 207
+    },
+    {
+      "factor": "bb_width",
+      "group": "technical",
+      "ic_mean": 0.012,
+      "ic_std": 0.0422,
+      "icir": 0.988,
+      "ic_positive_pct": 0.6296,
+      "n_obs": 189
+    },
+    {
+      "factor": "net_inflow_5d",
+      "group": "moneyflow",
+      "ic_mean": 0.0162,
+      "ic_std": 0.0585,
+      "icir": 0.9579,
+      "ic_positive_pct": 0.5604,
+      "n_obs": 207
+    },
+    {
+      "factor": "bp",
+      "group": "value",
+      "ic_mean": 0.0353,
+      "ic_std": 0.1448,
+      "icir": 0.8459,
+      "ic_positive_pct": 0.5631,
+      "n_obs": 206
+    },
+    {
+      "factor": "amihud",
+      "group": "technical",
+      "ic_mean": 0.0244,
+      "ic_std": 0.1277,
+      "icir": 0.6608,
+      "ic_positive_pct": 0.5942,
+      "n_obs": 207
+    },
+    {
+      "factor": "max_drawdown_20d",
+      "group": "volatility",
+      "ic_mean": 0.0212,
+      "ic_std": 0.1122,
+      "icir": 0.6551,
+      "ic_positive_pct": 0.5503,
+      "n_obs": 189
+    },
+    {
+      "factor": "macd_signal",
+      "group": "technical",
+      "ic_mean": 0.0051,
+      "ic_std": 0.0286,
+      "icir": 0.6171,
+      "ic_positive_pct": 0.5767,
+      "n_obs": 189
+    },
+    {
+      "factor": "max_drawdown_60d",
+      "group": "volatility",
+      "ic_mean": 0.0163,
+      "ic_std": 0.1103,
+      "icir": 0.5115,
+      "ic_positive_pct": 0.5185,
+      "n_obs": 189
+    },
+    {
+      "factor": "ep_ttm",
+      "group": "value",
+      "ic_mean": 0.0167,
+      "ic_std": 0.1352,
+      "icir": 0.4284,
+      "ic_positive_pct": 0.5534,
+      "n_obs": 206
+    },
+    {
+      "factor": "main_net_inflow",
+      "group": "moneyflow",
+      "ic_mean": 0.0039,
+      "ic_std": 0.0431,
+      "icir": 0.3135,
+      "ic_positive_pct": 0.5362,
+      "n_obs": 207
+    },
+    {
+      "factor": "macd",
+      "group": "technical",
+      "ic_mean": -0.0055,
+      "ic_std": 0.0602,
+      "icir": -0.3157,
+      "ic_positive_pct": 0.4709,
+      "n_obs": 189
+    },
+    {
+      "factor": "pe_ttm",
+      "group": "value",
+      "ic_mean": -0.0181,
+      "ic_std": 0.1363,
+      "icir": -0.4601,
+      "ic_positive_pct": 0.4444,
+      "n_obs": 207
+    },
+    {
+      "factor": "rsi_14d",
+      "group": "technical",
+      "ic_mean": -0.0186,
+      "ic_std": 0.1306,
+      "icir": -0.493,
+      "ic_positive_pct": 0.4762,
+      "n_obs": 189
+    },
+    {
+      "factor": "bb_position",
+      "group": "technical",
+      "ic_mean": -0.0186,
+      "ic_std": 0.1273,
+      "icir": -0.506,
+      "ic_positive_pct": 0.4762,
+      "n_obs": 189
+    },
+    {
+      "factor": "ps_ttm",
+      "group": "value",
+      "ic_mean": -0.0233,
+      "ic_std": 0.1286,
+      "icir": -0.6269,
+      "ic_positive_pct": 0.4348,
+      "n_obs": 207
+    },
+    {
+      "factor": "macd_hist",
+      "group": "technical",
+      "ic_mean": -0.0144,
+      "ic_std": 0.0687,
+      "icir": -0.7255,
+      "ic_positive_pct": 0.4233,
+      "n_obs": 189
+    },
+    {
+      "factor": "volatility_120d",
+      "group": "volatility",
+      "ic_mean": -0.0384,
+      "ic_std": 0.163,
+      "icir": -0.8164,
+      "ic_positive_pct": 0.4126,
+      "n_obs": 206
+    },
+    {
+      "factor": "kdj_j",
+      "group": "technical",
+      "ic_mean": -0.0259,
+      "ic_std": 0.1069,
+      "icir": -0.8389,
+      "ic_positive_pct": 0.4203,
+      "n_obs": 207
+    },
+    {
+      "factor": "pb",
+      "group": "value",
+      "ic_mean": -0.0356,
+      "ic_std": 0.1445,
+      "icir": -0.8541,
+      "ic_positive_pct": 0.4348,
+      "n_obs": 207
+    },
+    {
+      "factor": "return_250d",
+      "group": "momentum",
+      "ic_mean": -0.0351,
+      "ic_std": 0.1372,
+      "icir": -0.8859,
+      "ic_positive_pct": 0.4312,
+      "n_obs": 109
+    },
+    {
+      "factor": "kdj_d",
+      "group": "technical",
+      "ic_mean": -0.0235,
+      "ic_std": 0.0906,
+      "icir": -0.8994,
+      "ic_positive_pct": 0.4106,
+      "n_obs": 207
+    },
+    {
+      "factor": "kdj_k",
+      "group": "technical",
+      "ic_mean": -0.0269,
+      "ic_std": 0.0948,
+      "icir": -0.9815,
+      "ic_positive_pct": 0.4058,
+      "n_obs": 207
+    },
+    {
+      "factor": "turnover_volatility_20d",
+      "group": "risk",
+      "ic_mean": -0.0131,
+      "ic_std": 0.046,
+      "icir": -0.9874,
+      "ic_positive_pct": 0.4126,
+      "n_obs": 206
+    },
+    {
+      "factor": "price_position_20d",
+      "group": "risk",
+      "ic_mean": -0.0268,
+      "ic_std": 0.0928,
+      "icir": -0.9985,
+      "ic_positive_pct": 0.3786,
+      "n_obs": 206
+    },
+    {
+      "factor": "volatility_60d",
+      "group": "volatility",
+      "ic_mean": -0.047,
+      "ic_std": 0.1566,
+      "icir": -1.041,
+      "ic_positive_pct": 0.372,
+      "n_obs": 207
+    },
+    {
+      "factor": "return_120d",
+      "group": "momentum",
+      "ic_mean": -0.0339,
+      "ic_std": 0.1089,
+      "icir": -1.0781,
+      "ic_positive_pct": 0.3495,
+      "n_obs": 206
+    },
+    {
+      "factor": "downside_vol_20d",
+      "group": "volatility",
+      "ic_mean": -0.017,
+      "ic_std": 0.0494,
+      "icir": -1.1938,
+      "ic_positive_pct": 0.3228,
+      "n_obs": 189
+    },
+    {
+      "factor": "turnover_20d",
+      "group": "liquidity",
+      "ic_mean": -0.0396,
+      "ic_std": 0.0968,
+      "icir": -1.4149,
+      "ic_positive_pct": 0.3478,
+      "n_obs": 207
+    },
+    {
+      "factor": "return_5d",
+      "group": "momentum",
+      "ic_mean": -0.0508,
+      "ic_std": 0.1171,
+      "icir": -1.5038,
+      "ic_positive_pct": 0.3495,
+      "n_obs": 206
+    },
+    {
+      "factor": "rsi_6d",
+      "group": "technical",
+      "ic_mean": -0.0454,
+      "ic_std": 0.1002,
+      "icir": -1.5687,
+      "ic_positive_pct": 0.3092,
+      "n_obs": 207
+    },
+    {
+      "factor": "return_20d",
+      "group": "momentum",
+      "ic_mean": -0.0518,
+      "ic_std": 0.112,
+      "icir": -1.6039,
+      "ic_positive_pct": 0.3043,
+      "n_obs": 207
+    },
+    {
+      "factor": "volatility_20d",
+      "group": "volatility",
+      "ic_mean": -0.0681,
+      "ic_std": 0.1455,
+      "icir": -1.6216,
+      "ic_positive_pct": 0.3333,
+      "n_obs": 207
+    },
+    {
+      "factor": "obv_norm",
+      "group": "technical",
+      "ic_mean": -0.0384,
+      "ic_std": 0.0807,
+      "icir": -1.6475,
+      "ic_positive_pct": 0.2947,
+      "n_obs": 207
+    },
+    {
+      "factor": "market_alpha_20d",
+      "group": "momentum",
+      "ic_mean": -0.0531,
+      "ic_std": 0.1077,
+      "icir": -1.7079,
+      "ic_positive_pct": 0.2802,
+      "n_obs": 207
+    },
+    {
+      "factor": "return_60d",
+      "group": "momentum",
+      "ic_mean": -0.0568,
+      "ic_std": 0.1137,
+      "icir": -1.7296,
+      "ic_positive_pct": 0.3592,
+      "n_obs": 206
+    },
+    {
+      "factor": "volatility_10d",
+      "group": "volatility",
+      "ic_mean": -0.0693,
+      "ic_std": 0.1378,
+      "icir": -1.743,
+      "ic_positive_pct": 0.3301,
+      "n_obs": 206
+    },
+    {
+      "factor": "rsi_12d",
+      "group": "technical",
+      "ic_mean": -0.0483,
+      "ic_std": 0.095,
+      "icir": -1.7617,
+      "ic_positive_pct": 0.2705,
+      "n_obs": 207
+    },
+    {
+      "factor": "rsi_24d",
+      "group": "technical",
+      "ic_mean": -0.0499,
+      "ic_std": 0.097,
+      "icir": -1.781,
+      "ic_positive_pct": 0.3092,
+      "n_obs": 207
+    },
+    {
+      "factor": "volatility_5d",
+      "group": "volatility",
+      "ic_mean": -0.0657,
+      "ic_std": 0.1278,
+      "icir": -1.7818,
+      "ic_positive_pct": 0.3301,
+      "n_obs": 206
+    },
+    {
+      "factor": "market_alpha_60d",
+      "group": "momentum",
+      "ic_mean": -0.056,
+      "ic_std": 0.1065,
+      "icir": -1.8226,
+      "ic_positive_pct": 0.3398,
+      "n_obs": 206
+    },
+    {
+      "factor": "turnover_rate",
+      "group": "liquidity",
+      "ic_mean": -0.0717,
+      "ic_std": 0.1265,
+      "icir": -1.9645,
+      "ic_positive_pct": 0.2961,
+      "n_obs": 206
+    },
+    {
+      "factor": "volume_ratio",
+      "group": "liquidity",
+      "ic_mean": -0.0482,
+      "ic_std": 0.0813,
+      "icir": -2.0552,
+      "ic_positive_pct": 0.2754,
+      "n_obs": 207
+    },
+    {
+      "factor": "return_10d",
+      "group": "momentum",
+      "ic_mean": -0.0623,
+      "ic_std": 0.0969,
+      "icir": -2.2254,
+      "ic_positive_pct": 0.233,
+      "n_obs": 206
+    },
+    {
+      "factor": "amount_norm",
+      "group": "liquidity",
+      "ic_mean": -0.0534,
+      "ic_std": 0.0826,
+      "icir": -2.2402,
+      "ic_positive_pct": 0.2657,
+      "n_obs": 207
+    },
+    {
+      "factor": "turnover_rate_f",
+      "group": "liquidity",
+      "ic_mean": -0.0831,
+      "ic_std": 0.1218,
+      "icir": -2.3651,
+      "ic_positive_pct": 0.2621,
+      "n_obs": 206
+    }
+  ],
+  "selected_factors": [
+    "entropy_20d",
+    "net_inflow_20d",
+    "bb_width",
+    "bp",
+    "amihud",
+    "macd_signal",
+    "main_net_inflow",
+    "kdj_j",
+    "kdj_d",
+    "return_120d",
+    "downside_vol_20d",
+    "turnover_20d",
+    "return_20d",
+    "return_60d",
+    "volume_ratio"
+  ]
+}
