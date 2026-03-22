@@ -682,6 +682,171 @@
       },
       "sharedBy": "backtest-engineer-001",
       "timestamp": "2026-03-21T01:14:17.817Z"
+    },
+    "knowledge-1774148968739": {
+      "domain": "data_availability",
+      "content": {
+        "task": "factor_validation_project",
+        "data_scope": {
+          "table": "t_precomputed_factors",
+          "start_date": "2024-01-15",
+          "end_date": "2026-03-20",
+          "rows": 1149731,
+          "warning": "注意：2023年数据不可用，回测区间应从2024-01-15开始"
+        },
+        "action_required": "确认数据完整性，确保2024-2026区间无缺口，提供可用交易日列表"
+      },
+      "sharedBy": "fund-manager-001",
+      "timestamp": "2026-03-22T03:09:28.739Z"
+    },
+    "knowledge-1774148972529": {
+      "domain": "factor_registry",
+      "content": {
+        "task": "factor_validation_project",
+        "factor_registry": {
+          "total_factors": 70,
+          "categories": {
+            "valuation": [
+              "pe_ttm",
+              "pb",
+              "ps_ttm",
+              "dividend_yield",
+              "ep_ttm",
+              "bp",
+              "ev_ebitda",
+              "pcf_ttm",
+              "ps_ttm_zscore"
+            ],
+            "financial": [
+              "roe",
+              "roa",
+              "gross_margin",
+              "net_margin",
+              "operating_margin",
+              "debt_to_assets",
+              "current_ratio",
+              "asset_turnover",
+              "revenue_yoy",
+              "profit_yoy",
+              "roe_yoy"
+            ],
+            "returns": [
+              "return_5d",
+              "return_10d",
+              "return_20d",
+              "return_60d",
+              "return_120d",
+              "return_250d",
+              "sector_alpha_20d",
+              "sector_alpha_60d",
+              "rs_20d_market",
+              "rs_60d_market"
+            ],
+            "technical": [
+              "rsi_14d",
+              "macd",
+              "macd_signal",
+              "macd_hist",
+              "bb_width",
+              "bb_position",
+              "kdj_k",
+              "kdj_d",
+              "kdj_j"
+            ],
+            "moneyflow": [
+              "main_net_inflow",
+              "large_order_net_amount",
+              "net_inflow_5d",
+              "net_inflow_20d",
+              "large_order_net_ratio"
+            ],
+            "liquidity": [
+              "turnover_rate",
+              "turnover_rate_f",
+              "turnover_volatility_20d"
+            ]
+          },
+          "existing_script": "scripts/factor_icir_analysis.py"
+        },
+        "action_required": "对全部70个因子在2024-2026区间计算ICIR，筛选|ICIR|>0.3的有效因子"
+      },
+      "sharedBy": "fund-manager-001",
+      "timestamp": "2026-03-22T03:09:32.529Z"
+    },
+    "knowledge-1774148974747": {
+      "domain": "backtest_assets",
+      "content": {
+        "task": "factor_validation_project",
+        "backtest_range": {
+          "start": "2024-01-15",
+          "end": "2026-03-20",
+          "note": "约2.2年数据，含2024牛市（9.24行情）和2025多段震荡"
+        },
+        "available_scripts": {
+          "icir_analysis": "scripts/factor_icir_analysis.py",
+          "enhanced_backtest": "scripts/run_enhanced_backtest.py",
+          "timing_backtest": "scripts/run_timing_enhanced_backtest.py"
+        },
+        "prior_results": {
+          "best_sharpe": 3.49,
+          "best_annual_return": "88%",
+          "warning": "Sharpe>3疑似过拟合，需严格OOS验证"
+        },
+        "action_required": "对factor-seeker筛选出的有效因子做分层回测IC验证，然后对多因子组合做完整回测，最终产出可供Streamlit展示的数据文件"
+      },
+      "sharedBy": "fund-manager-001",
+      "timestamp": "2026-03-22T03:09:34.747Z"
+    },
+    "knowledge-1774148978696": {
+      "domain": "strategy_assets",
+      "content": {
+        "task": "factor_validation_project",
+        "available_models": {
+          "xgboost": "projects/quant_trading/strategies/ml_prediction/xgboost_model.py",
+          "cross_sectional": "projects/quant_trading/strategies/ml_prediction/cross_sectional_strategy.py",
+          "regime_aware": "projects/quant_trading/strategies/ml_prediction/regime_aware_strategy.py"
+        },
+        "prior_findings": {
+          "a_share_reversal": "A股强反转效应，高换手/动量因子IC为负",
+          "best_factors": [
+            "sector_alpha_60d",
+            "rs_20d_market",
+            "entropy_20d",
+            "return_10d"
+          ],
+          "regime": {
+            "bull": "35.4%",
+            "oscillating": "60.5%",
+            "bear": "4.1%"
+          }
+        },
+        "action_required": "基于factor-seeker筛出的有效因子构建XGBoost多因子模型，生成每日选股信号，配合regime-aware仓位管理"
+      },
+      "sharedBy": "fund-manager-001",
+      "timestamp": "2026-03-22T03:09:38.696Z"
+    },
+    "knowledge-1774148979493": {
+      "domain": "engineering_requirements",
+      "content": {
+        "task": "factor_validation_project",
+        "deliverable": "Streamlit可视化Dashboard",
+        "requirements": [
+          "因子ICIR热力图（按类别×时间）",
+          "因子有效性汇总表（ICIR/IC_mean/t-stat）",
+          "多因子策略回测曲线（vs CSI300基准）",
+          "分层回测图（因子分位数 vs 年化收益）",
+          "市场环境分布饼图+各环境下Sharpe"
+        ],
+        "output_data_files": [
+          "output/factor_icir_results.csv",
+          "output/backtest_nav.csv",
+          "output/layered_returns.csv"
+        ],
+        "tech_stack": "streamlit + plotly + pandas",
+        "action_required": "设计并实现 scripts/streamlit_dashboard.py"
+      },
+      "sharedBy": "fund-manager-001",
+      "timestamp": "2026-03-22T03:09:39.493Z"
     }
   },
   "version": "3.0.0"

@@ -23,10 +23,146 @@
         "fromId": "fund-manager-001",
         "timestamp": "2026-03-22T02:54:48.171Z"
       }
-    ]
+    ],
+    "asset_inventory": {
+      "surveyed_by": "fund-manager-001",
+      "surveyed_at": "2026-03-22",
+      "data": {
+        "t_precomputed_factors": {
+          "range": "2024-01-15 ~ 2026-03-20",
+          "rows": 1149731,
+          "note": "2023年数据不可用，最早从2024-01-15开始"
+        },
+        "factor_registry": {
+          "total": 70,
+          "categories": {
+            "valuation": 9,
+            "financial": 11,
+            "returns": 10,
+            "technical": 9,
+            "zscore": 8,
+            "moneyflow": 5,
+            "relative": 5,
+            "volatility": 4,
+            "liquidity": 3,
+            "risk": 2,
+            "momentum": 4
+          }
+        },
+        "key_scripts": {
+          "factor_icir_analysis": "scripts/factor_icir_analysis.py",
+          "run_enhanced_backtest": "scripts/run_enhanced_backtest.py",
+          "run_timing_enhanced_backtest": "scripts/run_timing_enhanced_backtest.py",
+          "run_swarm_comprehensive": "scripts/run_swarm_comprehensive.py"
+        },
+        "strategy_files": {
+          "cross_sectional_strategy": "projects/quant_trading/strategies/ml_prediction/cross_sectional_strategy.py",
+          "xgboost_model": "projects/quant_trading/strategies/ml_prediction/xgboost_model.py",
+          "regime_aware_strategy": "projects/quant_trading/strategies/ml_prediction/regime_aware_strategy.py",
+          "factor_registry": "projects/quant_trading/strategies/ml_prediction/factor_registry.py"
+        },
+        "backtest_range": "2024-01-15 ~ 2026-03-20"
+      }
+    },
+    "pipeline_assignment": {
+      "project": "因子有效性验证 + 多因子回测 + Streamlit可视化",
+      "issued_by": "fund-manager-001",
+      "issued_at": "2026-03-22",
+      "data_range": "2024-01-15 ~ 2026-03-20",
+      "exit_conditions": {
+        "factor_validation": "ICIR>0.3 + 分层单调性>0.7",
+        "strategy": "Sharpe>1.0 + MaxDD<20%",
+        "engineering": "Dashboard可运行"
+      },
+      "pipeline": [
+        {
+          "phase": 1,
+          "task_id": 1,
+          "owner": "data-engineer-001",
+          "input": "t_precomputed_factors",
+          "output": "data quality report",
+          "blocker": null
+        },
+        {
+          "phase": 2,
+          "task_id": 2,
+          "owner": "factor-seeker-001",
+          "input": "factor_registry(70 factors)",
+          "output": "output/factor_icir_results.csv",
+          "blocker": "phase_1"
+        },
+        {
+          "phase": 3,
+          "task_id": 3,
+          "owner": "backtest-engineer-001",
+          "input": "factor_icir_results.csv",
+          "output": "output/layered_returns.csv",
+          "blocker": "phase_2"
+        },
+        {
+          "phase": 4,
+          "task_id": 4,
+          "owner": "strategy-researcher-001",
+          "input": "valid factors from phase 2+3",
+          "output": "output/backtest_nav.csv",
+          "blocker": "phase_3"
+        },
+        {
+          "phase": 5,
+          "task_id": 5,
+          "owner": "risk-manager-001",
+          "input": "backtest_nav.csv",
+          "output": "output/risk_report.json",
+          "blocker": "phase_4"
+        },
+        {
+          "phase": 6,
+          "task_id": 6,
+          "owner": "architect-001 + code-maintainer-001",
+          "input": "all output/ csvs",
+          "output": "scripts/streamlit_dashboard.py",
+          "blocker": "phase_5"
+        }
+      ]
+    },
+    "pipeline_branch_data_repair": {
+      "branch_name": "data_repair_loop",
+      "trigger_condition": "Phase 1 发现缺口：某一交易日股票数 < 平均的 60%，或某个因子列缺失率 > 5%",
+      "loop": [
+        {
+          "step": "1",
+          "agent": "data-engineer-001",
+          "action": "输出缺口详情报告：哪些日期、哪些因子、缺失比例"
+        },
+        {
+          "step": "1b",
+          "agent": "architect-001",
+          "action": "设计RFC：确定补全路径（tushare增量/回填），输出docs/rfc_data_patch.md"
+        },
+        {
+          "step": "1c",
+          "agent": "code-maintainer-001",
+          "action": "按RFC实现补全脚本 + 单元测试，通知data-engineer验证"
+        },
+        {
+          "step": "1-retry",
+          "agent": "data-engineer-001",
+          "action": "重新运行Phase 1验证，确认数据完整"
+        }
+      ],
+      "exit_condition": "所有因子列缺失率 < 1%，切入Phase 2",
+      "on_loop_failure": "向 fund-manager-001 报警，需人工干预",
+      "communication_protocol": {
+        "from": "data-engineer-001",
+        "to": "fund-manager-001",
+        "type": "feedback",
+        "trigger": "data_quality_issue",
+        "priority": "critical"
+      }
+    }
   },
   "createdAt": "2026-03-22T02:53:01.196Z",
-  "updatedAt": "2026-03-22T02:54:48.171Z",
+  "updatedAt": "2026-03-22T03:14:15.062Z",
   "queen": {
     "agentId": "fund-manager-001",
     "electedAt": "2026-03-22T02:53:01.196Z",
