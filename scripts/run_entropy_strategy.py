@@ -44,7 +44,7 @@ from projects.quant_trading.strategies.ml_prediction.enhanced_regime_detector im
 
 logger = get_logger(__name__)
 
-START_DATE = '20240102'
+START_DATE = '20250102'
 END_DATE   = '20260320'
 TOP_N = 30
 REBALANCE_FREQ = 5
