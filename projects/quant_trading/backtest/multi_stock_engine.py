@@ -47,6 +47,11 @@ class MultiStockBacktestConfig:
     end_date: datetime
     initial_capital: float = 1_000_000.0
 
+    # 训练期配置（严格区分训练/测试，避免前视偏差）
+    train_start_date: Optional[datetime] = None  # 训练开始日期
+    train_end_date: Optional[datetime] = None    # 训练结束日期（测试期必须在此之后）
+    enable_retraining: bool = False              # 是否在回测期间重训练（样本外测试时应为False）
+
     # 调仓配置
     rebalance_freq: RebalanceFrequency = RebalanceFrequency.WEEKLY
     rebalance_day: int = 1  # 周频：周一(1)；月频：月初(1)
@@ -84,6 +89,16 @@ class MultiStockBacktestConfig:
             raise ValueError("initial_capital must be positive")
         if self.max_positions < self.min_positions:
             raise ValueError("max_positions must be >= min_positions")
+        
+        # 验证训练期配置
+        if self.train_start_date and self.train_end_date:
+            if self.train_start_date >= self.train_end_date:
+                raise ValueError("train_start_date must be before train_end_date")
+            if self.start_date < self.train_end_date:
+                logger.warning(
+                    f"Test start_date ({self.start_date.date()}) is before train_end_date "
+                    f"({self.train_end_date.date()}). This may cause look-ahead bias."
+                )
 
 
 @dataclass
@@ -99,6 +114,8 @@ class BacktestResult:
     daily_returns: pd.DataFrame
     benchmark_returns: Optional[pd.DataFrame] = None
     predictions: Optional[pd.DataFrame] = None
+    position_count_history: Optional[pd.DataFrame] = None  # 持仓数量历史
+    regime_history: Optional[pd.DataFrame] = None  # 市场状态历史
 
     def summary(self) -> Dict[str, Any]:
         """生成摘要"""
@@ -136,6 +153,14 @@ class BacktestResult:
         if self.predictions is not None and not self.predictions.empty:
             self.predictions.to_csv(output_path / "predictions.csv", index=False)
 
+        # 保存持仓数量历史
+        if self.position_count_history is not None and not self.position_count_history.empty:
+            self.position_count_history.to_csv(output_path / "position_count.csv")
+
+        # 保存regime历史
+        if self.regime_history is not None and not self.regime_history.empty:
+            self.regime_history.to_csv(output_path / "regime_history.csv", index=False)
+
         # 保存绩效指标
         metrics_dict = self.metrics.to_dict()
         pd.Series(metrics_dict).to_csv(output_path / "metrics.csv")
@@ -144,6 +169,8 @@ class BacktestResult:
         config_dict = {
             "start_date": self.config.start_date.strftime("%Y-%m-%d"),
             "end_date": self.config.end_date.strftime("%Y-%m-%d"),
+            "train_start_date": self.config.train_start_date.strftime("%Y-%m-%d") if self.config.train_start_date else None,
+            "train_end_date": self.config.train_end_date.strftime("%Y-%m-%d") if self.config.train_end_date else None,
             "initial_capital": self.config.initial_capital,
             "max_positions": self.config.max_positions,
             "rebalance_freq": self.config.rebalance_freq.value,
@@ -188,6 +215,8 @@ class MultiStockBacktestEngine:
         self.nav_history: List[Tuple[datetime, float]] = []
         self.positions_history: List[Dict[str, Any]] = []
         self.predictions_history: List[Dict[str, Any]] = []
+        self.position_count_history: List[Dict[str, Any]] = []  # 持仓数量历史
+        self.regime_history: List[Dict[str, Any]] = []  # 市场状态历史
 
         # 交易日历
         self.trade_dates: List[datetime] = []
@@ -217,9 +246,17 @@ class MultiStockBacktestEngine:
         # 2. 加载基准数据
         benchmark_data = self._load_benchmark_data()
 
-        # 3. 训练策略模型
-        train_end = self.trade_dates[0] - timedelta(days=1)
-        train_start = train_end - timedelta(days=365 * 2)  # 2年训练数据
+        # 3. 训练策略模型（使用配置的训练期，严格区分训练/测试）
+        if self.config.train_start_date and self.config.train_end_date:
+            # 使用指定的训练期
+            train_start = self.config.train_start_date
+            train_end = self.config.train_end_date
+            logger.info(f"Using configured training period: {train_start.date()} to {train_end.date()}")
+        else:
+            # 回退到默认：回测开始前2年
+            train_end = self.trade_dates[0] - timedelta(days=1)
+            train_start = train_end - timedelta(days=365 * 2)
+            logger.info(f"Using default training period: {train_start.date()} to {train_end.date()}")
 
         try:
             logger.info("Training strategy models...")
@@ -253,13 +290,18 @@ class MultiStockBacktestEngine:
             if progress_callback:
                 progress_callback(i + 1, len(self.trade_dates), date, self.portfolio.nav)
 
-            # 定期重训练（季度）
-            if self._should_retrain(date):
+            # 定期重训练（仅在启用重训练时，且使用训练期内数据）
+            if self.config.enable_retraining and self._should_retrain(date):
                 try:
                     logger.info(f"Retraining models on {date.strftime('%Y-%m-%d')}")
-                    train_end = date
-                    train_start = train_end - timedelta(days=365 * 2)
-                    self.strategy.train(train_start, train_end)
+                    if self.config.train_start_date and self.config.train_end_date:
+                        # 使用滚动窗口：训练结束日期 = 当前日期，训练开始日期 = 训练结束日期 - 2年
+                        new_train_end = date
+                        new_train_start = max(new_train_end - timedelta(days=365 * 2), self.config.train_start_date)
+                    else:
+                        new_train_end = date
+                        new_train_start = new_train_end - timedelta(days=365 * 2)
+                    self.strategy.train(new_train_start, new_train_end)
                 except Exception as e:
                     logger.warning(f"Model retraining failed: {e}")
 
@@ -372,7 +414,8 @@ class MultiStockBacktestEngine:
 
         logger.info(f"Executed {len(trades)} trades")
 
-        # 6. 记录预测
+        # 6. 记录预测和regime
+        current_regime = predictions.iloc[0].get("regime", "unknown") if not predictions.empty else "unknown"
         for _, row in predictions.head(self.config.max_positions).iterrows():
             self.predictions_history.append({
                 "date": date,
@@ -380,7 +423,15 @@ class MultiStockBacktestEngine:
                 "predicted_return": row["predicted_return"],
                 "confidence": row.get("confidence", 0),
                 "selected": row["ts_code"] in selected_stocks,
+                "regime": row.get("regime", current_regime),
             })
+        
+        # 记录regime历史
+        self.regime_history.append({
+            "date": date,
+            "regime": current_regime,
+            "num_selected": len(selected_stocks),
+        })
 
     def _get_current_prices(
         self, date: datetime, stock_pool: List[str]
@@ -440,6 +491,7 @@ class MultiStockBacktestEngine:
         self.nav_history.append((date, self.portfolio.nav))
 
         # 记录持仓
+        num_positions = len(self.portfolio.positions)
         for ts_code, position in self.portfolio.positions.items():
             self.positions_history.append({
                 "date": date,
@@ -449,6 +501,14 @@ class MultiStockBacktestEngine:
                 "market_value": position.market_value,
                 "unrealized_pnl": position.unrealized_pnl,
             })
+        
+        # 记录持仓数量
+        self.position_count_history.append({
+            "date": date,
+            "num_positions": num_positions,
+            "total_value": self.portfolio.total_value,
+            "cash": self.portfolio.cash,
+        })
 
     def _calculate_results(self, benchmark_data: Optional[pd.DataFrame]) -> BacktestResult:
         """计算回测结果"""
@@ -484,6 +544,16 @@ class MultiStockBacktestEngine:
 
         # 构建预测DataFrame
         predictions_df = pd.DataFrame(self.predictions_history)
+        
+        # 构建持仓数量历史DataFrame
+        position_count_df = pd.DataFrame(self.position_count_history)
+        if not position_count_df.empty:
+            position_count_df.set_index("date", inplace=True)
+        
+        # 构建regime历史DataFrame
+        regime_df = pd.DataFrame(self.regime_history)
+        if not regime_df.empty:
+            regime_df.set_index("date", inplace=True)
 
         return BacktestResult(
             config=self.config,
@@ -495,6 +565,8 @@ class MultiStockBacktestEngine:
             daily_returns=daily_returns,
             benchmark_returns=benchmark_returns,
             predictions=predictions_df if not predictions_df.empty else None,
+            position_count_history=position_count_df if not position_count_df.empty else None,
+            regime_history=regime_df if not regime_df.empty else None,
         )
 
     def _should_retrain(self, date: datetime) -> bool:

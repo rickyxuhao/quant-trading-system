@@ -1,0 +1,212 @@
+{
+  "phase_results": {
+    "phase1": {
+      "ic_mean": 0.0595,
+      "icir": 5.89,
+      "entropy_high_pct": {
+        "ic_mean": -0.0358,
+        "icir": -3.283
+      }
+    },
+    "phase2": {
+      "pop_size": 60,
+      "n_gen": 12,
+      "gp_factors": [
+        {
+          "formula": "log(sub(ts_std_5(sub(ts_std_5(mul(vol, close)), div(log(vol), div(close, add(sub(ts_std_5(mul(vol, close)), div(log(ts_mean_5(vol)), high)), high))))), div(log(ts_mean_5(vol)), high)))",
+          "icir": 5.682069357815992
+        },
+        {
+          "formula": "log(sub(ts_std_5(sub(ts_std_5(mul(vol, close)), div(log(vol), div(close, add(ts_std_5(mul(vol, close)), log(ts_mean_5(vol))))))), div(log(ts_mean_5(vol)), high)))",
+          "icir": 5.6820007435205975
+        },
+        {
+          "formula": "log(sub(ts_std_5(sub(ts_std_5(mul(vol, close)), div(log(vol), div(close, add(ts_std_5(mul(vol, close)), high))))), div(log(close), high)))",
+          "icir": 5.681990296270356
+        },
+        {
+          "formula": "log(sub(ts_std_5(sub(ts_std_5(mul(vol, close)), div(log(vol), div(close, add(ts_std_5(mul(vol, close)), high))))), div(log(ts_mean_5(vol)), high)))",
+          "icir": 5.6819797290647776
+        },
+        {
+          "formula": "log(sub(ts_std_5(sub(ts_std_5(mul(vol, close)), div(log(vol), div(close, add(ts_std_5(mul(vol, close)), high))))), div(high, high)))",
+          "icir": 5.681979410411806
+        },
+        {
+          "formula": "log(sub(ts_std_5(sub(ts_std_5(mul(vol, close)), div(log(vol), div(close, add(ts_std_5(mul(vol, close)), high))))), div(log(ts_mean_5(vol)), ts_std_5(mul(vol, close)))))",
+          "icir": 5.681979410411806
+        },
+        {
+          "formula": "log(sub(ts_std_5(sub(ts_std_5(mul(vol, close)), div(log(vol), div(close, add(const_5, sub(ts_std_5(mul(vol, close)), open)))))), div(log(ts_mean_5(vol)), high)))",
+          "icir": 5.681902020104332
+        },
+        {
+          "formula": "log(sub(ts_std_5(sub(ts_std_5(mul(vol, close)), div(log(open), high))), div(log(ts_mean_5(vol)), log(vol))))",
+          "icir": 5.50040720707223
+        },
+        {
+          "formula": "log(sub(ts_std_5(sub(ts_std_5(mul(vol, close)), div(log(open), high))), div(log(ts_std_5(mul(vol, close))), log(vol))))",
+          "icir": 5.500404030673328
+        },
+        {
+          "formula": "log(sub(ts_std_5(sub(ts_std_5(mul(vol, close)), div(log(vol), vol))), div(log(close), high)))",
+          "icir": 5.49374451835468
+        }
+      ]
+    },
+    "phase3": {
+      "total_candidates": 41,
+      "iter1": [
+        "entropy_20d",
+        "return_10d",
+        "amount_norm",
+        "gp_factor_2",
+        "gp_factor_1",
+        "gp_factor_3",
+        "gp_factor_5",
+        "gp_factor_4",
+        "turnover_rate",
+        "rsi_12d",
+        "return_60d",
+        "market_alpha_20d",
+        "volatility_20d",
+        "entropy_high_pct",
+        "obv_norm",
+        "return_20d",
+        "rsi_6d",
+        "return_5d",
+        "kdj_k",
+        "bb_width",
+        "pb",
+        "bp",
+        "kdj_j",
+        "macd_hist",
+        "ps_ttm",
+        "amihud",
+        "bb_position",
+        "ep_ttm",
+        "rsi_14d",
+        "main_net_inflow",
+        "dividend_yield",
+        "atr_14d"
+      ],
+      "iter2": [
+        "entropy_20d",
+        "return_10d",
+        "amount_norm",
+        "gp_factor_2",
+        "return_60d",
+        "market_alpha_20d",
+        "entropy_high_pct",
+        "return_5d",
+        "macd_hist",
+        "bb_position",
+        "main_net_inflow"
+      ],
+      "iter3": [
+        "entropy_20d",
+        "gp_factor_2",
+        "return_10d",
+        "amount_norm",
+        "return_60d",
+        "entropy_high_pct",
+        "return_5d",
+        "macd_hist"
+      ],
+      "iter4": [
+        "return_10d",
+        "entropy_20d",
+        "return_60d",
+        "macd_hist",
+        "return_5d",
+        "gp_factor_2",
+        "amount_norm",
+        "entropy_high_pct"
+      ],
+      "final_factors": [
+        "return_10d",
+        "entropy_20d",
+        "return_60d",
+        "macd_hist",
+        "return_5d",
+        "gp_factor_2",
+        "amount_norm",
+        "entropy_high_pct"
+      ]
+    },
+    "phase4": {
+      "feature_importance": [
+        {
+          "feature": "return_60d",
+          "importance": 0.17214104533195496
+        },
+        {
+          "feature": "macd_hist",
+          "importance": 0.16898077726364136
+        },
+        {
+          "feature": "return_5d",
+          "importance": 0.16126078367233276
+        },
+        {
+          "feature": "entropy_20d",
+          "importance": 0.1210930198431015
+        },
+        {
+          "feature": "return_10d",
+          "importance": 0.11574691534042358
+        },
+        {
+          "feature": "gp_factor_2",
+          "importance": 0.09489064663648605
+        },
+        {
+          "feature": "amount_norm",
+          "importance": 0.08405610173940659
+        },
+        {
+          "feature": "entropy_high_pct",
+          "importance": 0.08183073997497559
+        }
+      ]
+    }
+  },
+  "backtest_metrics": {
+    "基础组合": {
+      "strategy_name": "基础组合",
+      "cumulative_return": 400.14,
+      "annual_return": 113.75,
+      "sharpe": 3.333,
+      "max_drawdown": 24.09,
+      "benchmark_cumulative": 33.11,
+      "benchmark_annual": 14.45,
+      "information_ratio": 2.666,
+      "excess_return": 99.3,
+      "n_trading_days": 534
+    },
+    "择时增强": {
+      "strategy_name": "择时增强",
+      "cumulative_return": 281.18,
+      "annual_return": 88.03,
+      "sharpe": 3.488,
+      "max_drawdown": 17.35,
+      "benchmark_cumulative": 33.11,
+      "benchmark_annual": 14.45,
+      "information_ratio": 2.379,
+      "excess_return": 73.59,
+      "n_trading_days": 534
+    },
+    "优化组合": {
+      "strategy_name": "优化组合",
+      "cumulative_return": 150.81,
+      "annual_return": 54.33,
+      "sharpe": 2.65,
+      "max_drawdown": 16.02,
+      "benchmark_cumulative": 33.11,
+      "benchmark_annual": 14.45,
+      "information_ratio": 1.515,
+      "excess_return": 39.88,
+      "n_trading_days": 534
+    }
+  }
+}

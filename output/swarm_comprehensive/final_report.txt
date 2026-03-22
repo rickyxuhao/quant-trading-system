@@ -1,0 +1,66 @@
+======================================================================
+蜂群综合分析最终报告
+生成时间: 2026-03-21 22:56:17
+回测区间: 20240101 - 20260320
+======================================================================
+
+【Phase 1】 单一成交额占比熵因子
+  因子名称: entropy_20d (20日成交额占比熵)
+  IC均值: 0.0595
+  ICIR: 5.89
+  解读: 熵值越小→成交集中于高位→卖出信号（负IC预期）
+
+【Phase 2】 AutoML遗传编程因子挖掘
+  种群大小: 60, 进化代数: 12
+  发现有效因子(|ICIR|>0.4): 10
+    ICIR=5.682: log(sub(ts_std_5(sub(ts_std_5(mul(vol, close)), div(log(vol)
+    ICIR=5.682: log(sub(ts_std_5(sub(ts_std_5(mul(vol, close)), div(log(vol)
+    ICIR=5.682: log(sub(ts_std_5(sub(ts_std_5(mul(vol, close)), div(log(vol)
+    ICIR=5.682: log(sub(ts_std_5(sub(ts_std_5(mul(vol, close)), div(log(vol)
+    ICIR=5.682: log(sub(ts_std_5(sub(ts_std_5(mul(vol, close)), div(log(vol)
+
+【Phase 3】 多轮迭代因子筛选
+  候选因子总数: 41
+  Iteration 1 (ICIR>0.3): 32 个
+  Iteration 2 (去相关): 11 个
+  Iteration 3 (单调性>0.6): 8 个
+  Iteration 4 (稳定性): 8 个
+  最终选中因子 (8个):
+    - return_10d
+    - entropy_20d
+    - return_60d
+    - macd_hist
+    - return_5d
+    - gp_factor_2
+    - amount_norm
+    - entropy_high_pct
+
+【Phase 4】 XGBoost模型特征重要性
+    return_60d               : 0.1721
+    macd_hist                : 0.1690
+    return_5d                : 0.1613
+    entropy_20d              : 0.1211
+    return_10d               : 0.1157
+    gp_factor_2              : 0.0949
+    amount_norm              : 0.0841
+    entropy_high_pct         : 0.0818
+
+【Phase 5】 多轮回测结果对比
+  策略名称                     年化收益   Sharpe    MaxDD       IR       超额收益
+  ----------------------------------------------------------------------
+  基础组合                  113.75%    3.333   24.09%    2.666     99.30%
+  择时增强                   88.03%    3.488   17.35%    2.379     73.59%
+  优化组合                   54.33%    2.650   16.02%    1.515     39.88%
+
+  CSI300基准: 年化=14.45%
+
+【Phase 6】 目标达成情况
+
+  最佳策略: 择时增强
+  ✓ 年化超额收益 > 10%: 实际=73.59
+  ✓ 信息比率 IR > 0.5: 实际=2.38
+  ✓ 夏普比率 > 0.8: 实际=3.49
+  ✓ 最大回撤 < 25%: 实际=17.35
+
+======================================================================
+END OF REPORT

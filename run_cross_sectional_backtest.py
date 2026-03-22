@@ -94,12 +94,20 @@ class CrossSectionalBacktestPipeline:
         initial_capital: float = 1_000_000,
         rebalancing_freq: str = "weekly",
         rebalance_day: int = 1,
+        train_start_date: Optional[str] = None,
+        train_end_date: Optional[str] = None,
+        enable_retraining: bool = False,
+        top_n: int = 30,
     ):
         self.start_date = start_date
         self.end_date = end_date
         self.initial_capital = initial_capital
         self.rebalancing_freq = rebalancing_freq
         self.rebalance_day = rebalance_day
+        self.train_start_date = train_start_date
+        self.train_end_date = train_end_date
+        self.enable_retraining = enable_retraining
+        self.top_n = top_n
 
         # 初始化组件（使用默认配置或自定义配置）
         self.universe_selector = universe_selector or create_csi300_universe()
@@ -116,7 +124,10 @@ class CrossSectionalBacktestPipeline:
             initial_capital=initial_capital,
             rebalance_freq=RebalanceFrequency(rebalancing_freq),
             rebalance_day=rebalance_day,
-            max_positions=top_n if 'top_n' in locals() else 30,
+            max_positions=top_n,
+            train_start_date=pd.Timestamp(train_start_date) if train_start_date else None,
+            train_end_date=pd.Timestamp(train_end_date) if train_end_date else None,
+            enable_retraining=enable_retraining,
         )
         self.backtest_engine = MultiStockBacktestEngine(
             config=backtest_config,
@@ -553,6 +564,16 @@ class CrossSectionalBacktestPipeline:
         rebalancing_cfg = config.get("rebalancing", {})
         rebalancing_freq = rebalancing_cfg.get("frequency", "weekly")
         rebalance_day = rebalancing_cfg.get("day", 1)
+        
+        # 训练/测试期配置
+        train_cfg = config.get("training", {})
+        train_start_date = train_cfg.get("train_start_date", "20230101")
+        train_end_date = train_cfg.get("train_end_date", "20241231")
+        enable_retraining = train_cfg.get("enable_retraining", False)
+        
+        # 组合配置
+        portfolio_cfg = config.get("portfolio", {})
+        top_n = portfolio_cfg.get("top_n", 30)
 
         return cls(
             start_date=start_date,
@@ -563,6 +584,10 @@ class CrossSectionalBacktestPipeline:
             initial_capital=initial_capital,
             rebalancing_freq=rebalancing_freq,
             rebalance_day=rebalance_day,
+            train_start_date=train_start_date,
+            train_end_date=train_end_date,
+            enable_retraining=enable_retraining,
+            top_n=top_n,
         )
 
 
@@ -579,14 +604,31 @@ def main():
     parser.add_argument(
         "--start-date",
         type=str,
-        default="20190101",
-        help="Backtest start date (YYYYMMDD)",
+        default="20250101",
+        help="Backtest start date (YYYYMMDD) - test period",
     )
     parser.add_argument(
         "--end-date",
         type=str,
+        default="20251231",
+        help="Backtest end date (YYYYMMDD) - test period",
+    )
+    parser.add_argument(
+        "--train-start-date",
+        type=str,
+        default="20230101",
+        help="Training start date (YYYYMMDD) - train period",
+    )
+    parser.add_argument(
+        "--train-end-date",
+        type=str,
         default="20241231",
-        help="Backtest end date (YYYYMMDD)",
+        help="Training end date (YYYYMMDD) - train period (must be before test start)",
+    )
+    parser.add_argument(
+        "--enable-retraining",
+        action="store_true",
+        help="Enable model retraining during backtest (default: False for pure out-of-sample test)",
     )
     parser.add_argument(
         "--initial-capital",
@@ -680,6 +722,10 @@ def main():
             initial_capital=args.initial_capital,
             rebalancing_freq=args.rebalancing,
             rebalance_day=args.rebalance_day,
+            train_start_date=args.train_start_date,
+            train_end_date=args.train_end_date,
+            enable_retraining=args.enable_retraining,
+            top_n=args.top_n,
         )
 
     # 执行命令
