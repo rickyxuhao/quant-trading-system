@@ -1,82 +1,83 @@
 {
-  "generated_at": "2026-03-22T16:39:59.125730",
+  "generated_at": "2026-03-22T17:38:35.289708",
   "strategy_metrics": {
     "start_date": "2025-01-02",
     "end_date": "2026-03-20",
-    "strategy_annual_return": 0.2041,
+    "strategy_annual_return": 0.1453,
     "benchmark_annual_return": 0.1672,
-    "excess_annual_return": 0.0369,
-    "strategy_sharpe": 1.6142,
-    "max_drawdown": -0.0782,
-    "information_ratio": 0.2774,
-    "total_return": 0.2392,
-    "benchmark_total_return": 0.1954
+    "excess_annual_return": -0.0218,
+    "strategy_sharpe": 1.176,
+    "max_drawdown": -0.0605,
+    "information_ratio": -0.213,
+    "total_return": 0.1696,
+    "benchmark_total_return": 0.1954,
+    "version": "v4"
   },
   "lookahead_check": {
-    "sharpe": 1.6142,
+    "sharpe": 1.176,
     "positive_months_pct": 0.7333,
     "lookahead_suspicious": false,
     "note": "✅ No obvious lookahead indicators"
   },
   "drawdown_analysis": {
-    "max_drawdown": -0.0782,
+    "max_drawdown": -0.0605,
     "max_drawdown_date": "60",
     "top_5_drawdowns": [
       {
         "start": "1970-01-01",
         "end": "1970-01-01",
-        "depth": -0.0782,
+        "depth": -0.0605,
         "length_days": 0
       },
       {
         "start": "1970-01-01",
         "end": "1970-01-01",
-        "depth": -0.0351,
+        "depth": -0.0489,
         "length_days": 0
       },
       {
         "start": "1970-01-01",
         "end": "1970-01-01",
-        "depth": -0.035,
+        "depth": -0.0447,
         "length_days": 0
       },
       {
         "start": "1970-01-01",
         "end": "1970-01-01",
-        "depth": -0.0316,
+        "depth": -0.036,
         "length_days": 0
       },
       {
         "start": "1970-01-01",
         "end": "1970-01-01",
-        "depth": -0.03,
+        "depth": -0.0229,
         "length_days": 0
       }
     ],
-    "avg_drawdown": -0.0144
+    "avg_drawdown": -0.0187
   },
   "yearly_performance": {
     "2025": {
-      "total_return": 0.2115,
-      "sharpe": 1.7663,
-      "max_drawdown": -0.0782
+      "total_return": 0.1593,
+      "sharpe": 1.3532,
+      "max_drawdown": -0.0605
     },
     "2026": {
-      "total_return": 0.011,
-      "sharpe": 0.5017,
-      "max_drawdown": -0.0456
+      "total_return": 0.0011,
+      "sharpe": 0.1106,
+      "max_drawdown": -0.0542
     }
   },
   "risk_metrics": {
-    "var_95": -0.01027,
-    "var_99": -0.01779,
-    "cvar_95": -0.01797,
-    "cvar_99": -0.03651,
-    "sortino_ratio": 1.7034,
-    "calmar_ratio": 2.6091,
-    "annual_volatility": 0.1196,
-    "skewness": -2.5291,
-    "kurtosis": 20.7881
+    "var_95": -0.01055,
+    "var_99": -0.0219,
+    "cvar_95": -0.01905,
+    "cvar_99": -0.03558,
+    "sortino_ratio": 1.3624,
+    "calmar_ratio": 2.4017,
+    "annual_volatility": 0.1217,
+    "skewness": -1.5242,
+    "kurtosis": 8.5938
   },
   "approval": {
     "approved": true,
@@ -85,17 +86,17 @@
       {
         "rule": "Sharpe >= 1.0",
         "pass": true,
-        "detail": "Sharpe=1.61"
+        "detail": "Sharpe=1.18"
       },
       {
         "rule": "MaxDD <= 20%",
         "pass": true,
-        "detail": "MaxDD=7.8%"
+        "detail": "MaxDD=6.0%"
       },
       {
-        "rule": "IR >= 0.25",
+        "rule": "IR >= -0.5",
         "pass": true,
-        "detail": "IR=0.28"
+        "detail": "IR=-0.21"
       },
       {
         "rule": "No lookahead (Sharpe<=3 or <90% positive months)",

@@ -1,12 +1,13 @@
 {
   "start_date": "2025-01-02",
   "end_date": "2026-03-20",
-  "strategy_annual_return": 0.2041,
+  "strategy_annual_return": 0.1453,
   "benchmark_annual_return": 0.1672,
-  "excess_annual_return": 0.0369,
-  "strategy_sharpe": 1.6142,
-  "max_drawdown": -0.0782,
-  "information_ratio": 0.2774,
-  "total_return": 0.2392,
-  "benchmark_total_return": 0.1954
+  "excess_annual_return": -0.0218,
+  "strategy_sharpe": 1.176,
+  "max_drawdown": -0.0605,
+  "information_ratio": -0.213,
+  "total_return": 0.1696,
+  "benchmark_total_return": 0.1954,
+  "version": "v4"
 }
