@@ -25,10 +25,10 @@
         "consensusMechanism": "weighted_expert",
         "expertWeights": {
           "fund-manager-001": 0.25,
-          "risk-manager-001": 0.20,
-          "backtest-engineer-001": 0.20,
+          "risk-manager-001": 0.2,
+          "backtest-engineer-001": 0.2,
           "architect-001": 0.15,
-          "strategy-researcher-001": 0.10,
+          "strategy-researcher-001": 0.1,
           "factor-seeker-001": 0.05,
           "data-engineer-001": 0.03,
           "code-maintainer-001": 0.02
@@ -54,6 +54,24 @@
       },
       "createdAt": "2026-03-20T15:02:46.164Z",
       "updatedAt": "2026-03-21T10:15:00.000Z"
+    },
+    "swarm-1774147973598-n1wwhx": {
+      "swarmId": "swarm-1774147973598-n1wwhx",
+      "topology": "hierarchical",
+      "maxAgents": 10,
+      "status": "running",
+      "agents": [],
+      "tasks": [],
+      "config": {
+        "topology": "hierarchical",
+        "maxAgents": 10,
+        "strategy": "specialized",
+        "communicationProtocol": "pipeline",
+        "autoScaling": true,
+        "consensusMechanism": "weighted_expert"
+      },
+      "createdAt": "2026-03-22T02:52:53.598Z",
+      "updatedAt": "2026-03-22T02:52:53.598Z"
     }
   },
   "version": "3.0.0",

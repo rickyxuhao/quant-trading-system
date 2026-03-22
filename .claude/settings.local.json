@@ -7,5 +7,9 @@
       "Bash(poetry run:*)",
       "Bash(python3:*)"
     ]
-  }
+  },
+  "enabledMcpjsonServers": [
+    "claude-flow"
+  ],
+  "enableAllProjectMcpServers": true
 }

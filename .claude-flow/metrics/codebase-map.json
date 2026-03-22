@@ -1,0 +1,11 @@
+{
+  "timestamp": "2026-03-22T02:51:17.289Z",
+  "projectRoot": "/Users/xuhaoricky/ClawProject/Stock-trading-project",
+  "structure": {
+    "hasPackageJson": false,
+    "hasTsConfig": false,
+    "hasClaudeConfig": true,
+    "hasClaudeFlow": true
+  },
+  "scannedAt": 1774147877289
+}

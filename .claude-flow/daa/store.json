@@ -6,25 +6,25 @@
       "type": "data-engineer",
       "status": "active",
       "cognitivePattern": "systems",
-      "learningRate": 0.1,
+      "learningRate": 0.08,
       "memory": true,
       "capabilities": [
         "data_sync",
         "database_management",
         "tushare_api",
         "data_quality_check",
-        "factor_calculation",
-        "sql_optimization",
         "etl_pipeline",
-        "data_modeling"
+        "data_modeling",
+        "pit_data_management",
+        "survivorship_bias_control"
       ],
       "metrics": {
         "tasksCompleted": 0,
         "successRate": 1,
         "adaptations": 0
       },
-      "createdAt": "2026-03-20T15:14:23.099Z",
-      "lastActivity": "2026-03-20T15:14:23.099Z"
+      "createdAt": "2026-03-22T02:52:18.557Z",
+      "lastActivity": "2026-03-22T02:52:18.557Z"
     },
     "factor-seeker-001": {
       "id": "factor-seeker-001",
@@ -42,28 +42,17 @@
         "factor_validity_testing",
         "ic_icir_analysis",
         "layered_backtest",
-        "fama_macbeth_regression",
-        "factor_turnover_analysis",
-        "dimensionality_reduction",
-        "pca_lasso",
         "ml_factor_mining",
-        "alpha_factor_discovery",
         "genetic_programming",
-        "reinforcement_learning_ppo",
-        "xgboost_lightgbm",
-        "shap_interpretability",
-        "factor_decay_analysis",
-        "dynamic_weight_ic_ir",
-        "online_learning_ewma",
-        "feature_engineering_automation"
+        "factor_decay_analysis"
       ],
       "metrics": {
         "tasksCompleted": 0,
         "successRate": 1,
         "adaptations": 0
       },
-      "createdAt": "2026-03-21T00:42:01.141Z",
-      "lastActivity": "2026-03-21T00:42:01.141Z"
+      "createdAt": "2026-03-22T02:52:19.094Z",
+      "lastActivity": "2026-03-22T02:52:19.094Z"
     },
     "strategy-researcher-001": {
       "id": "strategy-researcher-001",
@@ -80,28 +69,18 @@
         "lstm_gru_sequence",
         "factor_combination_optimization",
         "signal_generation",
-        "alpha_decay_analysis",
         "cross_sectional_regression",
         "ensemble_methods",
-        "ic_weighted_combination",
-        "signal_backtesting",
-        "portfolio_construction",
-        "sector_neutral_long_short",
-        "position_sizing",
-        "shap_interpretability",
         "rolling_window_training",
-        "walk_forward_validation",
-        "regime_detection",
-        "signal_turnover_control",
-        "transaction_cost_aware_optimization"
+        "regime_detection"
       ],
       "metrics": {
         "tasksCompleted": 0,
         "successRate": 1,
         "adaptations": 0
       },
-      "createdAt": "2026-03-21T00:56:33.954Z",
-      "lastActivity": "2026-03-21T00:56:33.954Z"
+      "createdAt": "2026-03-22T02:52:19.519Z",
+      "lastActivity": "2026-03-22T02:52:19.519Z"
     },
     "backtest-engineer-001": {
       "id": "backtest-engineer-001",
@@ -109,37 +88,135 @@
       "type": "backtest-engineer",
       "status": "active",
       "cognitivePattern": "critical",
-      "learningRate": 0.08,
+      "learningRate": 0.05,
       "memory": true,
       "capabilities": [
         "vectorized_backtest",
         "ic_icir_fast_validation",
         "layered_quantile_backtest",
-        "fama_macbeth_regression",
         "lookahead_bias_detection",
         "pit_data_alignment",
         "survivorship_bias_control",
         "walk_forward_validation",
-        "multi_stock_backtest",
         "transaction_cost_modeling",
-        "performance_metrics_26",
-        "risk_attribution",
         "bootstrap_significance_test",
-        "factor_decay_curve",
-        "event_study_backtest",
-        "parameter_sensitivity_analysis",
-        "turnover_cost_breakdown",
-        "standardized_factor_api",
-        "backtest_report_generation",
-        "data_integrity_check"
+        "factor_decay_curve"
       ],
       "metrics": {
         "tasksCompleted": 0,
         "successRate": 1,
         "adaptations": 0
       },
-      "createdAt": "2026-03-21T01:11:39.656Z",
-      "lastActivity": "2026-03-21T01:11:39.656Z"
+      "createdAt": "2026-03-22T02:52:20.464Z",
+      "lastActivity": "2026-03-22T02:52:20.464Z"
+    },
+    "fund-manager-001": {
+      "id": "fund-manager-001",
+      "name": "Fund Manager",
+      "type": "orchestrator",
+      "status": "active",
+      "cognitivePattern": "convergent",
+      "learningRate": 0.05,
+      "memory": true,
+      "capabilities": [
+        "workflow_orchestration",
+        "agent_coordination",
+        "resource_allocation",
+        "conflict_resolution",
+        "pipeline_scheduling",
+        "progress_monitoring",
+        "quality_gatekeeping",
+        "human_interface",
+        "research_prioritization",
+        "risk_budget_allocation"
+      ],
+      "metrics": {
+        "tasksCompleted": 0,
+        "successRate": 1,
+        "adaptations": 0
+      },
+      "createdAt": "2026-03-22T02:52:17.733Z",
+      "lastActivity": "2026-03-22T02:52:17.733Z"
+    },
+    "risk-manager-001": {
+      "id": "risk-manager-001",
+      "name": "Risk Manager",
+      "type": "risk-manager",
+      "status": "active",
+      "cognitivePattern": "critical",
+      "learningRate": 0.03,
+      "memory": true,
+      "capabilities": [
+        "risk_budget_allocation",
+        "position_sizing",
+        "sector_neutral_constraint",
+        "drawdown_control",
+        "stop_loss_rules",
+        "var_cvar_calculation",
+        "stress_testing",
+        "tail_risk_analysis",
+        "leverage_control"
+      ],
+      "metrics": {
+        "tasksCompleted": 0,
+        "successRate": 1,
+        "adaptations": 0
+      },
+      "createdAt": "2026-03-22T02:52:19.955Z",
+      "lastActivity": "2026-03-22T02:52:19.955Z"
+    },
+    "architect-001": {
+      "id": "architect-001",
+      "name": "System Architect",
+      "type": "architect",
+      "status": "active",
+      "cognitivePattern": "systems",
+      "learningRate": 0.06,
+      "memory": true,
+      "capabilities": [
+        "interface_design",
+        "api_contract_definition",
+        "code_review",
+        "technical_decision",
+        "refactoring_planning",
+        "dependency_analysis",
+        "performance_optimization",
+        "pattern_recognition"
+      ],
+      "metrics": {
+        "tasksCompleted": 0,
+        "successRate": 1,
+        "adaptations": 0
+      },
+      "createdAt": "2026-03-22T02:52:20.948Z",
+      "lastActivity": "2026-03-22T02:52:20.948Z"
+    },
+    "code-maintainer-001": {
+      "id": "code-maintainer-001",
+      "name": "Code Maintainer",
+      "type": "code-maintainer",
+      "status": "active",
+      "cognitivePattern": "convergent",
+      "learningRate": 0.04,
+      "memory": true,
+      "capabilities": [
+        "python_coding",
+        "sql_optimization",
+        "test_writing",
+        "code_refactoring",
+        "documentation",
+        "type_hints",
+        "lint_formatting",
+        "git_version_control",
+        "dependency_management"
+      ],
+      "metrics": {
+        "tasksCompleted": 0,
+        "successRate": 1,
+        "adaptations": 0
+      },
+      "createdAt": "2026-03-22T02:52:21.419Z",
+      "lastActivity": "2026-03-22T02:52:21.419Z"
     }
   },
   "workflows": {},

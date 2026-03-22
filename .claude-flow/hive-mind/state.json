@@ -1,0 +1,35 @@
+{
+  "initialized": true,
+  "topology": "hierarchical",
+  "workers": [
+    "data-engineer-001",
+    "factor-seeker-001",
+    "strategy-researcher-001",
+    "risk-manager-001",
+    "backtest-engineer-001",
+    "architect-001",
+    "code-maintainer-001"
+  ],
+  "consensus": {
+    "pending": [],
+    "history": []
+  },
+  "sharedMemory": {
+    "broadcasts": [
+      {
+        "messageId": "msg-1774148088171-t0p3ag",
+        "message": "HEALTH_CHECK: 所有 agent 请汇报在线状态。本次为 swarm 初始化后首次健康检查。orchestrationId=orch-1774148072043",
+        "priority": "normal",
+        "fromId": "fund-manager-001",
+        "timestamp": "2026-03-22T02:54:48.171Z"
+      }
+    ]
+  },
+  "createdAt": "2026-03-22T02:53:01.196Z",
+  "updatedAt": "2026-03-22T02:54:48.171Z",
+  "queen": {
+    "agentId": "fund-manager-001",
+    "electedAt": "2026-03-22T02:53:01.196Z",
+    "term": 1
+  }
+}
